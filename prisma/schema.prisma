@@ -1,0 +1,182 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+  schemas   = ["auth", "public"]
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model admin {
+  id             BigInt           @id @unique @default(autoincrement())
+  user_id        String           @db.Uuid
+  honorific      String?
+  first_name     String
+  last_name      String
+  role           String
+  created_at     DateTime         @default(now()) @db.Timestamptz(6)
+  essay_requests essay_requests[]
+  opportunities  opportunities[]
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model essay_requests {
+  id           BigInt    @id @unique @default(autoincrement())
+  student_id   BigInt
+  admin_id     BigInt
+  title        String
+  essay_link   String
+  word_count   BigInt
+  description  String
+  deadline     DateTime? @db.Date
+  submitted_at DateTime  @default(now()) @db.Timestamptz(6)
+  admin        admin     @relation(fields: [admin_id], references: [id], onDelete: Cascade)
+  students     students  @relation(fields: [student_id], references: [id], onUpdate: Restrict)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model opportunities {
+  id           BigInt    @id @unique @default(autoincrement())
+  student_id   BigInt
+  admin_id     BigInt
+  title        String
+  description  String
+  deadline     DateTime? @db.Date
+  link         String
+  status       status    @default(pending)
+  defer        Boolean   @default(false)
+  submitted_at DateTime  @default(now()) @db.Timestamptz(6)
+  
+  admin        admin     @relation(fields: [admin_id], references: [id], onDelete: Cascade)
+  students     students  @relation(fields: [student_id], references: [id], onUpdate: Restrict)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model profiles {
+  id         BigInt     @id @default(autoincrement())
+  Names      String?
+  user_id    String?    @db.Uuid
+  created_at DateTime   @default(now()) @db.Timestamptz(6)
+  role       user_role? @default(student)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model students {
+  id                   BigInt           @id @default(autoincrement())
+  student_id           String           @unique
+  first_name           String           @unique
+  last_name            String           @unique
+  email                String           @unique
+
+  date_of_registration DateTime?        @db.Date
+  user_id              String           @unique
+  grade        grade?
+  major_full   major_full?
+  major_short  major_short?
+  gpa          String?
+  essay_requests       essay_requests[]
+  opportunities        opportunities[]
+
+  @@schema("public")
+}
+
+enum aal_level {
+  aal1
+  aal2
+  aal3
+
+  @@schema("auth")
+}
+
+enum code_challenge_method {
+  s256
+  plain
+
+  @@schema("auth")
+}
+
+enum factor_status {
+  unverified
+  verified
+
+  @@schema("auth")
+}
+
+enum factor_type {
+  totp
+  webauthn
+  phone
+
+  @@schema("auth")
+}
+
+enum one_time_token_type {
+  confirmation_token
+  reauthentication_token
+  recovery_token
+  email_change_token_new
+  email_change_token_current
+  phone_change_token
+
+  @@schema("auth")
+}
+
+enum user_role {
+  student
+  admin
+  super_admin @map("super-admin")
+
+  @@schema("public")
+}
+
+enum status {
+  pending
+  in_review
+  completed
+
+  @@schema("public")
+}
+
+enum grade {
+  Enrichment_Year @map("Enrichment Year")
+  Senior_4 @map("Senior 4")
+  Senior_5 @map("Senior 5")
+  Senior_6 @map("Senior 6")
+
+  @@schema("public")
+}
+
+enum major_full {
+  Mathematics_Physics_Computer_Science @map("Mathematics-Physics-Computer Science")
+  History_Geography_Literature @map("History-Geography-Literature")
+  Physics_Chemistry_Biology @map("Physics-Chemistry-Biology")
+  Mathematics_Computer_Science_Economics @map("Mathematics-Computer Science-Economics")
+  Mathematics_Economics_Geography @map("Mathematics-Economics-Geography")
+
+  @@schema("public")
+}
+
+enum major_short {
+  MPC
+  HGL
+  PCB
+  MCE
+  MEG
+
+  @@schema("public")
+}
+
+
+

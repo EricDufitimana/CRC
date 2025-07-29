@@ -1,0 +1,118 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --dashboard-background: 0 0% 100%;
+    --dashboard-foreground: 0 0% 9%;
+
+    --dashboard-card: 0 0% 100%;
+    --dashboard-card-foreground: 0 0% 9%;
+
+    --dashboard-popover: 0 0% 100%;
+    --dashboard-popover-foreground: 0 0% 9%;
+
+    /* Black accent colors for minimalistic approach */
+    --dashboard-primary: 0 0% 0%;
+    --dashboard-primary-foreground: 0 0% 100%;
+
+    /* Green success colors */
+    --dashboard-success: 142 71% 45%;
+    --dashboard-success-dark: 142 76% 36%;
+    --dashboard-success-foreground: 0 0% 100%;
+
+    --dashboard-secondary: 0 0% 97%;
+    --dashboard-secondary-foreground: 0 0% 9%;
+
+    --dashboard-muted: 0 0% 97%;
+    --dashboard-muted-foreground: 0 0% 45%;
+
+    --dashboard-accent: 0 0% 0%;
+    --dashboard-accent-foreground: 0 0% 100%;
+
+    --dashboard-destructive: 0 84% 60%;
+    --dashboard-destructive-foreground: 0 0% 100%;
+
+    --dashboard-border: 0 0% 93%;
+    --dashboard-input: 0 0% 93%;
+    --dashboard-ring: 0 0% 0%;
+
+    --dashboard-radius: 0.5rem;
+
+    /* Sidebar colors - minimalistic white with black accents */
+    --dashboard-sidebar-background: 0 0% 100%;
+    --dashboard-sidebar-foreground: 0 0% 20%;
+    --dashboard-sidebar-primary: 0 0% 0%;
+    --dashboard-sidebar-primary-foreground: 0 0% 100%;
+    --dashboard-sidebar-accent: 0 0% 97%;
+    --dashboard-sidebar-accent-foreground: 0 0% 20%;
+    --dashboard-sidebar-border: 0 0% 93%;
+    --dashboard-sidebar-ring: 0 0% 0%;
+
+    /* Custom gradients and shadows */
+    --dashboard-gradient-primary: linear-gradient(135deg, hsl(24 95% 53%), hsl(20 91% 48%));
+    --dashboard-gradient-success: linear-gradient(135deg, hsl(142 71% 45%), hsl(142 76% 36%));
+    --dashboard-shadow-elegant: 0 10px 30px -10px hsl(24 95% 53% / 0.3);
+    --dashboard-shadow-glow: 0 0 40px hsl(24 95% 53% / 0.4);
+    --dashboard-transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .dark {
+    --dashboard-background: 0 0% 8%;
+    --dashboard-foreground: 0 0% 98%;
+
+    --dashboard-card: 0 0% 8%;
+    --dashboard-card-foreground: 0 0% 98%;
+
+    --dashboard-popover: 0 0% 8%;
+    --dashboard-popover-foreground: 0 0% 98%;
+
+    --dashboard-primary: 24 95% 53%;
+    --dashboard-primary-dark: 20 91% 48%;
+    --dashboard-primary-foreground: 0 0% 100%;
+
+    --dashboard-success: 142 71% 45%;
+    --dashboard-success-dark: 142 76% 36%;
+    --dashboard-success-foreground: 0 0% 100%;
+
+    --dashboard-secondary: 0 0% 15%;
+    --dashboard-secondary-foreground: 0 0% 98%;
+
+    --dashboard-muted: 0 0% 15%;
+    --dashboard-muted-foreground: 0 0% 65%;
+
+    --dashboard-accent: 0 0% 15%;
+    --dashboard-accent-foreground: 0 0% 98%;
+
+    --dashboard-destructive: 0 62% 31%;
+    --dashboard-destructive-foreground: 0 0% 98%;
+
+    --dashboard-border: 0 0% 15%;
+    --dashboard-input: 0 0% 15%;
+    --dashboard-ring: 24 95% 53%;
+
+    --dashboard-sidebar-background: 0 0% 10%;
+    --dashboard-sidebar-foreground: 0 0% 95%;
+    --dashboard-sidebar-primary: 24 95% 53%;
+    --dashboard-sidebar-primary-foreground: 0 0% 100%;
+    --dashboard-sidebar-accent: 0 0% 16%;
+    --dashboard-sidebar-accent-foreground: 0 0% 95%;
+    --dashboard-sidebar-border: 0 0% 16%;
+    --dashboard-sidebar-ring: 24 95% 53%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-dashboard-border;
+  }
+
+  body {
+    @apply bg-dashboard-background text-dashboard-foreground;
+  }
+}

@@ -1,0 +1,3 @@
+- [ ] Add a background motion gradient for the fill
+- [ ] Add a loading state on the button when the user clicks it
+- [ ] Add toasters for success and error messages
