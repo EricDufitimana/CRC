@@ -332,7 +332,7 @@ export default function StudentDashboard() {
                 <GraduationCap className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-1">
+                <h1 className="text-4xl font-bold font-cal-sans text-gray-800 mb-3">
                   Welcome back, Alex! 👋
                 </h1>
                 <p className="text-gray-600">

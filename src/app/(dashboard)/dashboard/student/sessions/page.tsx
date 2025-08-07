@@ -28,7 +28,7 @@ export default function StudentSessions() {
         
         <main className="flex-1 p-6 max-w-7xl mx-auto w-full">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">My Sessions</h1>
+            <h1 className="text-4xl font-bold font-cal-sans text-gray-800 mb-3">My Sessions</h1>
             <p className="text-gray-600">Manage your academic sessions and book new ones</p>
           </div>
 

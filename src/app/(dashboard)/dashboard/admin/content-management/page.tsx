@@ -1,65 +1,28 @@
 "use client";
 
-import { addResource, deleteResource, updateResource } from "@/lib/action";
-import { useState, useEffect, useActionState } from "react";
-import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
-import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
-import { client } from "@/sanity/lib/client";
-import { 
-  getNewOpportunities, 
-  getTemplates, 
-  getEnglishLanguageLearning, 
-  getRecurringOpportunities,
-  getPreviousEvents,
-  getUpcomingEvents,
-  getWorkshopByCategory
-} from "@/sanity/lib/queries";
+import { useState, useEffect } from "react";
 import { Button } from "../../../../../../zenith/src/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../../../../../zenith/src/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "../../../../../../zenith/src/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../../../../zenith/src/components/ui/table";
-import { Avatar, AvatarFallback, AvatarImage } from "../../../../../../zenith/src/components/ui/avatar";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../../../../../../zenith/src/components/ui/dialog";
 import { Input } from "../../../../../../zenith/src/components/ui/input";
-import { Textarea } from "../../../../../../zenith/src/components/ui/textarea";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../../../../../zenith/src/components/ui/dropdown-menu";
-import { MoreHorizontal, Plus, Edit, Trash2, Upload, FileText, Briefcase, Calendar, GraduationCap, Building, Users, BookOpen, ChevronDown } from "lucide-react";
 import { Label } from "../../../../../../zenith/src/components/ui/label";
-import { Checkbox } from "../../../../../../zenith/src/components/ui/checkbox";
-import { resourceSchema } from "@/lib/validation";
+import { Textarea } from "../../../../../../zenith/src/components/ui/textarea";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../../../../zenith/src/components/ui/card";
+import { Badge } from "../../../../../../zenith/src/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../../../../zenith/src/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../../../../../../zenith/src/components/ui/dialog";
+import { sendBulkEmails } from "@/actions/sendBulkEmails";
+import { Plus, Edit, Trash2, ExternalLink, Calendar, FileText, Briefcase, BookOpen } from "lucide-react";
+import { useActionState } from "react";
 import { z } from "zod";
-
-const categories = [
-  { id: "new-opportunities", label: "New Opportunities", icon: Briefcase },
-  { id: "recurring-opportunities", label: "Recurring Opportunities", icon: Calendar },
-  { id: "templates", label: "Templates", icon: FileText },
-  { id: "english-learning", label: "English Learning", icon: BookOpen },
-];
-
-const eventCategories = [
-  { id: "previous-events", label: "Previous", icon: Calendar },
-  { id: "upcoming-events", label: "Upcoming", icon: Calendar },
-];
-
-const workshopCategories = [
-  { id: "ey", label: "EY", icon: GraduationCap },
-  { id: "s4", label: "S4", icon: GraduationCap },
-  { id: "s5", label: "S5", icon: GraduationCap, hasSubcategories: true },
-  { id: "s6", label: "S6", icon: GraduationCap, hasSubcategories: true },
-];
-
-const s5Subcategories = [
-  { id: "s5-groups-ab", label: "Groups A+B" },
-  { id: "s5-customer-care", label: "Customer Care" },
-];
-
-const s6Subcategories = [
-  { id: "s6-groups-ab", label: "Groups A+B" },
-  { id: "s6-group-c", label: "Group C" },
-  { id: "s6-group-d", label: "Group D" },
-  { id: "s6-job-readiness", label: "Job Readiness Course" },
-];
-// Type for Sanity resources
+import { Checkbox } from "../../../../../../zenith/src/components/ui/checkbox";
+import { deleteResource, updateResource, addResource, fetchResourcesByCategory } from "@/lib/action";
 type SanityResource = {
   _id: string;
   title: string;
@@ -70,7 +33,12 @@ type SanityResource = {
   opportunity_deadline?: string;
 };
 
-
+const categories = [
+  { id: "new-opportunities", label: "New Opportunities", icon: Briefcase },
+  { id: "recurring-opportunities", label: "Recurring Opportunities", icon: Calendar },
+  { id: "templates", label: "Templates", icon: FileText },
+  { id: "english-learning", label: "English Learning", icon: BookOpen },
+];
 
 export default function ContentManagement() {
   const [isDarkTheme, setIsDarkTheme] = useState(true);
@@ -92,6 +60,32 @@ export default function ContentManagement() {
   });
   const [isUpdating, setIsUpdating] = useState(false);
 
+  // Only allow resource creation for these categories
+  const validResourceCategories = [
+    "new-opportunities",
+    "recurring-opportunities",
+    "templates",
+    "english-learning",
+  ];
+  const canAddResource = validResourceCategories.includes(selectedCategory);
+
+  // Helper to get type based on selectedCategory
+  const resourceType = "resource";
+
+  // Simple validation schema
+  const resourceSchema = z.object({
+    title: z.string().min(1, "Title is required"),
+    description: z.string().min(1, "Description is required"),
+    url: z.string().url("Must be a valid URL"),
+    image_address: z.string().optional(),
+    opportunity_deadline: z.string().optional(),
+    type: z.string(),
+    category: z.string(),
+  });
+
+  // Mock addResource function
+
+
   const handleDeleteResource = async(id:string) => {
     try{
       const result = await deleteResource(id);
@@ -107,7 +101,13 @@ export default function ContentManagement() {
     }
   }
 
+
   const handleAddResource = async (prevstate: any | undefined, formDataParam: FormData ) => {
+    console.log("🔧 handleAddResource called");
+    console.log("📋 Form data entries:");
+    Array.from(formDataParam.entries()).forEach(([key, value]) => {
+      console.log(`  ${key}:`, value);
+    });
     try {
       // Map dashboard category to Sanity category value
       let category = selectedCategory;
@@ -175,40 +175,11 @@ export default function ContentManagement() {
     }
   }, [isAddResourceOpen]);
 
-  // Only allow resource creation for these categories
-  const validResourceCategories = [
-    "new-opportunities",
-    "recurring-opportunities",
-    "templates",
-    "english-learning",
-    "s5-groups-ab",
-    "s5-customer-care",
-    "s6-groups-ab",
-    "s6-group-c",
-    "s6-group-d", "s6-job-readiness", "ey", "s4"
-  ];
-  const canAddResource = validResourceCategories.includes(selectedCategory);
-
-  // Helper to get type based on selectedCategory
-  const workshopCategoriesSet = new Set([
-    "ey", "s4", "s5-groups-ab", "s5-customer-care", "s6-groups-ab", "s6-group-c", "s6-group-d", "s6-job-readiness"
-  ]);
-  const resourceType = workshopCategoriesSet.has(selectedCategory) ? "workshop" : "resource";
-
-  // Helper to get label for selectedCategory
   function categoryLabelFor(cat: string) {
-    const all = [
-      ...categories,
-      ...eventCategories,
-      ...workshopCategories,
-      ...s5Subcategories,
-      ...s6Subcategories
-    ];
-    const found = all.find(c => c.id === cat);
-    return found ? found.label : cat;
+    const category = categories.find(c => c.id === cat);
+    return category ? category.label : cat;
   }
 
-  // Handle form input
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     if (name === "title" && value.length > TITLE_MAX) return;
@@ -217,9 +188,8 @@ export default function ContentManagement() {
     setFieldErrors(prev => ({ ...prev, [name]: [] })); // clear error for this field on change
   };
 
-  // Handle checkbox change
   const handleCheckboxChange = (checked: boolean) => {
-    setIsFeatured(checked);
+    console.log("Checkbox changed:", checked);
   };
 
   const handleDeleteClick = (resourceId: string) => {
@@ -258,7 +228,7 @@ export default function ContentManagement() {
     setEditForm(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleEditSubmit = async () => {
+ const handleEditSubmit = async () => {
     if (!resourceToEdit) return;
     
     setIsUpdating(true);
@@ -284,50 +254,22 @@ export default function ContentManagement() {
     setResourceToEdit(null);
   };
 
-  // Handle form submit
   const fetchDataForCategory = async (category: string) => {
     setLoading(true);
     try {
-      let data: SanityResource[] = [];
+      console.log("Fetching data for category:", category);
       
-      switch (category) {
-        case "new-opportunities":
-          data = await client.fetch(getNewOpportunities);
-          break;
-        case "recurring-opportunities":
-          data = await client.fetch(getRecurringOpportunities);
-          break;
-        case "templates":
-          data = await client.fetch(getTemplates);
-          break;
-        case "english-learning":
-          data = await client.fetch(getEnglishLanguageLearning);
-          break;
-        case "previous-events":
-          data = await client.fetch(getPreviousEvents);
-          break;
-        case "upcoming-events":
-          data = await client.fetch(getUpcomingEvents);
-          break;
-        case "ey":
-        case "s4":
-          data = await client.fetch(getWorkshopByCategory, { workshopCategory: category });
-          break;
-        case "s5-groups-ab":
-        case "s5-customer-care":
-        case "s6-groups-ab":
-        case "s6-group-c":
-        case "s6-group-d":
-        case "s6-job-readiness":
-          data = await client.fetch(getWorkshopByCategory, { workshopCategory: category });
-          break;
-        default:
-          data = [];
+      const result = await fetchResourcesByCategory(category);
+      
+      if (result.status === 'ERROR') {
+        console.error("Error from server action:", result.error);
+        setResources([]);
+      } else {
+        console.log("Data received from server action:", result.data);
+        setResources(result.data);
       }
-      
-      setResources(data);
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error("Error calling server action:", error);
       setResources([]);
     } finally {
       setLoading(false);
@@ -338,154 +280,53 @@ export default function ContentManagement() {
   useEffect(() => {
     fetchDataForCategory(selectedCategory);
   }, [selectedCategory]);
+
   return (
-    <div className="min-h-screen bg-slate-50 flex w-full">
-      <DashboardSidebar 
-        isDarkTheme={isDarkTheme} 
-      />
-      <div className="flex-1 flex flex-col">
-        <DashboardHeader isDarkTheme={isDarkTheme} onThemeToggle={() => setIsDarkTheme(!isDarkTheme)} />
-        <main className="flex-1 p-6 max-w-7xl mx-auto w-full bg-dashboard-card bg-slate-50">
-          {/* Test div to check if rounded works */}
-          
-          
+    <div className="p-8">
+      <div className="space-y-8">
           {/* Header */}
-          <div className="mb-6 p-4">
-            <h1 className="text-2xl font-bold text-dashboard-foreground">Content Management</h1>
-            <p className="text-dashboard-muted-foreground">Add/edit resources across all student-facing pages</p>
+        <div>
+          <h1 className="text-4xl font-bold font-cal-sans text-gray-800 mb-3">Content Management</h1>
+          <p className="text-md text-gray-600">
+            Add/edit resources across all student-facing pages
+          </p>
           </div>
+
           {/* Two-Column Grid */}
           <div className="grid grid-cols-5 gap-6">
             {/* Left Sidebar - Category Selector (20% width) */}
-            <div className="col-span-1 p-4 border border-dashboard-border rounded-dashboard-lg bg-dashboard-card">
-              <h3 className="text-sm font-medium text-dashboard-foreground mb-4">Categories</h3>
-              <div className="space-y-6">
-                {/* Main Categories */}
-                <div>
-                  <Tabs orientation="vertical" value={selectedCategory} onValueChange={setSelectedCategory} className="gap-1">
-                    <TabsList className="h-auto p-0 bg-transparent flex-col">
-                      {categories.map(category => {
-                        const Icon = category.icon;
-                        return (
-                          <TabsTrigger
-                            key={category.id}
-                            value={category.id}
-                            className="w-full justify-start text-left hover:bg-dashboard-muted data-[state=active]:bg-dashboard-muted data-[state=active]:text-dashboard-foreground"
-                          >
-                            <Icon className="h-4 w-4 mr-2" />
-                            {category.label}
-                          </TabsTrigger>
-                        );
-                      })}
-                    </TabsList>
-                  </Tabs>
-                </div>
-
-                {/* Events Section */}
-                <div>
-                  <h4 className="text-xs font-semibold text-dashboard-muted-foreground uppercase tracking-wider mb-2">Events</h4>
-                  <Tabs orientation="vertical" value={selectedCategory} onValueChange={setSelectedCategory} className="gap-1">
-                    <TabsList className="h-auto p-0 bg-transparent flex-col">
-                      {eventCategories.map(category => {
-                        const Icon = category.icon;
-                        return (
-                          <TabsTrigger
-                            key={category.id}
-                            value={category.id}
-                            className="w-full justify-start text-left hover:bg-dashboard-muted data-[state=active]:bg-dashboard-muted data-[state=active]:text-dashboard-foreground text-sm"
-                          >
-                            <Icon className="h-4 w-4 mr-2" />
-                            {category.label}
-                          </TabsTrigger>
-                        );
-                      })}
-                    </TabsList>
-                  </Tabs>
-                </div>
-
-                {/* Workshops Section */}
-                <div>
-                  <h4 className="text-xs font-semibold text-dashboard-muted-foreground uppercase tracking-wider mb-2">Workshops</h4>
-                  <div className="space-y-1">
-                    {workshopCategories.map(category => {
-                      const Icon = category.icon;
-                      const isExpanded = expandedWorkshops.includes(category.id);
-                      
-                      return (
-                        <div key={category.id}>
-                          <button
-                            onClick={() => {
-                              if (category.hasSubcategories) {
-                                setExpandedWorkshops(prev => 
-                                  prev.includes(category.id) 
-                                    ? prev.filter(id => id !== category.id)
-                                    : [...prev, category.id]
-                                );
-                              } else {
-                                setSelectedCategory(category.id);
-                              }
-                            }}
-                            className={`w-full flex items-center justify-between text-left hover:bg-dashboard-muted data-[state=active]:bg-dashboard-muted data-[state=active]:text-dashboard-foreground text-sm p-2 rounded ${
-                              selectedCategory === category.id ? 'bg-dashboard-muted text-dashboard-foreground' : ''
-                            }`}
-                          >
-                            <div className="flex items-center">
-                              <Icon className="h-4 w-4 mr-2" />
-                              {category.label}
-                            </div>
-                            {category.hasSubcategories && (
-                              <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                            )}
-                          </button>
-                          
-                          {category.hasSubcategories && isExpanded && (
-                            <div className="ml-6 mt-1 space-y-1">
-                              {category.id === 's5' && s5Subcategories.map(sub => (
-                                <button
-                                  key={sub.id}
-                                  onClick={() => setSelectedCategory(sub.id)}
-                                  className={`w-full flex items-center text-left hover:bg-dashboard-muted data-[state=active]:bg-dashboard-muted data-[state=active]:text-dashboard-foreground text-xs p-2 rounded ${
-                                    selectedCategory === sub.id ? 'bg-dashboard-muted text-dashboard-foreground' : ''
-                                  }`}
-                                >
-                                  {sub.label}
-                                </button>
-                              ))}
-                              {category.id === 's6' && s6Subcategories.map(sub => (
-                                <button
-                                  key={sub.id}
-                                  onClick={() => setSelectedCategory(sub.id)}
-                                  className={`w-full flex items-center text-left hover:bg-dashboard-muted data-[state=active]:bg-dashboard-muted data-[state=active]:text-dashboard-foreground text-xs p-2 rounded ${
-                                    selectedCategory === sub.id ? 'bg-dashboard-muted text-dashboard-foreground' : ''
-                                  }`}
-                                >
-                                  {sub.label}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
+          <div className="col-span-1 space-y-4">
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold text-gray-900">Categories</h3>
+              {categories.map((category) => {
+                const IconComponent = category.icon;
+                return (
+                  <button
+                    key={category.id}
+                    onClick={() => setSelectedCategory(category.id)}
+                    className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center gap-3 ${
+                      selectedCategory === category.id
+                        ? "bg-green-100 text-green-900 border border-green-200"
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    <IconComponent className="h-4 w-4" />
+                    {category.label}
+                  </button>
+                );
+              })}
             </div>
-            {/* Main Content - Resource Editor (80% width) */}
-            <div className="col-span-4 space-y-6">
-              {/* Resource Table */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle>Resources</CardTitle>
-                  <Dialog open={isAddResourceOpen} onOpenChange={setIsAddResourceOpen}>
+
+            {/* Add Resource Buttons */}
+            <div className="space-y-2 pt-4">
+            <Dialog open={isAddResourceOpen} onOpenChange={setIsAddResourceOpen}>
                     <DialogTrigger asChild>
-                      <Button variant="outline" className="text-white border-white bg-green-600 hover:bg-green-700 hover:text-white
-                      ">
+                      <Button variant="outline" className="w-full bg-green-600 hover:bg-green-700 text-white hover:text-white">
                         <Plus className="h-4 w-4 mr-2" />
                         Add Resource
                       </Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent className="max-w-3xl">
                       <DialogHeader>
                         <DialogTitle>Add New Resource</DialogTitle>
                       </DialogHeader>
@@ -562,9 +403,16 @@ export default function ContentManagement() {
                             <Button variant="outline" type="button" onClick={() => setIsAddResourceOpen(false)} disabled={submitting}>
                               Cancel
                             </Button>
-                            <Button type="submit" disabled={isPending} className="text-white">
-                              {isPending ? "Adding..." : "Add Resource"}
-                            </Button>
+                                            <Button type="submit" disabled={isPending} className="text-white">
+                  {isPending ? (
+                    <div className="flex items-center gap-2">
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                      Adding...
+                    </div>
+                  ) : (
+                    "Add Resource"
+                  )}
+                </Button>
                           </div>
                          
                         </form>
@@ -575,86 +423,108 @@ export default function ContentManagement() {
                       )}
                     </DialogContent>
                   </Dialog>
+            </div>
+                  </div>
+
+          {/* Right Content Area (80% width) */}
+          <div className="col-span-4">
+            <div className="space-y-6">
+              {/* Category Header */}
+
+              {/* Resources Table */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>{categoryLabelFor(selectedCategory)}</CardTitle>
+                  <CardDescription>
+                    Manage resources for {categoryLabelFor(selectedCategory).toLowerCase()}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
+                  {loading ? (
+                    <div className="space-y-4">
+                      <div className="animate-pulse">
+                        {/* Table Header Skeleton */}
+                        <div className="flex items-center gap-4 py-3 border-b border-gray-200">
+                          <div className="h-4 bg-gray-200 rounded w-24"></div>
+                          <div className="h-4 bg-gray-200 rounded w-32"></div>
+                          <div className="h-4 bg-gray-200 rounded w-20"></div>
+                          <div className="h-4 bg-gray-200 rounded w-16"></div>
+                        </div>
+                        {/* Table Rows Skeleton */}
+                        {Array.from({ length: 5 }).map((_, index) => (
+                          <div key={index} className="flex items-center gap-4 py-4 border-b border-gray-100">
+                            <div className="h-5 bg-gray-200 rounded w-48"></div>
+                            <div className="h-5 bg-gray-200 rounded w-64"></div>
+                            <div className="h-5 bg-gray-200 rounded w-24"></div>
+                            <div className="flex items-center gap-2">
+                              <div className="h-8 w-8 bg-gray-200 rounded"></div>
+                              <div className="h-8 w-8 bg-gray-200 rounded"></div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Preview</TableHead>
                         <TableHead>Title</TableHead>
                         <TableHead>Description</TableHead>
-                        <TableHead>Expiry</TableHead>
-                        <TableHead className="w-[50px]">Actions</TableHead>
+                          <TableHead>Deadline</TableHead>
+                          <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {loading ? (
-                        <TableRow>
-                          <TableCell colSpan={5} className="text-center py-8">
-                            <div className="flex items-center justify-center">
-                              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
-                              <span className="ml-2 text-black">Loading...</span>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ) : resources.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={5} className="text-center py-8 text-dashboard-muted-foreground">
-                            No resources found for this category
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        resources.map(resource => (
+                        {resources.map((resource) => (
                           <TableRow key={resource._id}>
-                            <TableCell>
-                              <Avatar>
-                                <AvatarFallback className="bg-gray-300 text-black font-semibold">
-                                  {resource.title.charAt(0).toUpperCase()}
-                                </AvatarFallback>
-                              </Avatar>
-                            </TableCell>
                             <TableCell className="font-medium">
-                              <a href={resource.url} target="_blank" rel="noopener noreferrer" className="text-dashboard-foreground hover:underline">
+                              <div className="flex text-md items-center gap-2">
                                 {resource.title}
-                              </a>
+                              </div>
                             </TableCell>
-                            <TableCell className="text-dashboard-muted-foreground">
-                              {resource.description.length > 50 ? `${resource.description.substring(0, 50)}...` : resource.description}
+                            <TableCell className="max-w-xs truncate text-gray-600">
+                              {resource.description}
                             </TableCell>
-                                                        <TableCell className="text-dashboard-muted-foreground">
-                              {resource.opportunity_deadline || "No expiry"}
+                           <TableCell>
+                              {resource.opportunity_deadline?  (
+                                <div className="flex items-center gap-1 text-gray-600">
+                                  {new Date(resource.opportunity_deadline).toLocaleDateString()}
+                                </div>
+                              ): (
+                                <div className="flex items-center gap-1 text-gray-600">
+                                  No deadline
+                                </div>
+                              )}
                             </TableCell>
                             <TableCell>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon">
-                                    <MoreHorizontal className="h-4 w-4" />
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleEditClick(resource)}
+                                >
+                                  <Edit className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDeleteClick(resource._id)}
+                                  className="text-red-600 hover:text-red-700"
+                                >
+                                  <Trash2 className="h-3 w-3" />
                                   </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => handleEditClick(resource)} className="cursor-pointer">
-                                    <Edit className="h-4 w-4 mr-2 cursor-pointer" />
-                                    Edit
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    className="text-dashboard-destructive cursor-pointer"
-                                    onClick={() => handleDeleteClick(resource._id)} >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                              </div>
                             </TableCell>
                           </TableRow>
-                        ))
-                      )}
+                        ))}
                     </TableBody>
                                     </Table>
+                  )}
                 </CardContent>
               </Card>
             </div>
           </div>
-        </main>
+        </div>
       </div>
 
       {/* Edit Resource Dialog */}
@@ -744,7 +614,7 @@ export default function ContentManagement() {
             <DialogTitle>Confirm Delete</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <p className="text-dashboard-foreground">
+            <p className="text-gray-900">
               Are you sure you want to delete this content?
             </p>
           </div>

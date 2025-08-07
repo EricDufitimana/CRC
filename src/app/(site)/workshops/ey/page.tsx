@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import PdfViewer from "@/components/PdfViewer/PdfViewer";
+
 
 export default function WorkshopsPage() {
   const [expandedCards, setExpandedCards] = useState<number[]>([]);

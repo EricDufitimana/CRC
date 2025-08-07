@@ -31,11 +31,21 @@ const Header = () => {
 
   // submenu handler
   const [openIndex, setOpenIndex] = useState(-1);
+  const [openNestedIndex, setOpenNestedIndex] = useState(-1);
+  
   const handleSubmenu = (index: any) => {
     if (openIndex === index) {
       setOpenIndex(-1);
     } else {
       setOpenIndex(index);
+    }
+  };
+
+  const handleNestedSubmenu = (index: any) => {
+    if (openNestedIndex === index) {
+      setOpenNestedIndex(-1);
+    } else {
+      setOpenNestedIndex(index);
     }
   };
 
@@ -215,17 +225,61 @@ const Header = () => {
                             }`}
                           >
                             {menuItem?.submenu?.map((submenuItem: any, i) => (
-                              <Link
-                                href={submenuItem.path}
-                                key={i}
-                                className={`block rounded px-4 py-[10px] text-sm ${
-                                  pathUrl === submenuItem.path
-                                    ? "text-primary"
-                                    : "text-body-color hover:text-primary dark:text-dark-6 dark:hover:text-primary"
-                                }`}
-                              >
-                                {submenuItem.title}
-                              </Link>
+                              <div key={i} className="relative">
+                                {submenuItem.nestedSubmenu ? (
+                                  <button
+                                    onClick={() => handleNestedSubmenu(i)}
+                                    className={`flex w-full items-center justify-between rounded px-4 py-[10px] text-sm text-body-color hover:text-primary dark:text-dark-6 dark:hover:text-primary`}
+                                  >
+                                    {submenuItem.title}
+                                    <span className="pl-1">
+                                      <svg
+                                        className={`duration-300 ${openNestedIndex === i ? 'rotate-180' : ''}`}
+                                        width="12"
+                                        height="12"
+                                        viewBox="0 0 12 12"
+                                        fill="none"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                      >
+                                        <path
+                                          d="M6.00039 9.9C5.85039 9.9 5.72539 9.85 5.60039 9.75L1.85039 6.10005C1.62539 5.87505 1.62539 5.52505 1.85039 5.30005C2.07539 5.07505 2.42539 5.07505 2.65039 5.30005L6.00039 8.525L9.35039 5.25005C9.57539 5.02505 9.92539 5.02505 10.15039 5.25005C10.37539 5.47505 10.37539 5.82505 10.15039 6.05005L6.40039 9.7C6.27539 9.825 6.15039 9.9 6.00039 9.9Z"
+                                          fill="currentColor"
+                                        />
+                                      </svg>
+                                    </span>
+                                  </button>
+                                ) : (
+                                  <Link
+                                    href={submenuItem.path}
+                                    className={`block rounded px-4 py-[10px] text-sm ${
+                                      pathUrl === submenuItem.path
+                                        ? "text-primary"
+                                        : "text-body-color hover:text-primary dark:text-dark-6 dark:hover:text-primary"
+                                    }`}
+                                  >
+                                    {submenuItem.title}
+                                  </Link>
+                                )}
+                                
+                                {/* Nested Submenu Dropdown */}
+                                {submenuItem.nestedSubmenu && openNestedIndex === i && (
+                                  <div className="nested-submenu mt-2 ml-4 w-full rounded-sm bg-white p-2 dark:bg-dark-2">
+                                    {submenuItem.nestedSubmenu.map((nestedItem: any, j) => (
+                                      <Link
+                                        href={nestedItem.path}
+                                        key={j}
+                                        className={`block rounded px-4 py-[8px] text-sm ${
+                                          pathUrl === nestedItem.path
+                                            ? "text-primary"
+                                            : "text-body-color hover:text-primary dark:text-dark-6 dark:hover:text-primary"
+                                        }`}
+                                      >
+                                        {nestedItem.title}
+                                      </Link>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                             ))}
                           </div>
                         </li>

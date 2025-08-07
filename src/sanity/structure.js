@@ -1,4 +1,4 @@
-import { structure } from 'sanity/structure'
+import { apiVersion } from './env.js'
 
 export const structureBuilder = (S) =>
   S.list()
@@ -12,6 +12,7 @@ export const structureBuilder = (S) =>
             .title('Resources')
             .schemaType('resource')
             .filter('_type == "resource"')
+            .apiVersion(apiVersion)
             .defaultOrdering([{ field: '_createdAt', direction: 'desc' }])
         ),
       S.listItem()
@@ -22,6 +23,18 @@ export const structureBuilder = (S) =>
             .title('Workshops')
             .schemaType('workshops')
             .filter('_type == "workshops"')
+            .apiVersion(apiVersion)
+            .defaultOrdering([{ field: '_createdAt', direction: 'desc' }])
+        ),
+      S.listItem()
+        .title('Events')
+        .schemaType('events')
+        .child(
+          S.documentList()
+            .title('Events')
+            .schemaType('events')
+            .filter('_type == "events"')
+            .apiVersion(apiVersion)
             .defaultOrdering([{ field: '_createdAt', direction: 'desc' }])
         ),
     ])

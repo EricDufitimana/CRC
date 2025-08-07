@@ -1,12 +1,36 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../lib/prisma';
 
-export async function GET() {
+export async function GET(request) {
+  const { searchParams } = new URL(request.url);
+  const adminId = searchParams.get('admin_id');
+  
   try {
     console.log('🔍 Attempting to fetch essay requests from database...');
+    console.log('🔍 Admin ID received:', adminId);
+    
+    // Build the where clause conditionally
+    const whereClause = {};
+    if (adminId && adminId !== 'null' && adminId !== 'undefined') {
+      // Convert adminId to BigInt for proper comparison with database BigInt field
+      whereClause.admin_id = BigInt(adminId);
+    }
     
     const essayRequests = await prisma.essay_requests.findMany({
-      include: {
+      where: whereClause,
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        deadline: true,
+        essay_link: true,
+        word_count: true,
+        student_id: true,
+        admin_id: true,
+        submitted_at: true,
+        completed_at: true,
+        status: true,
+        referred: true,
         admin: {
           select: {
             first_name: true,
@@ -17,9 +41,13 @@ export async function GET() {
         students: {
           select: {
             first_name: true,
-            last_name: true
+            last_name: true,
+            grade: true
           }
         }
+      },
+      orderBy: {
+        id: 'desc' // Use id instead of submitted_at to avoid column issues
       }
     });
 
@@ -33,7 +61,14 @@ export async function GET() {
         .filter(Boolean)
         .join(' ');
 
-      return {
+      console.log('Raw request from database:', {
+        id: request.id,
+        status: request.status,
+        completed_at: request.completed_at,
+        completed_at_type: typeof request.completed_at
+      });
+      
+      const serializedRequest = {
         id: request.id.toString(),
         title: request.title,
         description: request.description,
@@ -43,10 +78,17 @@ export async function GET() {
         student_id: request.student_id.toString(),
         admin_id: request.admin_id.toString(),
         submitted_at: request.submitted_at,
-        created_at: request.created_at,
+        created_at: request.submitted_at ? new Date(request.submitted_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0], // Handle case where submitted_at might not exist
+        completed_at: request.completed_at,
         admin_name: adminName || 'Unknown',
-        student_name: studentName || 'Unknown'
+        student_name: studentName || 'Unknown',
+        status: request.status,
+        grade: request.students?.grade ? request.students.grade.replace(/_/g, ' ') : null,
+        referred: request.referred || false
       };
+      
+      console.log('Serialized request:', serializedRequest);
+      return serializedRequest;
     });
 
     console.log('🔍 Successfully fetched essay requests:', serializedRequests.length);

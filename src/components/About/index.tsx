@@ -9,7 +9,7 @@ const About = () => {
       className="bg-gray-1 pb-8 dark:bg-dark-2 lg:pb-[10px] lg:pt-[10px]"
     >
       <div className="container">
-        <div className="wow fadeInUp" data-wow-delay=".2s">
+        <div className="wow fadeInUp " data-wow-delay=".2s">
           <div className="-mx-4 flex flex-wrap items-center">
             <div className="w-full px-4 lg:w-1/2">
             <AnimateOnScroll direction='left' fadeIn>

@@ -1,16 +1,20 @@
-export const apiVersion =
-  process.env.NEXT_PUBLIC_SANITY_API_VERSION || '2025-07-20'
+export const apiVersion = process.env.NEXT_PUBLIC_SANITY_API_VERSION
 
-export const dataset = assertValue(
-  process.env.NEXT_PUBLIC_SANITY_DATASET,
-  'Missing environment variable: NEXT_PUBLIC_SANITY_DATASET'
-)
+// Try to get from environment, with fallbacks
+const getEnvVar = (key, fallback) => {
+  const value = process.env[key] || fallback
+  if (!value) {
+    console.warn(`Environment variable ${key} not found, using fallback`)
+  }
+  return value
+}
 
-export const projectId = assertValue(
-  process.env.NEXT_PUBLIC_SANITY_PROJECT_ID,
-  'Missing environment variable: NEXT_PUBLIC_SANITY_PROJECT_ID'
-)
+export const dataset = getEnvVar('NEXT_PUBLIC_SANITY_DATASET', 'production')
+
+export const projectId = getEnvVar('NEXT_PUBLIC_SANITY_PROJECT_ID', 'x8lmg4a1')
+
 export const token = process.env.SANITY_WRITE_TOKEN
+
 function assertValue(v, errorMessage) {
   if (v === undefined) {
     throw new Error(errorMessage)

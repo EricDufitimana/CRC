@@ -17,12 +17,22 @@ export default defineConfig({
   basePath: '/studio',
   projectId,
   dataset,
+  apiVersion, // Add explicit apiVersion
   // Add and edit the content schema in the './sanity/schemaTypes' folder
   schema,
   plugins: [
     structureTool({structure: structureBuilder}),
     // Vision is for querying with GROQ from inside the Studio
     // https://www.sanity.io/docs/the-vision-plugin
-    visionTool({defaultApiVersion: apiVersion}),
+    visionTool(),
   ],
+  // Fix for React 18 compatibility
+  vite: (config) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      'react-dom/server': 'react-dom/server.browser',
+    };
+    
+    return config;
+  },
 }) 

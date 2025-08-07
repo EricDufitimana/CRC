@@ -30,11 +30,6 @@ export const getRecurringOpportunities = groq`
 }
 `;
 
-export const getPreviousEvents = groq`
-  *[_type == "resource" && category=="previous_events"] | order(_createdAt desc) {
-  _id, category, description, title, url, image_address, __createdAt, opportunity_deadline
-}
-`;
 
 export const getUpcomingEvents = groq`
   *[_type == "resource" && category=="upcoming_events"] | order(_createdAt desc) {
@@ -45,5 +40,29 @@ export const getUpcomingEvents = groq`
 export const getWorkshopByCategory = groq`
   *[_type == "resource" && category==$workshopCategory] | order(_createdAt desc) {
   _id, category, description, title, url, image_address, __createdAt, opportunity_deadline
+}
+`;
+
+export const getPreviousEvents = groq`
+*[_type=="events" && type=="previous_events"] | order(_createdAt desc){
+  _id, _createdAt, category, date, description, event_organizer, gallery, location, title
+}
+`;
+
+export const getS4Workshops = groq`
+  *[_type=="workshops" && workshop_group=="senior_4"] | order(_createdAt desc) {
+  _id, description, presentation_pdf_url, title, workshop_date, _createAt
+}
+`;
+
+export const getWorkshopsByGroup = groq`
+  *[_type=="workshops" && workshop_group==$workshopGroup] | order(_createdAt desc) {
+  _id, description, presentation_pdf_url, title, workshop_date, workshop_group, _createdAt, assignment
+}
+`;
+
+export const getAllWorkshops = groq`
+  *[_type=="workshops"] | order(_createdAt desc) {
+  _id, description, presentation_pdf_url, title, workshop_date, workshop_group, _createdAt, assignment
 }
 `;

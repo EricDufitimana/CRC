@@ -22,7 +22,7 @@ export async function GET(request){
         email: student.email,
         profile_picture: student.profile_picture,
         date_of_registration: student.date_of_registration,
-        user_id: student.user_id.toString(),
+        user_id: student.user_id ? student.user_id.toString() : null,
         grade: formatEnumValue(student.grade),
         major_full: formatEnumValue(student.major_full),
         major_short: student.major_short,
@@ -33,6 +33,15 @@ export async function GET(request){
     return NextResponse.json(serializedStudents);
   } catch (error) {
     console.error("Error fetching students:", error);
-    return NextResponse.json({error: "Failed to fetch students"}, {status: 500});
+    console.error("Error details:", {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    });
+    return NextResponse.json({
+      error: "Failed to fetch students", 
+      details: error.message,
+      type: error.name
+    }, {status: 500});
   }
 }

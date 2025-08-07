@@ -34,7 +34,8 @@ export async function GET(request) {
       }, { status: 404 });
     }
 
-    return NextResponse.json({ adminId: admin.id });
+    console.log('🔍 Admin ID from database:', admin.id, 'Type:', typeof admin.id);
+    return NextResponse.json({ adminId: admin.id.toString() });
     
   } catch (error) {
     return NextResponse.json({ 

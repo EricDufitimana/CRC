@@ -38,6 +38,18 @@ const config: Config = {
           50: '#f3c743',
           below: '#e24d3f',
         },
+        ai_category_colors: {
+          1: '#7ADAA5',
+          2: '#50D2B5',
+          3: '#5CAEA6',
+          4: '#7BBF95',
+          5: '#9AC66F',
+          6: '#F3C743',
+          7: '#E24D3F',
+          8: '#F29849',
+          9: '#239BA7',
+          10: '#F29849',
+        },
   			card: {
   				DEFAULT: 'hsl(var(--card))',
   				foreground: 'hsl(var(--card-foreground))'

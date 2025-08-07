@@ -47,6 +47,7 @@ export const resource = defineType({
           {title: "Internship" , value: "internship"},
           {title: "Templates", value: "templates"},
           {title: "New Opportunities", value: "new_opportunities"},
+          {title: "Recurring Opportunities", value: "recurring_opportunities"},
           {title: "English Language Learning", value: "english_language_learning"},
         ],
       },
@@ -56,6 +57,16 @@ export const resource = defineType({
       name: "opportunity_deadline",
       title: "Opportunity Deadline",
       type: "date",
+    }),
+    defineField({
+      name: "gallery",
+      title: "Gallery",
+      type: "array",
+      of: [
+        {
+          type: "image",
+        }
+      ]
     })
   ],
   preview: {

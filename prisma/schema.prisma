@@ -21,6 +21,10 @@ model admin {
   created_at     DateTime         @default(now()) @db.Timestamptz(6)
   essay_requests essay_requests[]
   opportunities  opportunities[]
+  sent_referrals     essay_referrals[] @relation("from_admin")
+  received_referrals essay_referrals[] @relation("to_admin")
+  sent_opportunity_referrals     opportunity_referrals[] @relation("from_admin_opp")
+  received_opportunity_referrals opportunity_referrals[] @relation("to_admin_opp")
 
   @@schema("public")
 }
@@ -36,8 +40,47 @@ model essay_requests {
   description  String
   deadline     DateTime? @db.Date
   submitted_at DateTime  @default(now()) @db.Timestamptz(6)
+  completed_at DateTime? @db.Timestamptz(6)
+  referred     Boolean   @default(false)
+  status       status    @default(pending)
   admin        admin     @relation(fields: [admin_id], references: [id], onDelete: Cascade)
   students     students  @relation(fields: [student_id], references: [id], onUpdate: Restrict)
+  essay_referrals essay_referrals[]
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model essay_referrals {
+  id                    BigInt    @id @unique @default(autoincrement())
+  essay_requested_id    BigInt
+  from_admin_id         BigInt
+  to_admin_id           BigInt
+  completed_at          DateTime? @db.Timestamptz(6)
+  referred_at           DateTime  @default(now()) @db.Timestamptz(6)
+  has_completed         Boolean   @default(false)
+  
+  essay_requests        essay_requests @relation(fields: [essay_requested_id], references: [id], onDelete: Cascade)
+  from_admin            admin     @relation("from_admin", fields: [from_admin_id], references: [id], onDelete: Cascade)
+  to_admin              admin     @relation("to_admin", fields: [to_admin_id], references: [id], onDelete: Cascade)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model opportunity_referrals {
+  id                    BigInt    @id @unique @default(autoincrement())
+  opportunity_id        BigInt
+  from_admin_id         BigInt
+  to_admin_id           BigInt
+  completed_at          DateTime? @db.Timestamptz(6)
+  referred_at           DateTime  @default(now()) @db.Timestamptz(6)
+  has_completed         Boolean   @default(false)
+  status                referral_status @default(pending)
+  
+  opportunities         opportunities @relation(fields: [opportunity_id], references: [id], onDelete: Cascade)
+  from_admin            admin     @relation("from_admin_opp", fields: [from_admin_id], references: [id], onDelete: Cascade)
+  to_admin              admin     @relation("to_admin_opp", fields: [to_admin_id], references: [id], onDelete: Cascade)
 
   @@schema("public")
 }
@@ -51,12 +94,15 @@ model opportunities {
   description  String
   deadline     DateTime? @db.Date
   link         String
-  status       status    @default(pending)
-  defer        Boolean   @default(false)
+  status       opportunity_status    @default(pending)
+  referred     Boolean   @default(false)
   submitted_at DateTime  @default(now()) @db.Timestamptz(6)
+  ai_category  String?
+  reason       String?
   
   admin        admin     @relation(fields: [admin_id], references: [id], onDelete: Cascade)
   students     students  @relation(fields: [student_id], references: [id], onUpdate: Restrict)
+  opportunity_referrals opportunity_referrals[]
 
   @@schema("public")
 }
@@ -81,13 +127,14 @@ model students {
   email                String           @unique
 
   date_of_registration DateTime?        @db.Date
-  user_id              String           @unique
+  user_id              String?          @unique
   grade        grade?
   major_full   major_full?
   major_short  major_short?
   gpa          String?
   essay_requests       essay_requests[]
   opportunities        opportunities[]
+  submissions         submissions[]
 
   @@schema("public")
 }
@@ -149,6 +196,23 @@ enum status {
   @@schema("public")
 }
 
+enum opportunity_status {
+  pending
+  in_review
+  accepted
+  denied
+
+  @@schema("public")
+}
+
+enum referral_status {
+  pending
+  accepted
+  denied
+
+  @@schema("public")
+}
+
 enum grade {
   Enrichment_Year @map("Enrichment Year")
   Senior_4 @map("Senior 4")
@@ -178,5 +242,65 @@ enum major_short {
   @@schema("public")
 }
 
+enum crc_classes {
+  ey
+  senior_4
+  senior_5_group_a_b
+  senior_5_customer_care
+  senior_6_group_a_b
+  senior_6_group_c
+  senior_6_group_d
 
+  @@schema("public")
+}
 
+enum submission_style {
+  google_link
+  pdf_upload
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model workshops {
+  id              BigInt       @id @unique @default(autoincrement())
+  title           String
+  description     String
+  has_assignment  Boolean      @default(false)
+  date            DateTime     @db.Date
+  presentation_url String?
+  created_at      DateTime     @default(now()) @db.Timestamptz(6)
+  crc_class       crc_classes
+  assignments     assignments[]
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model assignments {
+  id               BigInt           @id @unique @default(autoincrement())
+  workshop_id      BigInt?
+  title            String
+  description      String
+  submission_idate DateTime         @db.Date
+  submission_style submission_style
+  created_at       DateTime         @default(now()) @db.Timestamptz(6)
+  workshops        workshops?       @relation(fields: [workshop_id], references: [id], onDelete: SetNull)
+  submissions      submissions[]
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model submissions {
+  id                BigInt      @id @unique @default(autoincrement())
+  assignment_id     BigInt
+  student_id        BigInt
+  google_doc_link   String?
+  file_upload_link  String?
+  submitted_at      DateTime    @default(now()) @db.Timestamptz(6)
+  assignments       assignments @relation(fields: [assignment_id], references: [id], onDelete: Cascade)
+  students          students    @relation(fields: [student_id], references: [id], onUpdate: Restrict)
+
+  @@schema("public")
+}

@@ -52,10 +52,22 @@ const menuData: Menu[] = [
   },
   {
     id: 3,
-    title: "Book A Meeting",
+    title: "Events",
     newTab: false,
-    path: "/"
-
+    submenu: [
+      {
+        id: 16,
+        title: "Previous Events",
+        path: "/events/previous-events",
+        newTab: false,
+      },
+      {
+        id: 17,
+        title: "Upcoming Events",
+        path: "/events/upcoming-events",
+        newTab: false,
+      },
+    ]
   },
   {
     id: 5,
@@ -79,14 +91,62 @@ const menuData: Menu[] = [
         title: "S5",
         path: "/workshops/s5",
         newTab: false,
+        nestedSubmenu: [
+          {
+            id: 22,
+            title: "Groups A+B",
+            path: "/workshops/s5/groups-ab",
+            newTab: false,
+          },
+          {
+            id: 23,
+            title: "Customer Care",
+            path: "/workshops/s5/customer-care",
+            newTab: false,
+          },
+        ]
       },
       {
         id: 21,
         title: "S6",
         path: "/workshops/s6",
         newTab: false,
+        nestedSubmenu: [
+          {
+            id: 24,
+            title: "Groups A+B",
+            path: "/workshops/s6/groups-ab",
+            newTab: false,
+          },
+          {
+            id: 25,
+            title: "Group C",
+            path: "/workshops/s6/group-c",
+            newTab: false,
+          },
+          {
+            id: 26,
+            title: "Group D",
+            path: "/workshops/s6/group-d",
+            newTab: false,
+          },
+          {
+            id: 27,
+            title: "Job Readiness Course",
+            path: "/workshops/s6/job-readiness",
+            newTab: false,
+          },
+        ]
       },
     ]
+  },
+  
+  {
+    id: 4,
+    title: "Book A Meeting",
+    newTab: false,
+    path: "/"
+
   },
  
 ];

@@ -23,7 +23,7 @@ export async function GET() {
         }
       },
       orderBy: {
-        submitted_at: 'desc'
+        id: 'desc' // Use id instead of submitted_at to avoid column issues
       }
     });
 
@@ -46,7 +46,7 @@ export async function GET() {
         word_count: session.word_count?.toString(),
         description: session.description,
         deadline: session.deadline,
-        submitted_at: session.submitted_at,
+        submitted_at: session.submitted_at || new Date().toISOString(), // Handle case where submitted_at might not exist
         // Adding status and defer fields for sessions functionality
         status: 'pending', // Default status since it's not in your current schema
         defer: false, // Default defer value
