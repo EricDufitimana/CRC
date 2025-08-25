@@ -8,6 +8,7 @@ import { Textarea } from "../../../../../../zenith/src/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../../../../zenith/src/components/ui/card";
 import { Badge } from "../../../../../../zenith/src/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../../../../zenith/src/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../../../zenith/src/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +18,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../../../../../../zenith/src/components/ui/dialog";
-import { Plus, Edit, Trash2, Calendar, Users, BookOpen, GraduationCap, ChevronDown } from "lucide-react";
+import { Plus, Edit, Trash2, Calendar, Users, BookOpen, GraduationCap, ChevronDown, Loader2 } from "lucide-react";
 import { useActionState } from "react";
 import { createWorkshopAction, updateWorkshopAction, deleteWorkshopAction, createAssignmentAction } from "../../../../../actions/createWorkshop";
 
@@ -46,9 +47,12 @@ type SupabaseWorkshop = {
   description: string;
   presentation_url?: string;
   date: string;
-  crc_class: string;
   created_at: string;
   has_assignment: boolean;
+  crc_classes: {
+    id: string;
+    name: string;
+  }[];
   assignments?: {
     id: string;
     title: string;
@@ -88,6 +92,7 @@ export default function WorkshopsManagement() {
   const [selectedGroup, setSelectedGroup] = useState("ey");
   const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
   const [workshops, setWorkshops] = useState<SupabaseWorkshop[]>([]);
+  const [allWorkshops, setAllWorkshops] = useState<SupabaseWorkshop[]>([]);
   const [isAddWorkshopOpen, setIsAddWorkshopOpen] = useState(false);
   const [isAddAssignmentOpen, setIsAddAssignmentOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -103,6 +108,7 @@ export default function WorkshopsManagement() {
     workshop_group: "",
   });
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isFetchingWorkshops, setIsFetchingWorkshops] = useState(false);
 
 
 
@@ -238,7 +244,12 @@ export default function WorkshopsManagement() {
         flattened.push({ id: group.id, label: `${group.label} (Select subgroup)` });
         // Add submenu items
         group.submenu.forEach(subItem => {
-          flattened.push({ id: subItem.id, label: `  ${subItem.label}` });
+          // For Senior 5 and Senior 6, show the full name without indentation
+          if (group.id === 'senior_5' || group.id === 'senior_6') {
+            flattened.push({ id: subItem.id, label: `${group.label} ${subItem.label}` });
+          } else {
+            flattened.push({ id: subItem.id, label: `  ${subItem.label}` });
+          }
         });
       } else {
         flattened.push({ id: group.id, label: group.label });
@@ -264,6 +275,14 @@ export default function WorkshopsManagement() {
       // Reset workshop selection when CRC class changes
       if (name === 'crc_class') {
         newForm.workshop_id = '';
+        // Trigger workshop fetching for the selected class
+        if (value) {
+          setIsFetchingWorkshops(true);
+          // Simulate a small delay to show the spinner
+          setTimeout(() => {
+            setIsFetchingWorkshops(false);
+          }, 500);
+        }
       }
       
       return newForm;
@@ -272,9 +291,17 @@ export default function WorkshopsManagement() {
 
   const handleAddAssignment = async (prevstate: any | undefined, formDataParam: FormData) => {
     console.log("🔧 handleAddAssignment called");
+    console.log("Form data entries:");
+    console.log("workshop_id:", formDataParam.get("workshop_id"));
+    console.log("crc_class:", formDataParam.get("crc_class"));
+    console.log("title:", formDataParam.get("title"));
+    console.log("description:", formDataParam.get("description"));
+    console.log("submission_deadline:", formDataParam.get("submission_deadline"));
+    console.log("submission_style:", formDataParam.get("submission_style"));
     
     try {
       const result = await createAssignmentAction(prevstate, formDataParam);
+      console.log("Assignment action result:", result);
       
       if (result.status === "SUCCESS") {
         setIsAddAssignmentOpen(false);
@@ -311,12 +338,45 @@ export default function WorkshopsManagement() {
 
   const handleEditClick = (workshop: SupabaseWorkshop) => {
     setWorkshopToEdit(workshop);
+    
+    // Determine the workshop group based on CRC classes
+    let workshopGroup = '';
+    if (workshop.crc_classes && workshop.crc_classes.length > 0) {
+      const crcClassNames = workshop.crc_classes.map(c => c.name);
+      
+      // Check for EY groups
+      if (crcClassNames.some(name => name.startsWith('EY'))) {
+        workshopGroup = 'ey';
+      }
+      // Check for Senior 4 groups
+      else if (crcClassNames.some(name => name.startsWith('S4'))) {
+        workshopGroup = 'senior_4';
+      }
+      // Check for Senior 5 groups
+      else if (crcClassNames.some(name => name.includes('S5 Group A+B'))) {
+        workshopGroup = 'senior_5_group_a_b';
+      }
+      else if (crcClassNames.some(name => name.includes('S5 Customer Care'))) {
+        workshopGroup = 'senior_5_customer_care';
+      }
+      // Check for Senior 6 groups
+      else if (crcClassNames.some(name => name.includes('S6 Group A+B'))) {
+        workshopGroup = 'senior_6_group_a_b';
+      }
+      else if (crcClassNames.some(name => name.includes('S6 Group C'))) {
+        workshopGroup = 'senior_6_group_c';
+      }
+      else if (crcClassNames.some(name => name.includes('S6 Group D'))) {
+        workshopGroup = 'senior_6_group_d';
+      }
+    }
+    
     setEditForm({
       title: workshop.title,
       description: workshop.description,
       presentation_pdf_url: workshop.presentation_url || "",
       workshop_date: workshop.date,
-      workshop_group: workshop.crc_class,
+      workshop_group: workshopGroup,
     });
     setEditDialogOpen(true);
   };
@@ -366,22 +426,58 @@ export default function WorkshopsManagement() {
     try {
       console.log("Fetching data for group:", group);
       
-      const allWorkshops = await fetchWorkshopsFromAPI();
+      const allWorkshopsData = await fetchWorkshopsFromAPI();
+      setAllWorkshops(allWorkshopsData); // Store all workshops
       
-      // Filter workshops by the selected group
-      const filteredWorkshops = allWorkshops.filter((workshop: SupabaseWorkshop) => 
-        workshop.crc_class === group
-      );
+      // Define the CRC class names for each group
+      const groupMappings: Record<string, string[]> = {
+        'ey': ['EY A', 'EY B', 'EY C', 'EY D'],
+        'senior_4': ['S4MPC + S4MEG', 'S4MCE', 'S4HGL + S4PCB'],
+        'senior_5_group_a_b': ['S5 Group A+B'],
+        'senior_5_customer_care': ['S5 Customer Care'],
+        'senior_6_group_a_b': ['S6 Group A+B'],
+        'senior_6_group_c': ['S6 Group C'],
+        'senior_6_group_d': ['S6 Group D']
+      };
+      
+      const targetClassNames = groupMappings[group] || [];
+      
+      // Filter workshops by the selected group using the new crc_classes structure
+      const filteredWorkshops = allWorkshopsData.filter((workshop: any) => {
+        if (!workshop.crc_classes || workshop.crc_classes.length === 0) {
+          return false;
+        }
+        
+        // Check if any of the workshop's CRC classes match the target group
+        return workshop.crc_classes.some((crcClass: any) => 
+          targetClassNames.includes(crcClass.name)
+        );
+      });
       
       console.log("Filtered workshops for group:", group, filteredWorkshops);
       setWorkshops(filteredWorkshops);
     } catch (error) {
       console.error("Error fetching workshops:", error);
       setWorkshops([]);
+      setAllWorkshops([]);
     } finally {
       setLoading(false);
     }
   };
+
+  // Load all workshops on component mount
+  useEffect(() => {
+    const loadAllWorkshops = async () => {
+      try {
+        const allWorkshopsData = await fetchWorkshopsFromAPI();
+        setAllWorkshops(allWorkshopsData);
+      } catch (error) {
+        console.error("Error loading all workshops:", error);
+        setAllWorkshops([]);
+      }
+    };
+    loadAllWorkshops();
+  }, []);
 
   // Fetch data when group changes
   useEffect(() => {
@@ -535,7 +631,7 @@ export default function WorkshopsManagement() {
             <div className="space-y-2 pt-4">
               <Dialog open={isAddWorkshopOpen} onOpenChange={setIsAddWorkshopOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" className="w-full bg-green-600 hover:bg-green-700 text-white hover:text-white">
+                  <Button variant="outline" className="w-full bg-green-600 hover:bg-green-700 text-white hover:text-white  shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_4px_rgba(0,0,0,0.1)]  transition duration-200">
                     <Plus className="h-4 w-4 mr-2" />
                     Add Workshop
                   </Button>
@@ -555,6 +651,7 @@ export default function WorkshopsManagement() {
                           placeholder="Workshop title"
                           required
                           maxLength={TITLE_MAX}
+                          className="rounded-xl"
                         />
                         <div className="flex justify-between text-xs mt-1">
                           <span className={form.title.length === TITLE_MAX ? "text-red-500" : "text-gray-400"}>
@@ -567,24 +664,28 @@ export default function WorkshopsManagement() {
                       </div>
                       <div>
                         <Label className="text-sm font-medium mb-1 block">Workshop Group</Label>
-                        <select
-                          name="workshop_group"
-                          value={form.workshop_group}
-                          onChange={handleFormChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                          required
+                        <Select 
+                          value={form.workshop_group} 
+                          onValueChange={(value) => {
+                            const event = { target: { name: 'workshop_group', value } } as any;
+                            handleFormChange(event);
+                          }}
                         >
-                          <option value="">Select a group</option>
-                          {getFlattenedWorkshopGroups().map((group) => (
-                            <option 
-                              key={group.id} 
-                              value={group.id}
-                              disabled={group.label.includes("(Select subgroup)")}
-                            >
-                              {group.label}
-                            </option>
-                          ))}
-                        </select>
+                          <SelectTrigger className="w-full rounded-xl">
+                            <SelectValue placeholder="Select a group" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {getFlattenedWorkshopGroups().map((group) => (
+                              <SelectItem 
+                                key={group.id} 
+                                value={group.id}
+                                disabled={group.label.includes("(Select subgroup)")}
+                              >
+                                {group.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         {fieldErrors.workshop_group && fieldErrors.workshop_group.length > 0 && (
                           <div className="text-red-500 text-xs mt-1">{fieldErrors.workshop_group[0]}</div>
                         )}
@@ -601,6 +702,7 @@ export default function WorkshopsManagement() {
                         required
                         maxLength={DESC_MAX}
                         rows={3}
+                        className="rounded-xl"
                       />
                       <div className="flex justify-between text-xs mt-1">
                         <span className={form.description.length === DESC_MAX ? "text-red-500" : "text-gray-400"}>
@@ -621,6 +723,7 @@ export default function WorkshopsManagement() {
                           value={form.workshop_date} 
                           onChange={handleFormChange} 
                           required 
+                          className="rounded-xl"
                         />
                         {fieldErrors.workshop_date && fieldErrors.workshop_date.length > 0 && (
                           <div className="text-red-500 text-xs mt-1">{fieldErrors.workshop_date[0]}</div>
@@ -634,6 +737,7 @@ export default function WorkshopsManagement() {
                           value={form.presentation_pdf_url} 
                           onChange={handleFormChange} 
                           placeholder="https://example.com/presentation.pdf" 
+                          className="rounded-xl"
                         />
                         {fieldErrors.presentation_pdf_url && fieldErrors.presentation_pdf_url.length > 0 && (
                           <div className="text-red-500 text-xs mt-1">{fieldErrors.presentation_pdf_url[0]}</div>
@@ -645,15 +749,17 @@ export default function WorkshopsManagement() {
 
                     {formError && <div className="text-red-500 text-sm">{formError}</div>}
                     
+                    {/* Hidden inputs for Select components */}
+                    <input type="hidden" name="workshop_group" value={form.workshop_group} />
+                    
                     <div className="flex justify-end space-x-2">
                       <Button variant="outline" type="button" onClick={() => setIsAddWorkshopOpen(false)} disabled={submitting}>
                         Cancel
                       </Button>
-                      <Button type="submit" disabled={isPending} className="text-white">
+                      <Button type="submit" disabled={isPending} className="bg-green-600 hover:bg-green-700 text-white shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,128,0,0.4)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_4px_rgba(0,128,0,0.1)] transition duration-200">
                         {isPending ? (
                           <div className="flex items-center gap-2">
-                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                            Creating...
+                            <Loader2 className="h-4 w-4 animate-spin" />
                           </div>
                         ) : (
                           "Add Workshop"
@@ -669,7 +775,7 @@ export default function WorkshopsManagement() {
               {/* Add Assignment Button */}
               <Dialog open={isAddAssignmentOpen} onOpenChange={setIsAddAssignmentOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" className="w-full bg-white hover:bg-gray-50 text-black border-black">
+                  <Button variant="outline" className="w-full bg-white hover:bg-gray-50 text-black border-blackshadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,128,0,0.4)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_4px_rgba(0,128,0,0.1)] transition duration-200">
                     <Plus className="h-4 w-4 mr-2" />
                     Add Assignment
                   </Button>
@@ -685,58 +791,125 @@ export default function WorkshopsManagement() {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label className="text-sm font-medium mb-1 block">CRC Class</Label>
-                        <select
-                          name="crc_class"
-                          value={assignmentForm.crc_class}
-                          onChange={handleAssignmentFormChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                          required
+                        <Select 
+                          value={assignmentForm.crc_class} 
+                          onValueChange={(value) => {
+                            const event = { target: { name: 'crc_class', value } } as any;
+                            handleAssignmentFormChange(event);
+                          }}
                         >
-                          <option value="">Select a class</option>
-                          {getFlattenedWorkshopGroups().map((group) => (
-                            <option 
-                              key={group.id} 
-                              value={group.id}
-                              disabled={group.label.includes("(Select subgroup)")}
-                            >
-                              {group.label}
-                            </option>
-                          ))}
-                        </select>
+                          <SelectTrigger className="w-full rounded-xl">
+                            <SelectValue placeholder="Select a class" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {getFlattenedWorkshopGroups().map((group) => (
+                              <SelectItem 
+                                key={group.id} 
+                                value={group.id}
+                                disabled={group.label.includes("(Select subgroup)")}
+                              >
+                                {group.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div>
                         <Label className="text-sm font-medium mb-1 block">Workshop</Label>
-                        <select
-                          name="workshop_id"
-                          value={assignmentForm.workshop_id}
-                          onChange={handleAssignmentFormChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                          required
-                          disabled={!assignmentForm.crc_class}
+                        <Select 
+                          value={assignmentForm.workshop_id} 
+                          onValueChange={(value) => {
+                            const event = { target: { name: 'workshop_id', value } } as any;
+                            handleAssignmentFormChange(event);
+                          }}
+                          disabled={!assignmentForm.crc_class || isFetchingWorkshops}
                         >
-                          <option value="">Select a workshop</option>
-                          {workshops
-                            .filter(workshop => !assignmentForm.crc_class || workshop.crc_class === assignmentForm.crc_class)
-                            .map((workshop) => (
-                              <option key={workshop.id} value={workshop.id}>
-                                {workshop.title}
-                              </option>
-                            ))}
-                        </select>
+                          <SelectTrigger className="w-full rounded-xl">
+                            <SelectValue placeholder={isFetchingWorkshops ? "Loading workshops..." : "Select a workshop"} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {!isFetchingWorkshops && allWorkshops
+                              .filter(workshop => {
+                                // First filter: only show workshops without assignments
+                                if (workshop.has_assignment) return false;
+                                
+                                if (!assignmentForm.crc_class) return true;
+                                
+                                // Define the CRC class names for each group
+                                const groupMappings: Record<string, string[]> = {
+                                  'ey': ['EY A', 'EY B', 'EY C', 'EY D'],
+                                  'senior_4': ['S4MPC + S4MEG', 'S4MCE', 'S4HGL + S4PCB'],
+                                  'senior_5_group_a_b': ['S5 Group A+B'],
+                                  'senior_5_customer_care': ['S5 Customer Care'],
+                                  'senior_6_group_a_b': ['S6 Group A+B'],
+                                  'senior_6_group_c': ['S6 Group C'],
+                                  'senior_6_group_d': ['S6 Group D']
+                                };
+                                
+                                const targetClassNames = groupMappings[assignmentForm.crc_class] || [];
+                                
+                                // Check if the workshop has CRC classes that match the selected group
+                                return workshop.crc_classes && workshop.crc_classes.some(crcClass => 
+                                  targetClassNames.includes(crcClass.name)
+                                );
+                              })
+                              .map((workshop) => (
+                                <SelectItem key={workshop.id} value={workshop.id}>
+                                  {workshop.title}
+                                </SelectItem>
+                              ))}
+                            {!isFetchingWorkshops && assignmentForm.crc_class && (() => {
+                              const filteredWorkshops = allWorkshops.filter(workshop => {
+                                // First filter: only show workshops without assignments
+                                if (workshop.has_assignment) return false;
+                                
+                                // Define the CRC class names for each group
+                                const groupMappings: Record<string, string[]> = {
+                                  'ey': ['EY A', 'EY B', 'EY C', 'EY D'],
+                                  'senior_4': ['S4MPC + S4MEG', 'S4MCE', 'S4HGL + S4PCB'],
+                                  'senior_5_group_a_b': ['S5 Group A+B'],
+                                  'senior_5_customer_care': ['S5 Customer Care'],
+                                  'senior_6_group_a_b': ['S6 Group A+B'],
+                                  'senior_6_group_c': ['S6 Group C'],
+                                  'senior_6_group_d': ['S6 Group D']
+                                };
+                                
+                                const targetClassNames = groupMappings[assignmentForm.crc_class] || [];
+                                
+                                // Check if the workshop has CRC classes that match the selected group
+                                return workshop.crc_classes && workshop.crc_classes.some(crcClass => 
+                                  targetClassNames.includes(crcClass.name)
+                                );
+                              });
+                              
+                              return filteredWorkshops.length === 0 && (
+                                <SelectItem value="no-workshops" disabled>
+                                  No workshops found for this class
+                                </SelectItem>
+                              );
+                            })()}
+                          </SelectContent>
+                        </Select>
                       </div>
+                    </div>
+                    
+                    {/* Debug info */}
+                    <div className="text-xs text-gray-500 bg-gray-100 p-2 rounded">
+                      Debug: workshop_id = {assignmentForm.workshop_id}, crc_class = {assignmentForm.crc_class}
                     </div>
 
                     <div>
-                      <Label className="text-sm font-medium mb-1 block">Assignment Title</Label>
-                      <Input
-                        name="title"
-                        value={assignmentForm.title}
-                        onChange={handleAssignmentFormChange}
-                        placeholder="Assignment title"
-                        required
-                        maxLength={100}
-                      />
-                    </div>
+                        <Label className="text-sm font-medium mb-1 block">Assignment Title</Label>
+                        <Input
+                          name="title"
+                          value={assignmentForm.title}
+                          onChange={handleAssignmentFormChange}
+                          placeholder="Assignment title"
+                          required
+                          maxLength={100}
+                          className="rounded-xl"
+                        />
+                      </div>
                     
                     <div>
                       <Label className="text-sm font-medium mb-1 block">Assignment Description</Label>
@@ -748,6 +921,7 @@ export default function WorkshopsManagement() {
                         required
                         rows={4}
                         maxLength={500}
+                        className="rounded-xl"
                       />
                     </div>
                     
@@ -760,29 +934,46 @@ export default function WorkshopsManagement() {
                           value={assignmentForm.submission_deadline}
                           onChange={handleAssignmentFormChange}
                           required
+                          className="rounded-xl"
                         />
                       </div>
                       <div>
                         <Label className="text-sm font-medium mb-1 block">Submission Style</Label>
-                        <select
-                          name="submission_style"
-                          value={assignmentForm.submission_style}
-                          onChange={handleAssignmentFormChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                          required
+                        <Select 
+                          value={assignmentForm.submission_style} 
+                          onValueChange={(value) => {
+                            const event = { target: { name: 'submission_style', value } } as any;
+                            handleAssignmentFormChange(event);
+                          }}
                         >
-                          <option value="google_link">Google Link</option>
-                          <option value="pdf_upload">PDF Upload</option>
-                        </select>
+                          <SelectTrigger className="w-full rounded-xl">
+                            <SelectValue placeholder="Select submission style" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="google_link">Google Link</SelectItem>
+                            <SelectItem value="file_upload">File Upload</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
+                    
+                    {/* Hidden inputs to submit the form data */}
+                    <input type="hidden" name="workshop_id" value={assignmentForm.workshop_id} />
+                    <input type="hidden" name="crc_class" value={assignmentForm.crc_class} />
+                    <input type="hidden" name="submission_style" value={assignmentForm.submission_style} />
                     
                     <div className="flex justify-end space-x-2">
                       <Button variant="outline" type="button" onClick={() => setIsAddAssignmentOpen(false)}>
                         Cancel
                       </Button>
-                      <Button type="submit" className="text-white">
-                        Add Assignment
+                      <Button type="submit" className="bg-green-600 hover:bg-green-700 text-white shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,128,0,0.4)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_4px_rgba(0,128,0,0.1)] transition duration-200" disabled={isAssignmentPending}>
+                        {isAssignmentPending ? (
+                          <div className="flex items-center justify-center">
+                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                          </div>
+                        ) : (
+                          "Add Assignment"
+                        )}
                       </Button>
                     </div>
                     
@@ -805,29 +996,41 @@ export default function WorkshopsManagement() {
                 </CardHeader>
                 <CardContent>
                   {loading ? (
-                    <div className="space-y-4">
-                      <div className="animate-pulse">
-                        {/* Table Header Skeleton */}
-                        <div className="flex items-center gap-4 py-3 border-b border-gray-200">
-                          <div className="h-4 bg-gray-200 rounded w-24"></div>
-                          <div className="h-4 bg-gray-200 rounded w-32"></div>
-                          <div className="h-4 bg-gray-200 rounded w-20"></div>
-                          <div className="h-4 bg-gray-200 rounded w-16"></div>
-                        </div>
-                        {/* Table Rows Skeleton */}
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Title</TableHead>
+                          <TableHead>Description</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Assignment</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
                         {Array.from({ length: 5 }).map((_, index) => (
-                          <div key={index} className="flex items-center gap-4 py-4 border-b border-gray-100">
-                            <div className="h-5 bg-gray-200 rounded w-48"></div>
-                            <div className="h-5 bg-gray-200 rounded w-64"></div>
-                            <div className="h-5 bg-gray-200 rounded w-24"></div>
-                            <div className="flex items-center gap-2">
-                              <div className="h-8 w-8 bg-gray-200 rounded"></div>
-                              <div className="h-8 w-8 bg-gray-200 rounded"></div>
-                            </div>
-                          </div>
+                          <TableRow key={index}>
+                            <TableCell>
+                              <div className="h-5 bg-gray-200 rounded w-36 animate-pulse"></div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="h-4 bg-gray-200 rounded w-48 animate-pulse"></div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="h-6 bg-gray-200 rounded-full w-12 animate-pulse"></div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
+                                <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
+                              </div>
+                            </TableCell>
+                          </TableRow>
                         ))}
-                      </div>
-                    </div>
+                      </TableBody>
+                    </Table>
                   ) : (
                     <Table>
                       <TableHeader>
@@ -840,52 +1043,60 @@ export default function WorkshopsManagement() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {workshops.map((workshop) => (
-                          <TableRow key={workshop.id}>
-                            <TableCell className="font-medium">
-                              <div className="flex text-md items-center gap-2">
-                                {workshop.title}
-                                
-                              </div>
-                            </TableCell>
-                            <TableCell className="max-w-xs truncate text-gray-600">
-                              {workshop.description}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-1 text-gray-600">
-                                <Calendar className="h-3 w-3" />
-                                {formatDate(workshop.date)}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge className={workshop.has_assignment 
-                                ? "bg-blue-100 text-blue-700 border-blue-600  text-blue-700" 
-                                : "bg-green-100 text-green-700 border-green-600  text-green-700"
-                              }>
-                                {workshop.has_assignment ? "Yes" : "No"}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleEditClick(workshop)}
-                                >
-                                  <Edit className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleDeleteClick(workshop.id)}
-                                  className="text-red-600 hover:text-red-700"
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </div>
+                        {workshops.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                              No workshops found for {groupLabelFor(selectedGroup).toLowerCase()}
                             </TableCell>
                           </TableRow>
-                        ))}
+                        ) : (
+                          workshops.map((workshop) => (
+                            <TableRow key={workshop.id}>
+                              <TableCell className="font-medium">
+                                <div className="flex text-md items-center gap-2">
+                                  {workshop.title}
+                                  
+                                </div>
+                              </TableCell>
+                              <TableCell className="max-w-xs truncate text-gray-600">
+                                {workshop.description}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-1 text-gray-600">
+                                  <Calendar className="h-3 w-3" />
+                                  {formatDate(workshop.date)}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge className={workshop.has_assignment 
+                                  ? "bg-blue-100 text-blue-700 border-blue-600  text-blue-700 hover:bg-blue-100 hover:text-blue-700" 
+                                  : "bg-green-100 text-green-700 border-green-600  text-green-700 hover:bg-green-100 hover:text-green-700"
+                                }>
+                                  {workshop.has_assignment ? "Yes" : "No"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleEditClick(workshop)}
+                                  >
+                                    <Edit className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleDeleteClick(workshop.id)}
+                                    className="text-red-600 hover:text-red-700"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
                       </TableBody>
                     </Table>
                   )}
@@ -983,9 +1194,15 @@ export default function WorkshopsManagement() {
             <Button 
               onClick={handleEditSubmit} 
               disabled={isUpdating}
-              className="text-white"
+              className="bg-green-600 hover:bg-green-700 text-white shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,128,0,0.4)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_4px_rgba(0,128,0,0.1)] transition duration-200"
             >
-              {isUpdating ? "Updating..." : "Update Workshop"}
+              {isUpdating ? (
+                <div className="flex items-center justify-center">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                </div>
+              ) : (
+                "Update Workshop"
+              )}
             </Button>
           </div>
         </DialogContent>
@@ -1009,6 +1226,7 @@ export default function WorkshopsManagement() {
             <Button 
               variant="destructive" 
               onClick={handleDeleteConfirm}
+              className="bg-red-600 hover:bg-red-700 text-white shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(220,38,38,0.4)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_4px_rgba(220,38,38,0.1)] transition duration-200"
             >
               Delete
             </Button>

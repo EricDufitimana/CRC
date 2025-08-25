@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { useState } from "react";
-import toast from "react-hot-toast";
+import { toast } from "@/hooks/use-toast";
 import axios from "axios";
 import Loader from "@/components/Common/Loader";
 import Link from "next/link";
@@ -15,7 +15,11 @@ const ForgotPassword = () => {
     e.preventDefault();
 
     if (!email) {
-      toast.error("Please enter your email address.");
+      toast({
+        title: "Error",
+        description: "Please enter your email address.",
+        variant: "destructive",
+      });
 
       return;
     }

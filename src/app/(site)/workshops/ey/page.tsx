@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import PdfViewer from "@/components/PdfViewer/PdfViewer";
+import WorkshopsNotificationBanner from "@/components/Banner/WorkshopsNotificationBanner";
 
 
 export default function WorkshopsPage() {
@@ -44,6 +45,7 @@ export default function WorkshopsPage() {
 
   return (
     <main className="max-w-5xl mx-auto px-4 py-8 space-y-6 pt-[150px]">
+      <WorkshopsNotificationBanner page="ey_workshops" theme="green" />
       <h1 className="text-3xl font-bold text-center">CRC Workshops Recap</h1>
       <p className="text-muted-foreground text-center">A timeline of workshops, presentations, and assignments for Enrichment Year students.</p>
 

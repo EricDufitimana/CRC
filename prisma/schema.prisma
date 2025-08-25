@@ -25,6 +25,8 @@ model admin {
   received_referrals essay_referrals[] @relation("to_admin")
   sent_opportunity_referrals     opportunity_referrals[] @relation("from_admin_opp")
   received_opportunity_referrals opportunity_referrals[] @relation("to_admin_opp")
+  crc_classes    crc_class[]
+  attendance_sessions attendance_sessions[]
 
   @@schema("public")
 }
@@ -109,11 +111,14 @@ model opportunities {
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model profiles {
-  id         BigInt     @id @default(autoincrement())
-  Names      String?
-  user_id    String?    @db.Uuid
-  created_at DateTime   @default(now()) @db.Timestamptz(6)
-  role       user_role? @default(student)
+  id                 BigInt     @id @default(autoincrement())
+  Names              String?
+  user_id            String?    @db.Uuid
+  email              String?
+  created_at         DateTime   @default(now()) @db.Timestamptz(6)
+  role               user_role? @default(student)
+  is_new_user        Boolean?   @default(true)
+  welcome_email_sent Boolean?   @default(false)
 
   @@schema("public")
 }
@@ -132,9 +137,13 @@ model students {
   major_full   major_full?
   major_short  major_short?
   gpa          String?
+  crc_class_id BigInt?
+  
+  crc_class    crc_class? @relation(fields: [crc_class_id], references: [id])
   essay_requests       essay_requests[]
   opportunities        opportunities[]
   submissions         submissions[]
+  attendance_records   attendance_records[]
 
   @@schema("public")
 }
@@ -238,6 +247,10 @@ enum major_short {
   PCB
   MCE
   MEG
+  A 
+  B 
+  C 
+  D 
 
   @@schema("public")
 }
@@ -256,7 +269,41 @@ enum crc_classes {
 
 enum submission_style {
   google_link
-  pdf_upload
+  file_upload
+
+  @@schema("public")
+}
+
+enum attendance_status {
+  present
+  absent
+  late
+  excused
+
+  @@schema("public")
+}
+
+enum notification_page {
+  home
+  new_opportunities
+  recurring_opportunities
+  templates
+  crp
+  internships
+  english_language_learning
+  approved_opportunities
+  previous_events
+  upcoming_events
+  s4_workshops
+  ey_workshops
+  senior_5_group_a_b_workshops
+  senior_5_customer_care
+  senior_6_group_a_b_workshops
+  senior_6_group_c_workshops
+  senior_6_group_d
+  job_readiness_course
+  student_dashboard
+  admin_dashboard
 
   @@schema("public")
 }
@@ -270,8 +317,9 @@ model workshops {
   date            DateTime     @db.Date
   presentation_url String?
   created_at      DateTime     @default(now()) @db.Timestamptz(6)
-  crc_class       crc_classes
   assignments     assignments[]
+  workshop_to_crc workshop_to_crc_class[] @relation("workshop_to_crc")
+  attendance_sessions attendance_sessions[]
 
   @@schema("public")
 }
@@ -301,6 +349,79 @@ model submissions {
   submitted_at      DateTime    @default(now()) @db.Timestamptz(6)
   assignments       assignments @relation(fields: [assignment_id], references: [id], onDelete: Cascade)
   students          students    @relation(fields: [student_id], references: [id], onUpdate: Restrict)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model announcements {
+  id          BigInt    @id @unique @default(autoincrement())
+  message     String
+  end_time    DateTime  @db.Timestamptz(6)
+  is_active   Boolean?  @default(true)
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  page        notification_page?
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model crc_class {
+  id            BigInt     @id @unique @default(autoincrement())
+  name          String
+  created_by_id BigInt
+  created_at    DateTime   @default(now()) @db.Timestamptz(6)
+
+  admin         admin      @relation(fields: [created_by_id], references: [id], onDelete: Cascade)
+  students      students[]
+  workshop_to_crc workshop_to_crc_class[] @relation("crc_class_to_workshop")
+  attendance_sessions attendance_sessions[]
+
+  @@schema("public")
+}
+
+/// Junction table for many-to-many relationship between workshops and CRC classes
+model workshop_to_crc_class {
+  id          BigInt    @id @unique @default(autoincrement())
+  workshop_id BigInt
+  crc_class_id BigInt
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+
+  workshop    workshops @relation("workshop_to_crc", fields: [workshop_id], references: [id], onDelete: Cascade)
+  crc_class   crc_class @relation("crc_class_to_workshop", fields: [crc_class_id], references: [id], onDelete: Cascade)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model attendance_sessions {
+  id          BigInt    @id @unique @default(autoincrement())
+  workshop_id BigInt
+  crc_class_id BigInt
+  admin_id    BigInt
+  date        DateTime  @db.Date
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime  @updatedAt @db.Timestamptz(6)
+
+  workshop    workshops @relation(fields: [workshop_id], references: [id], onDelete: Cascade)
+  crc_class   crc_class @relation(fields: [crc_class_id], references: [id], onDelete: Cascade)
+  admin       admin     @relation(fields: [admin_id], references: [id], onDelete: Cascade)
+  attendance_records attendance_records[]
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model attendance_records {
+  id          BigInt    @id @unique @default(autoincrement())
+  session_id  BigInt
+  student_id  BigInt
+  status      attendance_status
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime  @updatedAt @db.Timestamptz(6)
+
+  session     attendance_sessions @relation(fields: [session_id], references: [id], onDelete: Cascade)
+  student     students           @relation(fields: [student_id], references: [id], onDelete: Cascade)
 
   @@schema("public")
 }

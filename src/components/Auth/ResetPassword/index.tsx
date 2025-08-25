@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
-import toast from "react-hot-toast";
+import { toast } from "@/hooks/use-toast";
 import Loader from "@/components/Common/Loader";
 import Link from "next/link";
 import Image from "next/image";
@@ -33,7 +33,11 @@ const ResetPassword = ({ token }: { token: string }) => {
           });
         }
       } catch (error: any) {
-        toast.error(error?.response?.data);
+        toast({
+          title: "Error",
+          description: error?.response?.data || "An error occurred",
+          variant: "destructive",
+        });
         router.push("/forgot-password");
       }
     };
@@ -54,7 +58,11 @@ const ResetPassword = ({ token }: { token: string }) => {
     setLoader(true);
 
     if (data.newPassword === "") {
-      toast.error("Please enter your password.");
+      toast({
+        title: "Error",
+        description: "Please enter your password.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -65,14 +73,21 @@ const ResetPassword = ({ token }: { token: string }) => {
       });
 
       if (res.status === 200) {
-        toast.success(res.data);
+        toast({
+          title: "Success",
+          description: res.data,
+        });
         setData({ newPassword: "", ReNewPassword: "" });
         router.push("/signin");
       }
 
       setLoader(false);
     } catch (error: any) {
-      toast.error(error.response.data);
+      toast({
+        title: "Error",
+        description: error.response.data || "An error occurred",
+        variant: "destructive",
+      });
       setLoader(false);
     }
   };

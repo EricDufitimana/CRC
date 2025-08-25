@@ -1,15 +1,11 @@
 "use server"
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+import { createClient } from '@/utils/supabase/server';
 
 export async function markReferralCompleted(referral_id) {
   try {
     console.log('Marking referral as completed:', referral_id);
     const referralIdBigInt = BigInt(referral_id); // Convert to BigInt
+    const supabase = await createClient();
 
     const { data, error } = await supabase
       .from('essay_referrals')

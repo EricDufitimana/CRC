@@ -6,6 +6,7 @@ import { ArrowRight } from "lucide-react";
 import Image from "next/image";
 import { EventCard, EventDetailsModal } from "@/components/Events";
 import { useState, useEffect } from "react";
+import EventsNotificationBanner from "@/components/Banner/EventsNotificationBanner";
 
 // Type definition based on Sanity schema
 type Event = {
@@ -46,7 +47,6 @@ type Event = {
     };
   };
 }
-
 // Hero section image grid data
 const heroImages = [
   "/images/blog/article-author-01.png",
@@ -161,6 +161,7 @@ export default function UpcomingEventsPage() {
         </div>
       </section>
 
+
       {/* Featured Upcoming Events Section */}
       <section className="py-20 relative">
         {/* Extended Bleed Effect */}
@@ -176,6 +177,8 @@ export default function UpcomingEventsPage() {
                 Get ready for our most exciting gatherings—discover what's coming up and mark your calendar.
               </p>
             </div>
+            
+            <EventsNotificationBanner page="upcoming_events" />
             
             {/* Event Cards Grid */}
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-12">

@@ -8,6 +8,7 @@ import Link from "next/link";
 import Layout from "@/components/other/Layout";
 import { layout } from "@/types/layout";
 import HeaderLayout from "@/components/other/headerLayout";
+import ResourcesNotificationBanner from "@/components/Banner/ResourcesNotificationBanner";
 import { Fragment } from "react";
 
 export const metadata: Metadata = {
@@ -34,11 +35,12 @@ export default function Home() {
   const posts = getAllPosts(["title", "date", "excerpt", "coverImage", "slug"]);
 
   return (
-    <main>
+    <main className="space-y-12">
       <ScrollUp />
-      <HeaderLayout image="/images/banners/internships.svg" />
-      <div className=" flex justify-center pb-12">
-        <div className="content border border-gray-700 rounded-md p-8 w-[1100px] space-y-8">
+      <HeaderLayout image="/images/banners/internships.svg" bottomPaddingClass="pb-6"  />
+        <ResourcesNotificationBanner page="internships" />
+        <div className=" flex justify-center pb-12">
+          <div className="content border border-gray-700 rounded-md p-8 w-[1100px] space-y-8">
 
           {data.map((item) => (
             <Fragment key={item.id}>

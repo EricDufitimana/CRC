@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSupabase } from './useSupabase';
+import { createClient } from "@/utils/supabase/client";
 
 interface UserData {
   userId: string | null;
@@ -15,30 +15,55 @@ export function useUserData() {
     isLoading: true,
     error: null
   });
-  
-  const { getUserId } = useSupabase();
 
-  const fetchAdminId = async (userId: string) => {
+  const fetchUserData = async () => {
     try {
-      const response = await fetch(`/api/fetchAdminId?userId=${userId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setUserData(prev => ({
-          ...prev,
-          adminId: data.adminId,
-          isLoading: false
-        }));
+      const supabase = createClient();
+      // Get current user session from Supabase client
+      const { data: { user }, error: sessionError } = await supabase.auth.getUser();
+      
+      if (sessionError || !user) {
+        console.log('No session found:', sessionError);
+        setUserData((prev: UserData) => ({ ...prev, isLoading: false }));
+        return;
+      }
+
+      const userId = user.id;
+      console.log('Session found, userId:', userId);
+      
+      if (userId) {
+        setUserData((prev: UserData) => ({ ...prev, userId }));
+        
+        // Fetch admin ID if user exists
+        const adminResponse = await fetch('/api/fetchAdminId', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ userId })
+        });
+
+        if (adminResponse.ok) {
+          const adminData = await adminResponse.json();
+          setUserData((prev: UserData) => ({
+            ...prev,
+            adminId: adminData.adminId,
+            isLoading: false
+          }));
+        } else {
+          setUserData((prev: UserData) => ({
+            ...prev,
+            isLoading: false
+          }));
+        }
       } else {
-        setUserData(prev => ({
-          ...prev,
-          error: 'Failed to fetch admin ID',
-          isLoading: false
-        }));
+        setUserData((prev: UserData) => ({ ...prev, isLoading: false }));
       }
     } catch (error) {
-      setUserData(prev => ({
+      console.error('Error fetching user data:', error);
+      setUserData((prev: UserData) => ({
         ...prev,
-        error: 'Error fetching admin ID',
+        error: 'Error fetching user data',
         isLoading: false
       }));
     }
@@ -46,19 +71,13 @@ export function useUserData() {
 
   const initializeUser = async () => {
     try {
-      setUserData(prev => ({ ...prev, isLoading: true, error: null }));
-      
-      const userId = await getUserId();
-      if (userId) {
-        setUserData(prev => ({ ...prev, userId }));
-        await fetchAdminId(userId);
-      } else {
-        setUserData(prev => ({ ...prev, isLoading: false }));
-      }
+      setUserData((prev: UserData) => ({ ...prev, isLoading: true, error: null }));
+      await fetchUserData();
     } catch (error) {
-      setUserData(prev => ({
+      console.error('Error initializing user data:', error);
+      setUserData((prev: UserData) => ({
         ...prev,
-        error: 'Error getting user ID',
+        error: 'Error initializing user data',
         isLoading: false
       }));
     }

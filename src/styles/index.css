@@ -216,3 +216,129 @@ body {
     @apply bg-background text-foreground;
   }
 }
+@keyframes slide-in-left {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-out-left {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+}
+
+/* Custom toast animations */
+@keyframes custom-enter {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes custom-leave {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+}
+
+/* Apply custom animations */
+.animate-custom-enter {
+  animation: custom-enter 0.3s ease-out;
+}
+
+.animate-custom-leave {
+  animation: custom-leave 0.3s ease-in forwards;
+}
+@keyframes drawLine1 {
+  0% {
+    stroke-dashoffset: 20;
+    opacity: 0;
+  }
+  50% {
+    stroke-dashoffset: 10;
+    opacity: 0.7;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+@keyframes drawLine2 {
+  0% {
+    stroke-dashoffset: 20;
+    opacity: 0;
+  }
+  50% {
+    stroke-dashoffset: 10;
+    opacity: 0.7;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+@keyframes extrudeCircle {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-1px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+/* Toast animations - target react-hot-toast elements directly */
+[data-sonner-toaster] > div,
+[data-sonner-toaster] > div > div {
+  animation: slide-in-left 0.3s ease-out !important;
+}
+
+/* Alternative selectors for react-hot-toast */
+div[role="status"] {
+  animation: slide-in-left 0.3s ease-out !important;
+}
+
+/* Target the toast container */
+div[data-testid="toast"] {
+  animation: slide-in-left 0.3s ease-out !important;
+}
+
+/* Exit animations for toasts */
+div[data-testid="toast"][style*="transform: translateX(-100%)"],
+div[role="status"][style*="transform: translateX(-100%)"] {
+  animation: slide-out-left 0.3s ease-in !important;
+}
+
+/* Force left slide animations on react-hot-toast */
+div[class*="react-hot-toast"] {
+  animation: slide-in-left 0.3s ease-out !important;
+}
+
+/* Handle exit animations for react-hot-toast */
+div[class*="react-hot-toast"][style*="transform: translateX(-100%)"] {
+  animation: slide-out-left 0.3s ease-in !important;
+}

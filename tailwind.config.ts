@@ -1,7 +1,7 @@
 import type { Config } from "tailwindcss";
 const colors = require('tailwindcss/colors')
 
-const config: Config = {
+const config: any = {
   darkMode: ["class", "class"],
   content: [
 		"./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
@@ -11,17 +11,17 @@ const config: Config = {
 		"./zenith/src/pages/**/*.{js,ts,jsx,tsx,mdx}",
 	],
   theme: {
-  	extend: {
-  		fontFamily: {
-  			'cal-sans': ['Cal Sans', 'sans-serif'],
-  			'inter': ['Inter', 'sans-serif'],
-  		},
-  		colors: {
-                ...colors,
-  			primary: "#F29849",
+    extend: {
+      fontFamily: {
+        'cal-sans': ['Cal Sans', 'sans-serif'],
+        'inter': ['Inter', 'sans-serif'],
+      },
+      colors: {
+        ...colors,
+        primary: "#F29849",
         secondary: "#518C66",
-  			secondary_lite: '#E5F9E4',
-  			complementary: '#6F553C',
+        secondary_lite: '#E5F9E4',
+        complementary: '#6F553C',
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
         yearcolors: {
@@ -50,36 +50,46 @@ const config: Config = {
           9: '#239BA7',
           10: '#F29849',
         },
-  			card: {
-  				DEFAULT: 'hsl(var(--card))',
-  				foreground: 'hsl(var(--card-foreground))'
-  			},
-  			popover: {
-  				DEFAULT: 'hsl(var(--popover))',
-  				foreground: 'hsl(var(--popover-foreground))'
-  			},
-  			muted: {
-  				DEFAULT: 'hsl(var(--muted))',
-  				foreground: 'hsl(var(--muted-foreground))'
-  			},
-  			accent: {
-  				DEFAULT: 'hsl(var(--accent))',
-  				foreground: 'hsl(var(--accent-foreground))'
-  			},
-  			destructive: {
-  				DEFAULT: 'hsl(var(--destructive))',
-  				foreground: 'hsl(var(--destructive-foreground))'
-  			},
-  			border: 'hsl(var(--border))',
-  			input: 'hsl(var(--input))',
-  			ring: 'hsl(var(--ring))',
-  			chart: {
-  				'1': 'hsl(var(--chart-1))',
-  				'2': 'hsl(var(--chart-2))',
-  				'3': 'hsl(var(--chart-3))',
-  				'4': 'hsl(var(--chart-4))',
-  				'5': 'hsl(var(--chart-5))'
-  			},
+        statColors: {
+          1: '#7ADAA5',
+          2: '#239BA7',
+          3: '#F08B51',
+          4: '#F2EDD1',
+          5: '#F5EEDC',
+          6: '#F2EDD1',
+          7: '#BBDCE5',
+          8: '#F78D60',
+        },
+        card: {
+          DEFAULT: 'hsl(var(--card))',
+          foreground: 'hsl(var(--card-foreground))'
+        },
+        popover: {
+          DEFAULT: 'hsl(var(--popover))',
+          foreground: 'hsl(var(--popover-foreground))'
+        },
+        muted: {
+          DEFAULT: 'hsl(var(--muted))',
+          foreground: 'hsl(var(--muted-foreground))'
+        },
+        accent: {
+          DEFAULT: 'hsl(var(--accent))',
+          foreground: 'hsl(var(--accent-foreground))'
+        },
+        destructive: {
+          DEFAULT: 'hsl(var(--destructive))',
+          foreground: 'hsl(var(--destructive-foreground))'
+        },
+        border: 'hsl(var(--border))',
+        input: 'hsl(var(--input))',
+        ring: 'hsl(var(--ring))',
+        chart: {
+          '1': 'hsl(var(--chart-1))',
+          '2': 'hsl(var(--chart-2))',
+          '3': 'hsl(var(--chart-3))',
+          '4': 'hsl(var(--chart-4))',
+          '5': 'hsl(var(--chart-5))'
+        },
       // Dashboard-prefixed colors from zenith
       'dashboard-border': 'hsl(var(--dashboard-border))',
       'dashboard-input': 'hsl(var(--dashboard-input))',
@@ -203,6 +213,40 @@ const config: Config = {
           '0%': { transform: 'scale(1)' },
           '100%': { transform: 'scale(1.02)' }
         },
+        // Animation for the background
+        moveHorizontal: {
+          "0%": {
+            transform: "translateX(-50%) translateY(-10%)",
+          },
+          "50%": {
+            transform: "translateX(50%) translateY(10%)",
+          },
+          "100%": {
+            transform: "translateX(-50%) translateY(-10%)",
+          },
+        },
+        moveInCircle: {
+          "0%": {
+            transform: "rotate(0deg)",
+          },
+          "50%": {
+            transform: "rotate(180deg)",
+          },
+          "100%": {
+            transform: "rotate(360deg)",
+          },
+        },
+        moveVertical: {
+          "0%": {
+            transform: "translateY(-50%)",
+          },
+          "50%": {
+            transform: "translateY(50%)",
+          },
+          "100%": {
+            transform: "translateY(-50%)",
+          },
+        },
       },
       animation: {
         // Existing animations
@@ -221,8 +265,14 @@ const config: Config = {
         'dashboard-scale-in': 'dashboard-scale-in 0.2s ease-out',
         'dashboard-slide-in-right': 'dashboard-slide-in-right 0.3s ease-out',
         'dashboard-hover-scale': 'dashboard-hover-scale 0.2s ease-out',
+        // Animation for the background
+        first: "moveVertical 30s ease infinite",
+        second: "moveInCircle 20s reverse infinite",
+        third: "moveInCircle 40s linear infinite",
+        fourth: "moveHorizontal 40s ease infinite",
+        fifth: "moveInCircle 20s ease infinite",
       },
-  	}
+  	},
   },
   plugins: [require("tailgrids/plugin"), require("tailwindcss-animate")],
 };

@@ -8,6 +8,7 @@ import Link from "next/link";
 import Layout from "@/components/other/Layout";
 import { layout } from "@/types/layout";
 import HeaderLayout from "@/components/other/headerLayout";
+import ResourcesNotificationBanner from "@/components/Banner/ResourcesNotificationBanner";
 import { Fragment } from "react";
 import { client } from "@/sanity/lib/client";
 import { getTemplates } from "@/sanity/lib/queries";
@@ -31,9 +32,11 @@ export default async function Home() {
   return (
     <main>
       <ScrollUp />
-      <HeaderLayout image="/images/banners/templates.svg" />
-      <div className=" flex justify-center pb-12">
-        <div className="content border border-gray-700 rounded-md p-8 w-[1100px]">
+      <HeaderLayout image="/images/banners/templates.svg" bottomPaddingClass="pb-6" />
+      <div className="space-y-4">
+        <ResourcesNotificationBanner page="templates" />
+        <div className=" flex justify-center pb-12">
+          <div className="content border border-gray-700 rounded-md p-8 w-[1100px]">
 
           {data.map((item, index) => (
             <Fragment key={item._id}>
@@ -58,6 +61,7 @@ export default async function Home() {
               )}
             </Fragment>
           ))}
+          </div>
         </div>
       </div>
 

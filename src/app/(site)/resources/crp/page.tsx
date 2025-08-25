@@ -8,6 +8,7 @@ import Link from "next/link";
 import Layout from "@/components/other/Layout";
 import { layout } from "@/types/layout";
 import HeaderLayout from "@/components/other/headerLayout";
+import ResourcesNotificationBanner from "@/components/Banner/ResourcesNotificationBanner";
 import { Fragment } from "react";
 
 export const metadata: Metadata = {
@@ -20,9 +21,12 @@ export default function Home() {
   const posts = getAllPosts(["title", "date", "excerpt", "coverImage", "slug"]);
 
   return (
-    <main className="pt-[150px] mx-auto w-[89%]">
+    <main>
       <ScrollUp />
-      <div className="">
+      <HeaderLayout image="/images/banners/image.svg" bottomPaddingClass="pb-6" />
+      <div className="space-y-4">
+        <ResourcesNotificationBanner page="crp" />
+        <div className="pt-12 mx-auto w-[89%]">
         <div className="mb-12  lg:mb-0">
                 <h2 className="mb-5 text-3xl font-bold text-center leading-tight text-dark dark:text-white sm:text-[40px] sm:leading-[1.2]">
                   What is the College Readiness Program
@@ -78,6 +82,7 @@ export default function Home() {
             {resource}
           </Link>
         ))}
+        </div>
       </div>
       </div>
 

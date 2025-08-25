@@ -1,15 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { ChevronLeft, User, Shield, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { sendWelcomeEmail } from "@/utils/sendWelcomeEmail";
 import { useUserData } from "@/hooks/useUserData";
+import { showToastSuccess, showToastError } from "@/components/toasts";
+import { Toaster } from "react-hot-toast";
 
 export default function SignInForm() {
   const {userId} = useUserData();
+  const searchParams = useSearchParams();
+  const toastShownRef = useRef(false);
 
   if(!userId){
     console.log("No user ID found");
@@ -17,7 +22,71 @@ export default function SignInForm() {
   else{
     console.log(userId);
   }
+
+  // Check for success/error messages from registration - run once on component mount
   useEffect(() => {
+    // Only show toast once per component mount
+    if (toastShownRef.current) {
+      return;
+    }
+
+    const message = searchParams.get('message');
+    const error = searchParams.get('error');
+    const errorDetails = searchParams.get('details');
+
+    // Handle success messages
+    if (message === 'google_signup_success') {
+      console.log('Showing success toast for account creation');
+      showToastSuccess({
+        headerText: "Account created successfully!",
+        paragraphText: "Your account is ready. You can now sign in with Google."
+      });
+      toastShownRef.current = true;
+    } else if (message === 'already_registered') {
+      console.log('Showing success toast for existing account');
+      showToastSuccess({
+        headerText: "Account already exists!",
+        paragraphText: "You can now sign in with your existing account."
+      });
+      toastShownRef.current = true;
+    }
+
+    // Handle error messages
+    if (error) {
+      console.log('Showing error toast for:', error);
+      let errorMessage = "An error occurred during registration.";
+      
+      switch (error) {
+        case 'session_error':
+          errorMessage = "Session error occurred. Please try again.";
+          break;
+        case 'no_session':
+          errorMessage = "No active session found. Please try registering again.";
+          break;
+        case 'student_not_found':
+          errorMessage = errorDetails || "Student record not found. Please contact support.";
+          break;
+        case 'email_already_registered':
+          errorMessage = errorDetails || "An account with this email already exists.";
+          break;
+        case 'callback_failed':
+          errorMessage = "Registration callback failed. Please try again.";
+          break;
+        default:
+          errorMessage = "Registration failed. Please try again.";
+      }
+
+      showToastError({
+        headerText: "Registration Error",
+        paragraphText: errorMessage
+      });
+      toastShownRef.current = true;
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!userId) return;
+    
     const handleWelcomeEmail = async() => {
       try{
         await sendWelcomeEmail(userId);
@@ -28,6 +97,7 @@ export default function SignInForm() {
     handleWelcomeEmail();
   },[userId]);
 
+  
   return (
     <div className="flex flex-col flex-1 w-full overflow-y-auto lg:w-1/2 no-scrollbar py-4">
       <div className="w-full max-w-md mx-auto mb-5 sm:pt-10">
@@ -51,7 +121,7 @@ export default function SignInForm() {
           </div>
 
           <div className="space-y-4">
-            <Link href="/login/admin" className="block">
+            <Link href="/login/admin" className="block group">
               <Card className="w-full border border-gray-200 dark:border-gray-700 hover:border-orange-300 dark:hover:border-orange-600 transition-colors">
                 <CardContent className="p-6">
                   <div className="flex items-center space-x-4">
@@ -62,13 +132,13 @@ export default function SignInForm() {
                       <h3 className="font-semibold text-gray-900 dark:text-gray-100">Admin</h3>
                       <p className="text-sm text-gray-600 dark:text-gray-400">Manage students and platform</p>
                     </div>
-                    <ArrowRight className="w-5 h-5 text-gray-400" />
+                    <ArrowRight className="w-5 h-5 text-gray-400 transition-all duration-300 group-hover:translate-x-1 group-hover:scale-110 group-hover:text-orange-500" />
                   </div>
                 </CardContent>
               </Card>
             </Link>
 
-            <Link href="/login/student" className="block">
+            <Link href="/login/student" className="block group">
               <Card className="w-full border border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-600 transition-colors">
                 <CardContent className="p-6">
                   <div className="flex items-center space-x-4">
@@ -79,7 +149,7 @@ export default function SignInForm() {
                       <h3 className="font-semibold text-gray-900 dark:text-gray-100">Student</h3>
                       <p className="text-sm text-gray-600 dark:text-gray-400">Access resources and submit essays</p>
                     </div>
-                    <ArrowRight className="w-5 h-5 text-gray-400" />
+                    <ArrowRight className="w-5 h-5 text-gray-400 transition-all duration-300 group-hover:translate-x-1 group-hover:scale-110 group-hover:text-green-500" />
                   </div>
                 </CardContent>
               </Card>

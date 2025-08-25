@@ -1,12 +1,9 @@
 "use server"
-import {createClient} from "@supabase/supabase-js"
+import { createClient } from '@/utils/supabase/server'
 
 export async function requestSessionHandler(prevState, formData) {
   try{
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
+    const supabase = await createClient();
 
     // Get the student_id from formData (passed from the page)
     const student_id = parseInt(formData.get('student_id'));

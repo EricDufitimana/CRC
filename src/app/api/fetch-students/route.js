@@ -9,7 +9,11 @@ function formatEnumValue(value) {
 
 export async function GET(request){
   try{
-    const students = await prisma.students.findMany();
+    const students = await prisma.students.findMany({
+      orderBy: {
+        id: 'asc'
+      }
+    });
     const serializedStudents = students.map(student => {
       const full_name = [student.first_name, student.last_name].filter(Boolean).join(' ');
       
@@ -24,12 +28,16 @@ export async function GET(request){
         date_of_registration: student.date_of_registration,
         user_id: student.user_id ? student.user_id.toString() : null,
         grade: formatEnumValue(student.grade),
-        major_full: formatEnumValue(student.major_full),
-        major_short: student.major_short,
+        major_full: student.major_full ? formatEnumValue(student.major_full) : null,
+        major_short: student.major_short ? student.major_short : null,
         gpa: student.gpa,
+        crc_class_id: student.crc_class_id ? student.crc_class_id.toString() : null,
       };
     });
-    console.log("🔍 Successfully fetched students:", serializedStudents.length);
+
+    // Randomize the order of students
+    
+    console.log("🔍 Successfully fetched and randomized students:", serializedStudents.length);
     return NextResponse.json(serializedStudents);
   } catch (error) {
     console.error("Error fetching students:", error);

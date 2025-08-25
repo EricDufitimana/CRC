@@ -2,11 +2,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import toast from "react-hot-toast";
+import { toast } from "@/hooks/use-toast";
 import SocialSignIn from "../SocialSignIn";
 import SwitchOption from "../SwitchOption";
 import { useState } from "react";
-import MagicLink from "../MagicLink";
 import Loader from "@/components/Common/Loader";
 
 const SignUp = () => {
@@ -31,12 +30,19 @@ const SignUp = () => {
     })
       .then((res) => res.json())
       .then((data) => {
-        toast.success("Successfully registered");
+        toast({
+          title: "Success",
+          description: "Successfully registered",
+        });
         setLoading(false);
         router.push("/signin");
       })
       .catch((err) => {
-        toast.error(err.message);
+        toast({
+          title: "Error",
+          description: err.message || "An error occurred",
+          variant: "destructive",
+        });
         setLoading(false);
       });
   };
@@ -121,9 +127,7 @@ const SignUp = () => {
                     </button>
                   </div>
                 </form>
-              ) : (
-                <MagicLink />
-              )}
+              ) : null}
 
               <p className="text-body-secondary mb-4 text-base">
                 By creating an account you are agree with our{" "}

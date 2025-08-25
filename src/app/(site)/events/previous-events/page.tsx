@@ -6,6 +6,7 @@ import { ArrowRight } from "lucide-react";
 import Image from "next/image";
 import { EventCard, EventDetailsModal } from "@/components/Events";
 import { useState, useEffect } from "react";
+import EventsNotificationBanner from "@/components/Banner/EventsNotificationBanner";
 
 // Type definition based on Sanity schema
 type Event = {
@@ -158,6 +159,8 @@ export default function PreviousEventsPage() {
           </div>
         </div>
       </section>
+
+      <EventsNotificationBanner page="previous_events" />
 
       {/* Featured Past Events Section */}
       <section className="py-20 relative">

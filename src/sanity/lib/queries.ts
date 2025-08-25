@@ -66,3 +66,12 @@ export const getAllWorkshops = groq`
   _id, description, presentation_pdf_url, title, workshop_date, workshop_group, _createdAt, assignment
 }
 `;
+
+export const getRecentResources = groq`
+  *[_type == "resource"] | order(_createdAt desc)[0...6] {
+    _id,
+    title,
+    category,
+    _createdAt
+  }
+`;

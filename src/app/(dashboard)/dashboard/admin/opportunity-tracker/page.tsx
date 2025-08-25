@@ -996,10 +996,7 @@ export default function OpportunityTracker() {
                         </div>
                         <div className="flex items-center gap-2">
                           <Clock className="h-4 w-4 text-dashboard-muted-foreground" />
-                          <span>Submitted: </span>
-                          <Badge variant="outline" className={getSubmissionTimeColor(referral.submittedAt)}>
-                            {getRelativeTime(referral.submittedAt)}
-                          </Badge>
+                          <span>Submitted: {getRelativeTime(referral.submittedAt)}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <ExternalLink className="h-4 w-4 text-dashboard-muted-foreground" />
@@ -1143,10 +1140,7 @@ export default function OpportunityTracker() {
                       }`}>
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-dashboard-muted-foreground" />
-                          <span>Submitted: </span>
-                          <Badge variant="outline" className={getSubmissionTimeColor(opportunity.created_at)}>
-                            {getRelativeTime(opportunity.created_at)}
-                          </Badge>
+                          <span>Submitted: {getRelativeTime(opportunity.created_at)}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Clock className="h-4 w-4 text-dashboard-muted-foreground" />

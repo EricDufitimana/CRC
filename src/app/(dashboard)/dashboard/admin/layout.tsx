@@ -25,23 +25,18 @@ import {
   Search, 
   Bell, 
   Moon, 
-  Sun 
+  Sun,
+  ChevronDown,
+  ChevronRight
 } from "lucide-react";
 import "../../../../../zenith/src/index.css";
 import "../../../../../zenith/src/App.css";
 import "../../../../styles/index.css";
+import '@uiw/react-md-editor/markdown-editor.css';
+import '@uiw/react-markdown-preview/markdown.css';
 import { supabase } from "@/lib/supabase";
 
-const menuItems = [
-  { label: "Dashboard", href: "/dashboard/admin" },
-  { label: "Students", href: "/dashboard/admin/student-management" },
-  { label: "Content", href: "/dashboard/admin/content-management" },
-  { label: "Workshops", href: "/dashboard/admin/workshops" },
-  { label: "Events", href: "/dashboard/admin/events-management" },
-  { label: "Opportunities", href: "/dashboard/admin/opportunity-tracker" },
-  { label: "Essays", href: "/dashboard/admin/essay-requests" },
-  { label: "Notifications", href: "/dashboard/admin/notifications-management" },
-];
+// Sidebar navigation is rendered inline below to support grouped dropdowns
 
 export default function DashboardAdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -49,6 +44,9 @@ export default function DashboardAdminLayout({ children }: { children: React.Rea
   const [searchOpen, setSearchOpen] = useState(false);
   const [isDarkTheme, setIsDarkTheme] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [contentOpen, setContentOpen] = useState(false);
+  const [requestsOpen, setRequestsOpen] = useState(false);
+  const [classesOpen, setClassesOpen] = useState(false);
 
   // Prevent hydration mismatch by only rendering theme-dependent content after mount
   useEffect(() => {
@@ -94,27 +92,203 @@ export default function DashboardAdminLayout({ children }: { children: React.Rea
           }`}>
             {/* Navigation */}
             <nav className="flex-1 p-6 space-y-2">
-              {menuItems.map(item => {
-                const isActive = pathname === item.href;
-                return (
+              {/* Dashboard */}
+              <Button
+                variant="ghost"
+                onClick={() => router.push('/dashboard/admin')}
+                className={`w-full h-12 px-4 justify-start text-left transition-all duration-300 rounded-xl group relative ${
+                  pathname === '/dashboard/admin'
+                    ? 'bg-gradient-to-r from-orange-400 to-orange-500 text-white shadow-lg shadow-orange-500/25 font-medium hover:text-white'
+                    : mounted && isDarkTheme
+                      ? 'hover:bg-gray-800/80 text-gray-300 hover:text-white'
+                      : 'hover:bg-gray-100/80 text-gray-700 hover:text-gray-900'
+                }`}
+              >
+                <span className="text-sm font-medium">Dashboard</span>
+              </Button>
+
+              {/* Students */}
+              <Button
+                variant="ghost"
+                onClick={() => router.push('/dashboard/admin/student-management')}
+                className={`w-full h-12 px-4 justify-start text-left transition-all duration-300 rounded-xl group relative ${
+                  pathname === '/dashboard/admin/student-management'
+                    ? 'bg-gradient-to-r from-orange-400 to-orange-500 text-white shadow-lg shadow-orange-500/25 font-medium hover:text-white'
+                    : mounted && isDarkTheme
+                      ? 'hover:bg-gray-800/80 text-gray-300 hover:text-white'
+                      : 'hover:bg-gray-100/80 text-gray-700 hover:text-gray-900'
+                }`}
+              >
+                <span className="text-sm font-medium">Students</span>
+              </Button>
+
+              {/* Assignments */}
+              <Button
+                variant="ghost"
+                onClick={() => router.push('/dashboard/admin/assignments-management')}
+                className={`w-full h-12 px-4 justify-start text-left transition-all duration-300 rounded-xl group relative ${
+                  pathname === '/dashboard/admin/assignments-management'
+                    ? 'bg-gradient-to-r from-orange-400 to-orange-500 text-white shadow-lg shadow-orange-500/25 font-medium hover:text-white'
+                    : mounted && isDarkTheme
+                      ? 'hover:bg-gray-800/80 text-gray-300 hover:text-white'
+                      : 'hover:bg-gray-100/80 text-gray-700 hover:text-gray-900'
+                }`}
+              >
+                <span className="text-sm font-medium">Assignments</span>
+              </Button>
+
+              {/* Classes group */}
+              <Button
+                variant="ghost"
+                onClick={() => setClassesOpen(v => !v)}
+                className={`w-full h-12 px-4 justify-between text-left transition-all duration-300 rounded-xl group ${
+                  ['/dashboard/admin/attendance','/dashboard/admin/crc-class-groups'].some(p => pathname === p || pathname.startsWith(p))
+                    ? 'bg-gradient-to-r from-orange-400 to-orange-500 text-white shadow-lg shadow-orange-500/25 font-medium hover:text-white'
+                    : mounted && isDarkTheme
+                      ? 'hover:bg-gray-800/80 text-gray-300 hover:text-white'
+                      : 'hover:bg-gray-100/80 text-gray-700 hover:text-gray-900'
+                }`}
+              >
+                <span className="text-sm font-medium">Classes</span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${classesOpen ? 'rotate-180' : ''}`} />
+              </Button>
+              <div className="relative pl-4">
+                <div className={`absolute left-2 top-0 bottom-[-8px] w-px transition-opacity duration-300 ${mounted && isDarkTheme ? 'bg-gray-300/60' : 'bg-gray-300/60'} ${classesOpen ? 'opacity-100' : 'opacity-0'}`} />
+                <div className={`space-y-1 overflow-hidden transition-all duration-300 ease-out ${classesOpen ? 'max-h-28 opacity-100 translate-y-0' : 'max-h-0 opacity-0 -translate-y-1'}`}>
                   <Button
-                    key={item.label}
                     variant="ghost"
-                    onClick={() => router.push(item.href)}
-                    className={`w-full h-12 px-4 justify-start text-left transition-all duration-300 rounded-xl group relative ${
-                      isActive 
+                    onClick={() => router.push('/dashboard/admin/attendance')}
+                    className={`w-full h-10 px-4 justify-start text-left rounded-lg ${
+                      pathname === '/dashboard/admin/attendance'
+                        ? 'bg-orange-50 text-orange-700'
+                        : mounted && isDarkTheme ? 'hover:bg-gray-800/80 text-gray-300 hover:text-white' : 'hover:bg-gray-100/80 text-gray-700 hover:text-gray-900'
+                    }`}
+                  >
+                    <span className="text-sm">Attendance</span>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => router.push('/dashboard/admin/crc-class-groups')}
+                    className={`w-full h-10 px-4 justify-start text-left rounded-lg ${
+                      pathname === '/dashboard/admin/crc-class-groups' || pathname.startsWith('/dashboard/admin/crc-class-groups/')
+                        ? 'bg-orange-50 text-orange-700'
+                        : mounted && isDarkTheme ? 'hover:bg-gray-800/80 text-gray-300 hover:text-white' : 'hover:bg-gray-100/80 text-gray-700 hover:text-gray-900'
+                    }`}
+                  >
+                    <span className="text-sm">CRC Classes</span>
+                  </Button>
+                </div>
+              </div>
+
+              {/* Content group */}
+              <Button
+                variant="ghost"
+                onClick={() => setContentOpen(v => !v)}
+                className={`w-full h-12 px-4 justify-between text-left transition-all duration-300 rounded-xl group ${
+                  ['/dashboard/admin/content-management','/dashboard/admin/workshops','/dashboard/admin/events-management','/dashboard/admin/announcements-management'].some(p => pathname === p)
+                    ? 'bg-gradient-to-r from-orange-400 to-orange-500 text-white shadow-lg shadow-orange-500/25 font-medium hover:text-white'
+                    : mounted && isDarkTheme
+                      ? 'hover:bg-gray-800/80 text-gray-300 hover:text-white'
+                      : 'hover:bg-gray-100/80 text-gray-700 hover:text-gray-900'
+                }`}
+              >
+                <span className="text-sm font-medium">Content</span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${contentOpen ? 'rotate-180' : ''}`} />
+              </Button>
+              <div className="relative pl-4">
+                <div className={`absolute left-2 top-0 bottom-[-8px] w-px transition-opacity duration-300 ${mounted && isDarkTheme ? 'bg-gray-300/60' : 'bg-gray-300/60'} ${contentOpen ? 'opacity-100' : 'opacity-0'}`} />
+                <div className={`space-y-1 overflow-hidden transition-all duration-300 ease-out ${contentOpen ? 'max-h-48 opacity-100 translate-y-0' : 'max-h-0 opacity-0 -translate-y-1'}`}>
+                  <Button
+                    variant="ghost"
+                    onClick={() => router.push('/dashboard/admin/content-management')}
+                    className={`w-full h-10 px-4 justify-start text-left rounded-lg ${
+                      pathname === '/dashboard/admin/content-management'
+                        ? 'bg-orange-50 text-orange-700'
+                        : mounted && isDarkTheme ? 'hover:bg-gray-800/80 text-gray-300 hover:text-white' : 'hover:bg-gray-100/80 text-gray-700 hover:text-gray-900'
+                    }`}
+                  >
+                    <span className="text-sm">Resources</span>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => router.push('/dashboard/admin/workshops')}
+                    className={`w-full h-10 px-4 justify-start text-left rounded-lg ${
+                      pathname === '/dashboard/admin/workshops'
+                        ? 'bg-orange-50 text-orange-700'
+                        : mounted && isDarkTheme ? 'hover:bg-gray-800/80 text-gray-300 hover:text-white' : 'hover:bg-gray-100/80 text-gray-700 hover:text-gray-900'
+                    }`}
+                  >
+                    <span className="text-sm">Workshops</span>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => router.push('/dashboard/admin/events-management')}
+                    className={`w-full h-10 px-4 justify-start text-left rounded-lg ${
+                      pathname === '/dashboard/admin/events-management'
+                        ? 'bg-orange-50 text-orange-700'
+                        : mounted && isDarkTheme ? 'hover:bg-gray-800/80 text-gray-300 hover:text-white' : 'hover:bg-gray-100/80 text-gray-700 hover:text-gray-900'
+                    }`}
+                  >
+                    <span className="text-sm">Events</span>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => router.push('/dashboard/admin/announcements-management')}
+                    className={`w-full h-10 px-4 justify-start text-left rounded-lg ${
+                      pathname === '/dashboard/admin/announcements-management'
+                        ? 'bg-orange-50 text-orange-700'
+                        : mounted && isDarkTheme ? 'hover:bg-gray-800/80 text-gray-300 hover:text-white' : 'hover:bg-gray-100/80 text-gray-700 hover:text-gray-900'
+                    }`}
+                  >
+                    <span className="text-sm">Announcements</span>
+                  </Button>
+                </div>
+              </div>
+
+              {/* Requests group */}
+              <Button
+                variant="ghost"
+                onClick={() => setRequestsOpen(v => !v)}
+                className={`w-full h-12 px-4 justify-between text-left transition-all duration-300 rounded-xl group ${
+                  ['/dashboard/admin/essay-requests','/dashboard/admin/opportunity-tracker'].some(p => pathname === p)
                         ? 'bg-gradient-to-r from-orange-400 to-orange-500 text-white shadow-lg shadow-orange-500/25 font-medium hover:text-white' 
                         : mounted && isDarkTheme
                           ? 'hover:bg-gray-800/80 text-gray-300 hover:text-white'
                           : 'hover:bg-gray-100/80 text-gray-700 hover:text-gray-900'
                     }`}
                   >
-                    {/* Active indicator */}
-                   
-                    <span className="text-sm font-medium">{item.label}</span>
+                <span className="text-sm font-medium">Requests</span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${requestsOpen ? 'rotate-180' : ''}`} />
+              </Button>
+              <div className="relative pl-4">
+                <div className={`absolute left-2 top-0 bottom-[-8px] w-px transition-opacity duration-300 ${mounted && isDarkTheme ? 'bg-gray-300/60' : 'bg-gray-300/60'} ${requestsOpen ? 'opacity-100' : 'opacity-0'}`} />
+                <div className={`space-y-1 overflow-hidden transition-all duration-300 ease-out ${requestsOpen ? 'max-h-28 opacity-100 translate-y-0' : 'max-h-0 opacity-0 -translate-y-1'}`}>
+                  <Button
+                    variant="ghost"
+                    onClick={() => router.push('/dashboard/admin/essay-requests')}
+                    className={`w-full h-10 px-4 justify-start text-left rounded-lg ${
+                      pathname === '/dashboard/admin/essay-requests'
+                        ? 'bg-orange-50 text-orange-700'
+                        : mounted && isDarkTheme ? 'hover:bg-gray-800/80 text-gray-300 hover:text-white' : 'hover:bg-gray-100/80 text-gray-700 hover:text-gray-900'
+                    }`}
+                  >
+                    <span className="text-sm">Essay</span>
                   </Button>
-                );
-              })}
+                  <Button
+                    variant="ghost"
+                    onClick={() => router.push('/dashboard/admin/opportunity-tracker')}
+                    className={`w-full h-10 px-4 justify-start text-left rounded-lg ${
+                      pathname === '/dashboard/admin/opportunity-tracker'
+                        ? 'bg-orange-50 text-orange-700'
+                        : mounted && isDarkTheme ? 'hover:bg-gray-800/80 text-gray-300 hover:text-white' : 'hover:bg-gray-100/80 text-gray-700 hover:text-gray-900'
+                    }`}
+                  >
+                    <span className="text-sm">Opportunity</span>
+                  </Button>
+                </div>
+              </div>
+
+
             </nav>
 
             {/* Footer */}

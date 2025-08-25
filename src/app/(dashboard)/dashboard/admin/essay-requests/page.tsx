@@ -933,7 +933,7 @@ export default function EssayRequests() {
                           </div>
                         </div>
                         {essay.status === 'completed' ? (
-                          <Badge className={getCompletionTimeColor(essay.completed_at)}>
+                          <Badge className="bg-green-100 text-green-800 border-green-200">
                             Completed {essay.completed_at ? getRelativeTime(essay.completed_at) : ''}
                           </Badge>
                         ) : (
@@ -949,10 +949,7 @@ export default function EssayRequests() {
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-dashboard-muted-foreground" />
-                          <span>Submitted: </span>
-                          <Badge variant="outline" className={getSubmissionTimeColor(essay.created_at)}>
-                            {getRelativeTime(essay.created_at)}
-                          </Badge>
+                          <span>Submitted: {getRelativeTime(essay.created_at)}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <FileText className="h-4 w-4 text-dashboard-muted-foreground" />
@@ -1025,20 +1022,18 @@ export default function EssayRequests() {
                               "View Essay"
                             )}
                           </Button>
-                          {essay.referred && (
-                            <Button 
-                              onClick={() => handleMarkDone(String(essay.id))} 
-                              size="sm"
-                              className="bg-orange-500 text-white hover:bg-orange-700 px-8 text-sm shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(255,165,0,0.4)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_4px_rgba(255,165,0,0.1)] transition duration-200"
-                              disabled={loadingMarkDone === essay.id}
-                            >
-                              {loadingMarkDone === essay.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                "Mark as Done"
-                              )}
-                            </Button>
-                          )}
+                          <Button 
+                            onClick={() => handleMarkDone(String(essay.id))} 
+                            size="sm"
+                            className="bg-orange-500 text-white hover:bg-orange-700 px-8 text-sm shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(255,165,0,0.4)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_4px_rgba(255,165,0,0.1)] transition duration-200"
+                            disabled={loadingMarkDone === essay.id}
+                          >
+                            {loadingMarkDone === essay.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              "Mark as Done"
+                            )}
+                          </Button>
                           <Button 
                             variant="outline" 
                             onClick={() => handleReferPop(essay)} 

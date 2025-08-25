@@ -55,12 +55,30 @@ export default function AuthCallback() {
           });
 
           if (response.ok) {
-            console.log('Student created successfully');
+            console.log('Student account created/updated successfully');
             router.push('/login?message=google_signup_success');
           } else {
             const errorData = await response.json();
             console.error('Error creating student:', errorData);
-            router.push(`/login?error=student_creation_failed&details=${encodeURIComponent(errorData.message)}`);
+            
+            // Extract error details properly
+            let errorDetails = 'Unknown error occurred';
+            if (errorData.details) {
+              errorDetails = errorData.details;
+            } else if (errorData.message) {
+              errorDetails = errorData.message;
+            }
+            
+            // Handle specific error codes
+            if (errorData.code === 'STUDENT_NOT_FOUND') {
+              router.push(`/login?error=student_not_found&details=${encodeURIComponent(errorDetails)}`);
+            } else if (errorData.code === 'ALREADY_REGISTERED') {
+              router.push(`/login?error=already_registered&details=${encodeURIComponent(errorDetails)}`);
+            } else if (errorData.code === 'CONFLICT') {
+              router.push(`/login?error=student_conflict&details=${encodeURIComponent(errorDetails)}`);
+            } else {
+              router.push(`/login?error=student_update_failed&details=${encodeURIComponent(errorDetails)}`);
+            }
           }
         } else {
           console.log('No student code found, redirecting to login');
@@ -88,7 +106,7 @@ export default function AuthCallback() {
         <h1 className="text-xl font-medium text-gray-900 dark:text-white mb-2">
           Setting up your account
         </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
+        <p className="text-gray-600 dark:text-gray-400">
           Please wait while we complete your registration
         </p>
       </div>

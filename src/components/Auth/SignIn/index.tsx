@@ -4,10 +4,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import toast from "react-hot-toast";
+import { toast } from "@/hooks/use-toast";
 import SocialSignIn from "../SocialSignIn";
 import SwitchOption from "../SwitchOption";
-import MagicLink from "../MagicLink";
 import Loader from "@/components/Common/Loader";
 
 const Signin = () => {
@@ -29,14 +28,21 @@ const Signin = () => {
     signIn("credentials", { ...loginData, redirect: false })
       .then((callback) => {
         if (callback?.error) {
-          toast.error(callback?.error);
+          toast({
+          title: "Error",
+          description: callback?.error || "An error occurred",
+          variant: "destructive",
+        });
           console.log(callback?.error);
           setLoading(false);
           return;
         }
 
         if (callback?.ok && !callback?.error) {
-          toast.success("Login successful");
+          toast({
+          title: "Success",
+          description: "Login successful",
+        });
           setLoading(false);
           router.push("/");
         }
@@ -44,7 +50,11 @@ const Signin = () => {
       .catch((err) => {
         setLoading(false);
         console.log(err.message);
-        toast.error(err.message);
+        toast({
+          title: "Error",
+          description: err.message || "An error occurred",
+          variant: "destructive",
+        });
       });
   };
 
@@ -122,9 +132,7 @@ const Signin = () => {
                     </button>
                   </div>
                 </form>
-              ) : (
-                <MagicLink />
-              )}
+              ) : null}
 
               <Link
                 href="/forgot-password"

@@ -48,13 +48,42 @@ export async function createWorkshopAction(prevState, formData) {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
+    // Define the CRC class names for each group
+    const groupMappings = {
+      'ey': ['EY A', 'EY B', 'EY C', 'EY D'],
+      'senior_4': ['S4MPC + S4MEG', 'S4MCE', 'S4HGL + S4PCB'],
+      'senior_5_group_a_b': ['S5 Group A+B'],
+      'senior_5_customer_care': ['S5 Customer Care'],
+      'senior_6_group_a_b': ['S6 Group A+B'],
+      'senior_6_group_c': ['S6 Group C'],
+      'senior_6_group_d': ['S6 Group D']
+    };
+
+    const targetClassNames = groupMappings[validatedData.workshop_group];
+    if (!targetClassNames || targetClassNames.length === 0) {
+      throw new Error(`Invalid workshop group: ${validatedData.workshop_group}`);
+    }
+
+    // Get CRC class IDs for the workshop group
+    const { data: crcClasses, error: crcError } = await supabase
+      .from('crc_class')
+      .select('id')
+      .in('name', targetClassNames);
+
+    if (crcError) {
+      throw new Error(`Failed to fetch CRC classes: ${crcError.message}`);
+    }
+
+    if (!crcClasses || crcClasses.length === 0) {
+      throw new Error(`No CRC classes found for group: ${validatedData.workshop_group}`);
+    }
+
     // Prepare workshop data for database
     const workshopData = {
       title: validatedData.title.trim(),
       description: validatedData.description.trim(),
       date: new Date(validatedData.workshop_date),
       presentation_url: validatedData.presentation_pdf_url?.trim() || null,
-      crc_class: validatedData.workshop_group,
       has_assignment: false,
     };
 
@@ -66,6 +95,26 @@ export async function createWorkshopAction(prevState, formData) {
       .insert([workshopData])
       .select()
       .single();
+
+    if (error) {
+      throw new Error(error.message || 'Failed to create workshop');
+    }
+
+    // Create workshop-to-CRC-class relationships
+    const workshopToCrcData = crcClasses.map(crcClass => ({
+      workshop_id: result.id,
+      crc_class_id: crcClass.id
+    }));
+
+    const { error: relationshipError } = await supabase
+      .from('workshop_to_crc_class')
+      .insert(workshopToCrcData);
+
+    if (relationshipError) {
+      // If relationship creation fails, delete the workshop
+      await supabase.from('workshops').delete().eq('id', result.id);
+      throw new Error(`Failed to create workshop relationships: ${relationshipError.message}`);
+    }
 
     console.log("🔍 Supabase result:", result);
     console.log("🔍 Supabase error:", error);
@@ -133,13 +182,13 @@ export async function updateWorkshopAction(prevState, formData) {
       description: formData.get("description"),
       presentation_url: formData.get("presentation_pdf_url"),
       date: formData.get("workshop_date"),
-      crc_class: formData.get("workshop_group"),
+      workshop_group: formData.get("workshop_group"),
     };
 
     console.log("📋 Update form data:", formValue);
 
     // Validate required fields
-    if (!formValue.title || !formValue.description || !formValue.date || !formValue.crc_class) {
+    if (!formValue.title || !formValue.description || !formValue.date || !formValue.workshop_group) {
       return {
         ...prevState,
         error: "Missing required fields",
@@ -153,13 +202,54 @@ export async function updateWorkshopAction(prevState, formData) {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
+    // Define the CRC class names for each group
+    const groupMappings = {
+      'ey': ['EY A', 'EY B', 'EY C', 'EY D'],
+      'senior_4': ['S4MPC + S4MEG', 'S4MCE', 'S4HGL + S4PCB'],
+      'senior_5_group_a_b': ['S5 Group A+B'],
+      'senior_5_customer_care': ['S5 Customer Care'],
+      'senior_6_group_a_b': ['S6 Group A+B'],
+      'senior_6_group_c': ['S6 Group C'],
+      'senior_6_group_d': ['S6 Group D']
+    };
+
+    const targetClassNames = groupMappings[formValue.workshop_group];
+    if (!targetClassNames || targetClassNames.length === 0) {
+      return {
+        ...prevState,
+        error: `Invalid workshop group: ${formValue.workshop_group}`,
+        status: "ERROR"
+      };
+    }
+
+    // Get CRC class IDs for the workshop group
+    const { data: crcClasses, error: crcError } = await supabase
+      .from('crc_class')
+      .select('id')
+      .in('name', targetClassNames);
+
+    if (crcError) {
+      return {
+        ...prevState,
+        error: `Failed to fetch CRC classes: ${crcError.message}`,
+        status: "ERROR"
+      };
+    }
+
+    if (!crcClasses || crcClasses.length === 0) {
+      return {
+        ...prevState,
+        error: `No CRC classes found for group: ${formValue.workshop_group}`,
+        status: "ERROR"
+      };
+    }
+
     // Prepare workshop data for database update
     const updateData = {
       title: formValue.title.trim(),
       description: formValue.description.trim(),
       date: new Date(formValue.date),
       presentation_url: formValue.presentation_url?.trim() || null,
-      crc_class: formValue.crc_class,
       has_assignment: false,
     };
 
@@ -172,6 +262,35 @@ export async function updateWorkshopAction(prevState, formData) {
       .eq('id', formValue.id)
       .select()
       .single();
+
+    if (error) {
+      throw new Error(error.message || 'Failed to update workshop');
+    }
+
+    // Update workshop-to-CRC-class relationships
+    // First, delete existing relationships
+    const { error: deleteError } = await supabase
+      .from('workshop_to_crc_class')
+      .delete()
+      .eq('workshop_id', formValue.id);
+
+    if (deleteError) {
+      throw new Error(`Failed to delete existing workshop relationships: ${deleteError.message}`);
+    }
+
+    // Then, create new relationships
+    const workshopToCrcData = crcClasses.map(crcClass => ({
+      workshop_id: formValue.id,
+      crc_class_id: crcClass.id
+    }));
+
+    const { error: relationshipError } = await supabase
+      .from('workshop_to_crc_class')
+      .insert(workshopToCrcData);
+
+    if (relationshipError) {
+      throw new Error(`Failed to create workshop relationships: ${relationshipError.message}`);
+    }
 
     console.log("🔍 Supabase result:", result);
     console.log("🔍 Supabase error:", error);

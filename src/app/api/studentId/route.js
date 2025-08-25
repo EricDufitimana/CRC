@@ -27,7 +27,7 @@ export async function GET(request) {
     // Query the students table to find the student with matching user_id
     const { data: student, error } = await supabase
       .from('students')
-      .select('id')
+      .select('id, student_id, first_name, last_name, email, profile_picture, date_of_registration, user_id, grade, major_full, major_short, gpa, crc_class_id')
       .eq('user_id', userId);
     
     console.log('🔍 API: Query result:', { student, error });
@@ -43,8 +43,22 @@ export async function GET(request) {
     }
     
     // Return just the student ID
+    const full_name = [student[0].first_name, student[0].last_name].filter(Boolean).join(' ');
     return NextResponse.json({ 
-      studentId: student[0].id 
+      studentId: student[0].id,
+      student_id: student[0].student_id,
+      full_name: full_name,
+      first_name: student[0].first_name,
+      last_name: student[0].last_name,
+      email: student[0].email,
+      profile_picture: student[0].profile_picture,
+      date_of_registration: student[0].date_of_registration,
+      user_id: student[0].user_id,
+      grade: student[0].grade,
+      major_full: student[0].major_full,
+      major_short: student[0].major_short,
+      gpa: student[0].gpa,
+      crc_class_id: student[0].crc_class_id
     }, { 
       status: 200 
     });

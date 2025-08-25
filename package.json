@@ -16,7 +16,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^3.9.0",
-    "@prisma/client": "^6.13.0",
+    "@prisma/client": "^6.14.0",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
     "@radix-ui/react-aspect-ratio": "^1.1.7",
@@ -51,12 +51,14 @@
     "@sanity/vision": "^3.99.0",
     "@supabase/auth-helpers-nextjs": "^0.10.0",
     "@supabase/auth-helpers-react": "^0.5.0",
-    "@supabase/supabase-js": "^2.52.0",
+    "@supabase/ssr": "^0.7.0",
+    "@supabase/supabase-js": "^2.56.0",
     "@tanstack/react-query": "^5.56.2",
-    "@uiw/react-md-editor": "^4.0.8",
+    "@uiw/react-md-editor": "^3.6.0",
     "@vitejs/plugin-react-swc": "^3.11.0",
     "axios": "^1.6.2",
     "bcrypt": "^5.0.1",
+    "browser-image-compression": "^2.0.2",
     "class-variance-authority": "^0.7.1",
     "cloudinary": "^2.7.0",
     "clsx": "^2.1.1",
@@ -70,6 +72,8 @@
     "lovable-tagger": "^1.1.8",
     "lucide-react": "^0.525.0",
     "markdown-it": "^14.1.0",
+    "mini-svg-data-uri": "^1.4.4",
+    "motion": "^12.23.12",
     "next": "15.3.0",
     "next-auth": "4.24.11",
     "next-cloudinary": "^6.16.0",
@@ -85,7 +89,7 @@
     "react-dom": "^18.3.1",
     "react-dropzone": "^14.3.8",
     "react-hook-form": "^7.53.0",
-    "react-hot-toast": "^2.4.1",
+    "react-hot-toast": "^2.6.0",
     "react-icons": "^5.5.0",
     "react-intersection-observer": "^9.16.0",
     "react-pdf": "^10.0.1",
@@ -117,18 +121,20 @@
     "autoprefixer": "^10.0.1",
     "eslint": "^8",
     "eslint-config-next": "15.1.6",
+    "patch-package": "^8.0.0",
     "postcss": "^8",
     "prisma": "^6.13.0",
     "raw-loader": "^4.0.2",
     "string-replace-loader": "^3.2.0",
     "tailwindcss": "^3.3.0",
-    "typescript": "^5",
-    "patch-package": "^8.0.0"
+    "typescript": "^5"
   },
   "resolutions": {
-    "unist-util-visit-parents": "3.1.1"
+    "unist-util-visit-parents": "4.1.1",
+    "unist-util-visit": "4.1.1"
   },
   "overrides": {
-    "unist-util-visit-parents": "3.1.1"
+    "unist-util-visit-parents": "4.1.1",
+    "unist-util-visit": "4.1.1"
   }
-  }
+}

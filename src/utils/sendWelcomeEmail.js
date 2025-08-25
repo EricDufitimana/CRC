@@ -1,7 +1,8 @@
+'use client';
 
 export async function sendWelcomeEmail(user_id) {
   try{
-    const reponse = await fetch('api/send-welcome-user', {
+    const reponse = await fetch('/api/send-welcome-user', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

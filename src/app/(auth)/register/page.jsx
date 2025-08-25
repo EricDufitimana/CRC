@@ -1,32 +1,102 @@
 "use client";
 
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Eye, EyeOff } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import Label from "@/components/form/Label";
-import Input from "@/components/form/input/InputField";
-import {FaEye, FaEyeSlash} from "react-icons/fa"
 import { supabase } from '@/lib/supabase'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../zenith/src/components/ui/select";
+import { Input } from "../../../../zenith/src/components/ui/input";
+import { Search } from "lucide-react";
+import { Button } from "../../../../zenith/src/components/ui/button";
+import { showToastError } from "@/components/toasts";
+import * as motion from "motion/react-client";
 
 export default function SignUpForm() {
   const router = useRouter();
-  const [showPassword, setShowPassword] = useState(false);
-  const [isChecked, setIsChecked] = useState(false);
-
   const[email, setEmail] = useState("");
   const[password, setPassword] = useState("");
-  const[confirmPassword, setConfirmPassword] = useState("");
   const[firstName, setFirstName] = useState("");
   const[lastName, setLastName] = useState("");
   const[studentCode, setStudentCode] = useState("");
+  const[selectedStudentId, setSelectedStudentId] = useState("");
+  const[unassignedStudents, setUnassignedStudents] = useState([]);
+  const[isLoadingStudents, setIsLoadingStudents] = useState(true);
+  const[studentSearchQuery, setStudentSearchQuery] = useState("");
+  const[isGoogleSignUpLoading, setIsGoogleSignUpLoading] = useState(false);
 
+  // Fetch unassigned students on component mount
+  useEffect(() => {
+    const fetchUnassignedStudents = async () => {
+      console.log('🚀 Register: Starting to fetch unassigned students...');
+      setIsLoadingStudents(true);
+      
+      try {
+        console.log('📡 Register: Making API request to /api/students/unassigned...');
+        const response = await fetch('/api/students/unassigned');
+        
+        console.log('📊 Register: Response status:', response.status);
+        console.log('📊 Register: Response ok:', response.ok);
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('✅ Register: Successfully fetched students:', data);
+          console.log('✅ Register: Number of students:', data.length);
+          setUnassignedStudents(data);
+        } else {
+          const errorData = await response.json();
+          console.error('❌ Register: Failed to fetch unassigned students:', errorData);
+          console.error('❌ Register: Response status:', response.status);
+        }
+      } catch (error) {
+        console.error('💥 Register: Error fetching unassigned students:', error);
+      } finally {
+        console.log('🏁 Register: Setting loading to false');
+        setIsLoadingStudents(false);
+      }
+    };
 
+    fetchUnassignedStudents();
+  }, []);
+
+  // Update student code when a student is selected
+  useEffect(() => {
+    console.log('🔄 Register: Student selection changed:', selectedStudentId);
+    console.log('🔄 Register: Available students:', unassignedStudents);
+    
+    if (selectedStudentId) {
+      const selectedStudent = unassignedStudents.find(student => student.id === parseInt(selectedStudentId));
+      console.log('🎯 Register: Found selected student:', selectedStudent);
+      
+      if (selectedStudent) {
+        console.log('✅ Register: Setting student data:', {
+          studentCode: selectedStudent.student_id,
+          firstName: selectedStudent.first_name,
+          lastName: selectedStudent.last_name
+        });
+        setStudentCode(selectedStudent.student_id);
+        setFirstName(selectedStudent.first_name);
+        setLastName(selectedStudent.last_name);
+      }
+    }
+  }, [selectedStudentId, unassignedStudents]);
+
+  // Filter students based on search query
+  const filteredStudents = unassignedStudents.filter(student => {
+    if (!studentSearchQuery.trim()) return true;
+    
+    const query = studentSearchQuery.toLowerCase();
+    const fullName = `${student.first_name} ${student.last_name}`.toLowerCase();
+    const studentId = student.student_id?.toLowerCase() || '';
+    
+    return fullName.includes(query) || studentId.includes(query);
+  });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log(email, password, confirmPassword, firstName, lastName, studentCode);
+    console.log(email, password, firstName, lastName, studentCode);
 
     // Add a small delay to avoid rate limiting
     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -99,12 +169,16 @@ export default function SignUpForm() {
     }
   }
   const handleGoogleSignUp = async () => {
-    if (!studentCode.trim()) {
-      alert("Please enter your student code before signing up with Google");
+    if (!selectedStudentId) {
+      showToastError({
+        headerText: "Student record required",
+        paragraphText: "Please select your student record before signing up with Google"
+      });
       return;
     }
     
     try{
+      setIsGoogleSignUpLoading(true);
       console.log('Initiating Google OAuth with student code:', studentCode);
       // Store student code in localStorage for the callback to access
       localStorage.setItem('pendingStudentCode', studentCode);
@@ -123,23 +197,25 @@ export default function SignUpForm() {
       if(error){
         console.error("Google OAuth error:", error);
         alert(`Google OAuth error: ${error.message}`);
+        setIsGoogleSignUpLoading(false);
       }else{
         console.log("Google OAuth initiated successfully");
         console.log("OAuth data:", data);
         // The user will be redirected to Google for authentication
+        // Note: Loading state will be cleared when redirect happens
       }
     }catch(error){
       console.error("Something Went Wrong Google", error);
       alert(`Google OAuth failed: ${error.message}`);
+      setIsGoogleSignUpLoading(false);
     }
   }
 
 
   
-  
   return (
-    <div className="flex flex-col flex-1 w-full overflow-y-auto lg:w-1/2 no-scrollbar py-4">
-      <div className="w-full max-w-md mx-auto mb-5 sm:pt-10">
+    <div className="flex flex-col flex-1  w-full overflow-y-auto lg:w-1/2 no-scrollbar py-4">
+      <div className="w-full max-w-md mx-auto mb-5  sm:pt-10">
         <Link
           href="/"
           className="inline-flex items-center text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
@@ -151,17 +227,92 @@ export default function SignUpForm() {
       <div className="flex flex-col justify-center flex-1 w-full max-w-md mx-auto">
         <div>
           <div className="mb-5 sm:mb-8">
-            <h1 className="mb-2 font-semibold text-gray-800 text-title-sm dark:text-white/90 sm:text-title-md">
+            <h1 className="mb-2 font-semibold text-gray-800 text-little-sm dark:text-white/90 sm:text-title-md">
               Sign Up
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Enter your email and password to sign up!
+              Select your student record to sign up!
             </p>
           </div>
           <div>
-            <div className="w-full">
-              <button onClick={studentCode ? handleGoogleSignUp : () => alert("Please enter your student code first")} className="inline-flex items-center justify-center gap-3 py-3 text-sm font-normal text-gray-700 transition-colors bg-gray-100 rounded-lg  hover:bg-gray-200 hover:text-gray-800 w-[100%]">
-                <svg
+            <form onSubmit={handleSubmit}>
+              <div className="space-y-5">
+                <div>
+                  <Label>
+                    Select Your Student Record
+                  </Label>
+                  <Select value={selectedStudentId} onValueChange={setSelectedStudentId} disabled={isLoadingStudents}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder={isLoadingStudents ? "Loading students..." : "Select a student"}  />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {isLoadingStudents ? (
+                        <div className="p-4 text-center text-sm text-gray-500">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900 mx-auto mb-2"></div>
+                          Loading students...
+                        </div>
+                      ) : unassignedStudents.length === 0 ? (
+                        <div className="p-4 text-center text-sm text-gray-500">
+                          No unassigned students found
+                        </div>
+                      ) : (
+                        <>
+                          {/* Search Input */}
+                          <div className="p-2 border-b border-gray-100">
+                            <div className="relative">
+                              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <Input
+                                placeholder="Search by name"
+                                value={studentSearchQuery}
+                                onChange={(e) => setStudentSearchQuery(e.target.value)}
+                                className="pl-8 h-8 text-sm border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none"
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            </div>
+                          </div>
+                          
+                          {/* Student List */}
+                          <div className="max-h-60 overflow-y-auto">
+                            {filteredStudents.length === 0 ? (
+                              <div className="p-4 text-center text-sm text-gray-500">
+                                No students found matching "{studentSearchQuery}"
+                              </div>
+                            ) : (
+                              filteredStudents.map((student) => (
+                                <SelectItem key={student.id} value={student.id.toString()}>
+                                  <div className="flex flex-col">
+                                    <span className="font-normal">{student.first_name} {student.last_name}</span>
+                                  </div>
+                                </SelectItem>
+                              ))
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  
+                </div>
+              </div>
+            </form>
+            
+            <div className="mt-5">
+              <button 
+                onClick={selectedStudentId ? handleGoogleSignUp : () => showToastError({
+                  headerText: "Student record required",
+                  paragraphText: "Please select your student record first"
+                })} 
+                disabled={isGoogleSignUpLoading}
+                className="inline-flex items-center justify-center gap-3 py-3 text-sm font-normal text-gray-700 transition-colors bg-gray-100 rounded-lg hover:bg-gray-200 hover:text-gray-800 w-[100%] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isGoogleSignUpLoading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-gray-400 border-t-gray-600 rounded-full animate-spin"></div>
+                    <span>Signing up with Google...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg
                   width="20"
                   height="20"
                   viewBox="0 0 20 20"
@@ -184,138 +335,12 @@ export default function SignUpForm() {
                     d="M10.1789 4.63331C11.8554 4.63331 12.9864 5.34303 13.6312 5.93612L16.1511 3.525C14.6035 2.11528 12.5895 1.25 10.1789 1.25C6.68676 1.25 3.67088 3.21387 2.20264 6.07218L5.08953 8.26943C5.81381 6.15972 7.81776 4.63331 10.1789 4.63331Z"
                     fill="#EB4335"
                   />
-                </svg>
-                Sign up with Google
+                                    </svg>
+                    <span>Sign up with Google</span>
+                  </>
+                )}
               </button>
             </div>
-            <div className="relative py-3 sm:py-5">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200 dark:border-gray-800"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="p-2 text-gray-400 bg-white dark:bg-gray-900 sm:px-5 sm:py-2">
-                  Or
-                </span>
-              </div>
-            </div>
-            <form onSubmit={handleSubmit}>
-              <div className="space-y-5">
-                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                  {/* <!-- First Name --> */}
-                  <div className="sm:col-span-1">
-                    <Label>
-                      First Name
-                    </Label>
-                    <Input
-                      type="text"
-                      id="fname"
-                      name="fname"
-                      placeholder="Enter your first name"
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                    />
-                  </div>
-                  {/* <!-- Last Name --> */}
-                  <div className="sm:col-span-1">
-                    <Label>
-                      Last Name
-                    </Label>
-                    <Input
-                      type="text"
-                      id="lname"
-                      name="lname"
-                      placeholder="Enter your last name"
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label>
-                    Student Code
-                  </Label>
-                  <Input
-                    type="text"
-                    id="student_code"
-                    name="student_code"
-                    placeholder="Enter your student code"
-                    value={studentCode}
-                    onChange={(e) => setStudentCode(e.target.value)}
-                  />
-                </div>
-                {/* <!-- Email --> */}
-                <div>
-                  <Label>
-                    Email
-                  </Label>
-                  <Input
-                    type="email"
-                    id="email"
-                    name="email"
-                    placeholder="Enter your email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </div>
-                {/* <!-- Password --> */}
-                <div>
-                  <Label>
-                    Password
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      placeholder="Enter your password"
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
-                    <span
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute z-30 -translate-y-1/2 cursor-pointer right-4 top-1/2"
-                    >
-                      {showPassword ? (
-                        <FaEye className="fill-gray-500 dark:fill-gray-400 size-5" />
-                      ) : (
-                        <FaEyeSlash className="fill-gray-500 dark:fill-gray-400 size-5" />
-                      )}
-                    </span>
-                  </div>
-                </div>
-                {/* <!-- Confirm Password --> */}
-                <div>
-                  <Label>
-                    Confirm Password
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      placeholder="Confirm your password"
-                      type={showPassword ? "text" : "password"}
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                    />
-                    <span
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute z-30 -translate-y-1/2 cursor-pointer right-4 top-1/2"
-                    >
-                      {showPassword ? (
-                        <FaEye className="fill-gray-500 dark:fill-gray-400 size-5" />
-                      ) : (
-                        <FaEyeSlash className="fill-gray-500 dark:fill-gray-400 size-5" />
-                      )}
-                    </span>
-                  </div>
-                </div>
-                {/* <!-- Checkbox --> */}
-               
-                {/* <!-- Button --> */}
-                <div>
-                  <button className="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-white transition bg-primary rounded-lg shadow-theme-xs hover:bg-orange-400">
-                    Sign Up
-                  </button>
-                </div>
-              </div>
-            </form>
 
 
             <div className="mt-5">

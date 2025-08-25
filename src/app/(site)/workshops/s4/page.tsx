@@ -9,6 +9,7 @@ import { client } from "@/sanity/lib/client";
 import { getS4Workshops } from "@/sanity/lib/queries";
 import { Workshop } from "@/types/workshop";
 import PdfViewer from "@/components/PdfViewer/PdfViewer";
+import WorkshopsNotificationBanner from "@/components/Banner/WorkshopsNotificationBanner";
 
 export default function S4WorkshopsPage() {
   const [expandedCards, setExpandedCards] = useState<number[]>([]);
@@ -63,6 +64,7 @@ export default function S4WorkshopsPage() {
       <h1 className="text-3xl font-bold text-center">CRC Workshops Recap</h1>
       <p className="text-muted-foreground text-center">A timeline of workshops, presentations, and assignments for Senior 4 students.</p>
 
+      <WorkshopsNotificationBanner page="s4_workshops" theme="green" />
       <div className="space-y-4">
         {workshops.map((workshop, i) => {
           const isExpanded = expandedCards.includes(i);

@@ -7,7 +7,12 @@ export async function GET(request) {
 
     const workshops = await prisma.workshops.findMany({
       include: {
-        assignments: true
+        assignments: true,
+        workshop_to_crc: {
+          include: {
+            crc_class: true
+          }
+        }
       },
       orderBy: {
         created_at: 'desc'
@@ -28,7 +33,13 @@ export async function GET(request) {
         workshop_id: assignment.workshop_id?.toString(),
         created_at: assignment.created_at?.toISOString(),
         submission_idate: assignment.submission_idate?.toISOString()
-      }))
+      })),
+      crc_classes: workshop.workshop_to_crc?.map(wtc => ({
+        id: wtc.crc_class.id.toString(),
+        name: wtc.crc_class.name
+      })) || [],
+      // Remove BigInt fields that can't be serialized
+      workshop_to_crc: undefined
     }));
 
     return NextResponse.json({
@@ -49,6 +60,32 @@ export async function GET(request) {
     );
   }
 }
+
+// Helper function to get CRC class IDs for a given group
+const getCrcClassIdsForGroup = async (group) => {
+  const groupMappings = {
+    'ey': ['EY A', 'EY B', 'EY C', 'EY D'],
+    'senior_4': ['S4MPC + S4MEG', 'S4MCE', 'S4HGL + S4PCB'],
+    'senior_5_group_a_b': ['S5 Group A+B'],
+    'senior_5_customer_care': ['S5 Customer Care'],
+    'senior_6_group_a_b': ['S6 Group A+B'],
+    'senior_6_group_c': ['S6 Group C'],
+    'senior_6_group_d': ['S6 Group D']
+  };
+
+  const classNames = groupMappings[group];
+  if (!classNames) return [];
+
+  const crcClasses = await prisma.crc_class.findMany({
+    where: {
+      name: {
+        in: classNames
+      }
+    }
+  });
+
+  return crcClasses.map(c => c.id);
+};
 
 export async function POST(request) {
   try {
@@ -97,47 +134,68 @@ export async function POST(request) {
       );
     }
 
+    // Get CRC class IDs for the workshop group
+    const crcClassIds = await getCrcClassIdsForGroup(workshop_group);
+    if (crcClassIds.length === 0) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: `No CRC classes found for group: ${workshop_group}` 
+        },
+        { status: 400 }
+      );
+    }
+
     // Create workshop data
     const workshopData = {
       title: title.trim(),
       description: description.trim(),
       date: new Date(workshop_date),
       presentation_url: presentation_pdf_url?.trim() || null,
-      crc_class: workshop_group,
       has_assignment: false,
     };
 
     console.log('📝 Creating workshop with data:', workshopData);
 
-    // Create the workshop
+    // Create the workshop with CRC class relationships
     const workshop = await prisma.workshops.create({
-      data: workshopData,
+      data: {
+        ...workshopData,
+        workshop_to_crc: {
+          create: crcClassIds.map(crcClassId => ({
+            crc_class_id: crcClassId
+          }))
+        }
+      },
       include: {
-        assignments: true
-      }
-    });
-
-    // Fetch the created workshop with assignments
-    const createdWorkshop = await prisma.workshops.findUnique({
-      where: { id: workshop.id },
-      include: {
-        assignments: true
+        assignments: true,
+        workshop_to_crc: {
+          include: {
+            crc_class: true
+          }
+        }
       }
     });
 
     // Serialize the response
     const serializedWorkshop = {
-      ...createdWorkshop,
-      id: createdWorkshop.id.toString(),
-      created_at: createdWorkshop.created_at?.toISOString(),
-      date: createdWorkshop.date?.toISOString(),
-      assignments: createdWorkshop.assignments?.map(assignment => ({
+      ...workshop,
+      id: workshop.id.toString(),
+      created_at: workshop.created_at?.toISOString(),
+      date: workshop.date?.toISOString(),
+      assignments: workshop.assignments?.map(assignment => ({
         ...assignment,
         id: assignment.id.toString(),
         workshop_id: assignment.workshop_id?.toString(),
         created_at: assignment.created_at?.toISOString(),
         submission_idate: assignment.submission_idate?.toISOString()
-      }))
+      })),
+      crc_classes: workshop.workshop_to_crc?.map(wtc => ({
+        id: wtc.crc_class.id.toString(),
+        name: wtc.crc_class.name
+      })) || [],
+      // Remove BigInt fields that can't be serialized
+      workshop_to_crc: undefined
     };
 
     console.log('✅ API: Workshop created successfully:', serializedWorkshop);
@@ -186,24 +244,48 @@ export async function PUT(request) {
       );
     }
 
+    // Get CRC class IDs for the workshop group
+    const crcClassIds = await getCrcClassIdsForGroup(crc_class);
+    if (crcClassIds.length === 0) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: `No CRC classes found for group: ${crc_class}` 
+        },
+        { status: 400 }
+      );
+    }
+
     // Update workshop data
     const workshopData = {
       title: title?.trim(),
       description: description?.trim(),
       date: date ? new Date(date) : undefined,
       presentation_url: presentation_url?.trim() || null,
-      crc_class: crc_class,
       has_assignment: has_assignment,
     };
 
     console.log('📝 Updating workshop with data:', workshopData);
 
-    // Update the workshop
+    // Update the workshop and its CRC class relationships
     const updatedWorkshop = await prisma.workshops.update({
       where: { id: BigInt(id) },
-      data: workshopData,
+      data: {
+        ...workshopData,
+        workshop_to_crc: {
+          deleteMany: {},
+          create: crcClassIds.map(crcClassId => ({
+            crc_class_id: crcClassId
+          }))
+        }
+      },
       include: {
-        assignments: true
+        assignments: true,
+        workshop_to_crc: {
+          include: {
+            crc_class: true
+          }
+        }
       }
     });
 
@@ -234,7 +316,12 @@ export async function PUT(request) {
     const finalWorkshop = await prisma.workshops.findUnique({
       where: { id: BigInt(id) },
       include: {
-        assignments: true
+        assignments: true,
+        workshop_to_crc: {
+          include: {
+            crc_class: true
+          }
+        }
       }
     });
 
@@ -250,7 +337,13 @@ export async function PUT(request) {
         workshop_id: assignment.workshop_id?.toString(),
         created_at: assignment.created_at?.toISOString(),
         submission_idate: assignment.submission_idate?.toISOString()
-      }))
+      })),
+      crc_classes: finalWorkshop.workshop_to_crc?.map(wtc => ({
+        id: wtc.crc_class.id.toString(),
+        name: wtc.crc_class.name
+      })) || [],
+      // Remove BigInt fields that can't be serialized
+      workshop_to_crc: undefined
     };
 
     console.log('✅ API: Workshop updated successfully');
@@ -290,7 +383,7 @@ export async function DELETE(request) {
 
     console.log('🗑️ Deleting workshop with ID:', id);
 
-    // Delete the workshop (assignments will be deleted due to cascade)
+    // Delete the workshop (assignments and workshop_to_crc relationships will be deleted due to cascade)
     await prisma.workshops.delete({
       where: { id: BigInt(id) }
     });

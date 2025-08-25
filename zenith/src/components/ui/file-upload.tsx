@@ -15,7 +15,8 @@ interface FileUploadProps {
   onRemove?: (index: number) => void;
   className?: string;
   disabled?: boolean;
-  placeholder?: string;
+  placeholder?: React.ReactNode;
+  helperText?: React.ReactNode;
 }
 
 export function FileUpload({
@@ -28,6 +29,7 @@ export function FileUpload({
   className,
   disabled = false,
   placeholder = "Drop files here or click to upload",
+  helperText,
 }: FileUploadProps) {
   const [isDragOver, setIsDragOver] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -117,12 +119,16 @@ export function FileUpload({
           <p className="text-sm text-muted-foreground mb-1">
             {placeholder}
           </p>
-          <p className="text-xs text-muted-foreground">
-            {multiple 
-              ? `Up to ${maxFiles} files allowed` 
-              : "Single file only"
-            }
-          </p>
+          {helperText ? (
+            <div className="text-xs text-muted-foreground">{helperText}</div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              {multiple 
+                ? `Up to ${maxFiles} files allowed` 
+                : "Single file only"
+              }
+            </p>
+          )}
         </div>
       </div>
 

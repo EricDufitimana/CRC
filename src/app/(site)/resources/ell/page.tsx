@@ -3,6 +3,7 @@ import ScrollUp from "@/components/Common/ScrollUp";
 import { Metadata } from "next";
 import Layout from "@/components/other/Layout";
 import HeaderLayout from "@/components/other/headerLayout";
+import ResourcesNotificationBanner from "@/components/Banner/ResourcesNotificationBanner";
 import { Fragment } from "react";
 import { getEnglishLanguageLearning } from "@/sanity/lib/queries";
 import { client } from "@/sanity/lib/client";
@@ -25,9 +26,11 @@ export default async function Home() {
   return (
     <main>
       <ScrollUp />
-      <HeaderLayout image="/images/banners/english.svg" />
-      <div className="flex justify-center pb-12">
-        <div className="content border border-gray-700 rounded-md p-8 w-[1100px]">
+      <HeaderLayout image="/images/banners/english.svg" bottomPaddingClass="pb-6" />
+      <div className="space-y-4">
+        <ResourcesNotificationBanner page="english_language_learning" />
+        <div className="flex justify-center pb-12">
+          <div className="content border border-gray-700 rounded-md p-8 w-[1100px]">
           {data && data.length > 0 ? (
             data.map((item, index) => (
               <Fragment key={item._id}>
@@ -51,6 +54,7 @@ export default async function Home() {
           ) : (
             <div className="text-center text-gray-500">No English learning resources found.</div>
           )}
+          </div>
         </div>
       </div>
     </main>

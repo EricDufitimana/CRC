@@ -2,6 +2,8 @@
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import ScrollToTop from "@/components/ScrollToTop";
+import StickyNotificationBanner from "@/components/Banner/StickyNotificationBanner";
+import { usePathname } from "next/navigation";
 
 import { ThemeProvider } from "next-themes";
 import "../../styles/index.css"
@@ -17,6 +19,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   const[firstLoad, setFirstLoad] = useState(true);
+  const pathname = usePathname();
 
   useEffect(() => {
     const timer = setTimeout(() => setFirstLoad(false), 1000)
@@ -40,11 +43,13 @@ export default function RootLayout({
               enableSystem={false}
               defaultTheme="light"
             >
-              
-              <Header />
-              <LoadingIndicator />
-              {children}
-              <Footer />
+              {pathname === "/" && <StickyNotificationBanner />}
+              <div style={{ paddingTop: "var(--banner-height, 0px)", transition: "padding-top 200ms ease" }}>
+                <Header />
+                <LoadingIndicator />
+                {children}
+                <Footer />
+              </div>
               
               <ScrollToTop />
             </ThemeProvider>

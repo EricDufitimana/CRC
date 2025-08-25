@@ -54,85 +54,87 @@ export async function POST(request) {
       console.log('Profile created successfully:', profile.id);
     }
 
-    // Check if student already exists
-    const { data: existingStudent } = await supabase
+    // Find existing student record by student_id
+    const { data: existingStudent, error: findError } = await supabase
       .from('students')
       .select('*')
-      .eq('user_id', user.user.id)
+      .eq('student_id', student_code)
       .single();
 
-    if (existingStudent) {
-      console.log('Student already exists');
-      return NextResponse.json({ message: 'Student already exists' });
+    if (findError) {
+      console.error('Error finding student:', findError);
+      return NextResponse.json({ 
+        error: 'Student not found', 
+        message: 'No student record found with the provided student code',
+        details: `Student code ${student_code} not found in the system`,
+        code: 'STUDENT_NOT_FOUND'
+      }, { status: 404 });
     }
 
-    // Extract user information from Google metadata
-    const userMetadata = user.user.user_metadata;
-    
-    // Better extraction of names from Google OAuth
-    let firstName = '';
-    let lastName = '';
-    
-    if (userMetadata?.full_name) {
-      const nameParts = userMetadata.full_name.split(' ');
-      firstName = nameParts[0] || '';
-      lastName = nameParts.slice(1).join(' ') || '';
-    } else if (userMetadata?.given_name && userMetadata?.family_name) {
-      firstName = userMetadata.given_name;
-      lastName = userMetadata.family_name;
-    } else if (userMetadata?.first_name && userMetadata?.last_name) {
-      firstName = userMetadata.first_name;
-      lastName = userMetadata.last_name;
-    } else if (userMetadata?.name) {
-      const nameParts = userMetadata.name.split(' ');
-      firstName = nameParts[0] || '';
-      lastName = nameParts.slice(1).join(' ') || '';
+    if (!existingStudent) {
+      console.error('Student not found with code:', student_code);
+      return NextResponse.json({ 
+        error: 'Student not found', 
+        message: 'No student record found with the provided student code',
+        details: `Student code ${student_code} not found in the system`,
+        code: 'STUDENT_NOT_FOUND'
+      }, { status: 404 });
     }
-    
-    // Fallback if no names found
-    if (!firstName && !lastName) {
-      firstName = 'Google';
-      lastName = 'User';
+
+    // Check if student already has a user_id (already registered)
+    if (existingStudent.user_id) {
+      console.error('Student already registered:', existingStudent);
+      return NextResponse.json({ 
+        error: 'Student already registered', 
+        message: 'This student is already registered with an account',
+        details: `Student ${existingStudent.first_name} ${existingStudent.last_name} already has an account`,
+        code: 'ALREADY_REGISTERED'
+      }, { status: 409 });
     }
-    
-    const email = user.user.email;
-    
-    // Use provided student code or generate one
-    const finalStudentCode = student_code || `GOOGLE_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-    console.log('Creating student with data:', { firstName, lastName, email, finalStudentCode });
+    console.log('Found existing student:', existingStudent);
 
-    // Create student record
-    const { data: student, error: createError } = await supabase
+
+
+
+
+    // Update the existing student record with the new user_id
+    console.log('Updating existing student with user_id:', user.user.id);
+
+    const { data: updatedStudent, error: updateError } = await supabase
       .from('students')
-      .insert([
-        {
-          user_id: user.user.id,
-          first_name: firstName,
-          last_name: lastName,
-          student_id: finalStudentCode,
-          email: email,
-          date_of_registration: new Date().toISOString(),
-        }
-      ])
+      .update({ 
+        user_id: user.user.id,
+        date_of_registration: new Date().toISOString()
+      })
+      .eq('id', existingStudent.id)
       .select()
       .single();
 
-    if (createError) {
-      console.error('Error creating student:', createError);
-      return NextResponse.json({ error: createError.message }, { status: 500 });
+    if (updateError) {
+      console.error('Error updating student:', updateError);
+      return NextResponse.json({ 
+        error: 'Student update failed', 
+        message: updateError.message,
+        details: updateError.details || updateError.message,
+        code: updateError.code
+      }, { status: 500 });
     }
 
-    console.log('Student created successfully:', student.id);
-    return NextResponse.json({ message: 'Student created successfully', student });
+    console.log('Student updated successfully:', updatedStudent.id);
+    return NextResponse.json({ message: 'Student updated successfully', student: updatedStudent });
 
   } catch (error) {
     console.error('Callback API error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Callback failed', 
+      message: error.message,
+      details: error.details || error.message 
+    }, { status: 500 });
   }
 }
 
-// Keep the GET method for backward compatibility
+
 export async function GET(request) {
   try {
     console.log('=== OAUTH CALLBACK API (GET) ===');
@@ -169,19 +171,35 @@ export async function GET(request) {
     console.log('User authenticated successfully:', user.id);
     console.log('User metadata:', user.user_metadata);
 
+    // Check if student already exists in students table (for linking existing students)
+    const { data: existingStudentRecord } = await supabase
+      .from('students')
+      .select('*')
+      .eq('email', user.email)
+      .single();
+
+    let profileData = {
+      user_id: user.id,
+      email: user.email,
+      role: 'student',
+      is_new_user: true,
+      welcome_email_sent: false
+    };
+
+    // If student exists in students table, use their actual information
+    if (existingStudentRecord) {
+      profileData.Names = `${existingStudentRecord.first_name} ${existingStudentRecord.last_name}`;
+      console.log('Using existing student info for profile:', profileData.Names);
+    } else {
+      // Use Google metadata for new students
+      profileData.Names = user.user_metadata?.full_name || user.user_metadata?.name || 'User';
+      console.log('Using Google metadata for profile:', profileData.Names);
+    }
+
     // Create profile for the new user
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .insert([
-        {
-          user_id: user.id,
-          Names: user.user_metadata?.full_name || user.user_metadata?.name || 'User',
-          email: user.email,
-          role: 'student',
-          is_new_user: true,
-          welcome_email_sent: false
-        }
-      ])
+      .insert([profileData])
       .select()
       .single();
 
@@ -192,7 +210,7 @@ export async function GET(request) {
       console.log('Profile created successfully:', profile.id);
     }
 
-    // Check if student already exists
+    // Check if student already exists by user_id
     const { data: existingStudent } = await supabase
       .from('students')
       .select('*')
@@ -201,7 +219,33 @@ export async function GET(request) {
 
     if (existingStudent) {
       console.log('Student already exists');
-      return NextResponse.redirect(new URL('/login?message=already_registered', request.url));
+      
+      // Check if this user is an admin
+      const { data: adminRecord } = await supabase
+        .from('admin')
+        .select('*')
+        .eq('email', user.email)
+        .single();
+      
+      if (adminRecord) {
+        console.log('Existing user is an admin, redirecting to unauthorized page');
+        return NextResponse.redirect(new URL('/unauthorized', request.url));
+      } else {
+        console.log('Existing user is a student, redirecting to login');
+        return NextResponse.redirect(new URL('/login?message=already_registered', request.url));
+      }
+    }
+
+    // Check if student already exists by email (in case they registered with different method)
+    const { data: existingStudentByEmail } = await supabase
+      .from('students')
+      .select('*')
+      .eq('email', user.email)
+      .single();
+
+    if (existingStudentByEmail) {
+      console.log('Student with this email already exists');
+      return NextResponse.redirect(new URL('/login?error=email_already_registered&details=An account with this email already exists', request.url));
     }
 
     // Extract user information from Google metadata
@@ -235,7 +279,9 @@ export async function GET(request) {
     
     const email = user.email;
     
-    // Generate a student code if none was provided
+
+    
+    // Generate a unique student code
     const studentCode = `GOOGLE_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     console.log('Creating student with data:', { firstName, lastName, email, studentCode });
@@ -262,7 +308,21 @@ export async function GET(request) {
     }
 
     console.log('Student created successfully:', student.id);
-    return NextResponse.redirect(new URL('/login?message=google_signup_success', request.url));
+    
+    // Check if this user is an admin
+    const { data: adminRecord } = await supabase
+      .from('admin')
+      .select('*')
+      .eq('email', user.email)
+      .single();
+    
+    if (adminRecord) {
+      console.log('User is an admin, redirecting to unauthorized page for verification');
+      return NextResponse.redirect(new URL('/unauthorized', request.url));
+    } else {
+      console.log('User is a student, redirecting to login with success message');
+      return NextResponse.redirect(new URL('/login?message=google_signup_success', request.url));
+    }
 
   } catch (error) {
     console.error('Callback error:', error);
