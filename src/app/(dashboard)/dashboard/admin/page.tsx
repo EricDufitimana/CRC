@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../../components/ui/card";
 import { Badge } from "../../../../components/ui/badge";
 import { Button } from "../../../../components/ui/button";
@@ -19,7 +20,8 @@ import {
   Calendar,
   CheckCircle,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  ArrowRight
 } from "lucide-react";
 import { format, startOfWeek, endOfWeek, isWithinInterval, subWeeks } from "date-fns";
 import { useUserData } from "@/hooks/useUserData";
@@ -48,6 +50,9 @@ interface Assignment {
   submission_idate: string;
   workshop_crc_class: string;
   workshop_title: string;
+  workshop_id?: string;
+  crc_class_id?: string;
+  crc_class_name?: string;
 }
 
 interface Announcement {
@@ -79,6 +84,7 @@ interface DashboardStats {
 }
 
 export default function DashboardHome() {
+  const router = useRouter();
   const { userId, adminId, isLoading, error } = useUserData();
   const [loading, setLoading] = useState(true);
 
@@ -104,6 +110,7 @@ export default function DashboardHome() {
   const [opportunitiesNeedingAttention, setOpportunitiesNeedingAttention] = useState<any[]>([]);
   const [assignmentsNeedingAttention, setAssignmentsNeedingAttention] = useState<any[]>([]);
   const [attendanceByWorkshop, setAttendanceByWorkshop] = useState<any>({});
+  const [adminName, setAdminName] = useState<string>('');
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -329,6 +336,33 @@ export default function DashboardHome() {
     loadDashboardData();
   }, [adminId]);
 
+  // Fetch admin name when adminId is available
+  useEffect(() => {
+    const fetchAdminName = async () => {
+      if (!adminId) return;
+      
+      try {
+        const response = await fetch(`/api/admin/profile?admin_id=${adminId}`);
+        if (response.ok) {
+          const adminData = await response.json();
+          const fullName = [adminData.honorific, adminData.first_name, adminData.last_name]
+            .filter(Boolean)
+            .join(' ');
+          console.log('Admin name:', fullName);
+          console.log('Admin data:', adminData);
+          setAdminName(fullName || 'Admin');
+        } else {
+          setAdminName('Admin');
+        }
+      } catch (error) {
+        console.error('Error fetching admin name:', error);
+        setAdminName('Admin');
+      }
+    };
+
+    fetchAdminName();
+  }, [adminId]);
+
   // Helper function to calculate trend
   const calculateTrend = (current: number, previous: number) => {
     if (previous === 0) return current > 0 ? 'up' : 'neutral';
@@ -344,6 +378,35 @@ export default function DashboardHome() {
     if (previous === 0) return current > 0 ? `+${current} new` : 'No change';
     if (current === previous) return 'No change';
     return `${current > previous ? '+' : '-'}${change} from last week`;
+  };
+
+  const handleAssignmentClick = (assignment: Assignment) => {
+    // Build URL with all available IDs for precise navigation
+    const params = new URLSearchParams();
+    params.set('assignmentId', assignment.id);
+    
+    if (assignment.workshop_title) {
+      params.set('workshopId', assignment.workshop_title);
+    }
+    
+    if (assignment.crc_class_name) {
+      params.set('crcClassId', assignment.crc_class_name);
+      // Also set subClassId to the numeric ID for compatibility
+      if (assignment.crc_class_id) {
+        params.set('subClassId', assignment.crc_class_id);
+      }
+    }
+    
+    console.log('🔍 Assignment click - Data:', {
+      assignmentId: assignment.id,
+      workshopId: assignment.workshop_title,
+      crcClassId: assignment.crc_class_name,
+      subClassId: assignment.crc_class_id,
+      allParams: params.toString(),
+      finalUrl: `/dashboard/admin/assignments-management?${params.toString()}`
+    });
+    
+    router.push(`/dashboard/admin/assignments-management?${params.toString()}`);
   };
 
   if (isLoading) {
@@ -377,10 +440,10 @@ export default function DashboardHome() {
       {/* Header */}
       <div className="mb-6">
         <div className="text-3xl font-bold font-cal-sans text-gray-900 mb-2">
-          Welcome back, <span className="font-cal-sans font-bold">Eric</span> 👋
+          Welcome back, <span className="font-cal-sans font-bold">{adminName || 'Admin'}</span> 👋
         </div>
         <p className="text-gray-600 text-md">
-          Here's what's happening with your students today
+          Here's what's happening with your students this week
         </p>
       </div>
 
@@ -392,27 +455,43 @@ export default function DashboardHome() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600 mb-1">Assignments</p>
-                {loading ? <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" /> : <p className="text-2xl font-bold text-gray-900">{stats.assignmentsThisWeek}</p>}
-                <p className="text-xs text-gray-500 mt-1">Due this week</p>
+                {loading ? (
+                  <div className="space-y-2">
+                    <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
+                    <div className="h-3 w-20 bg-gray-200 rounded animate-pulse" />
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-2xl font-bold text-gray-900">{stats.assignmentsThisWeek}</p>
+                    <p className="text-xs text-gray-500 mt-1">Due this week</p>
+                  </>
+                )}
               </div>
               <div className="h-12 w-12 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center">
                 <Calendar className="h-6 w-6" />
               </div>
             </div>
-            <div className="mt-4 flex items-center text-xs">
-              {calculateTrend(stats.assignmentsThisWeek, stats.assignmentsLastWeek) === 'up' ? (
-                <TrendingUp className="h-3 w-3 text-green-600 mr-1" />
-              ) : calculateTrend(stats.assignmentsThisWeek, stats.assignmentsLastWeek) === 'down' ? (
-                <TrendingDown className="h-3 w-3 text-red-600 mr-1" />
-              ) : null}
-              <span className={`font-medium ${
-                calculateTrend(stats.assignmentsThisWeek, stats.assignmentsLastWeek) === 'up' ? 'text-green-600' : 
-                calculateTrend(stats.assignmentsThisWeek, stats.assignmentsLastWeek) === 'down' ? 'text-red-600' : 
-                'text-gray-600'
-              }`}>
-                {getTrendText(stats.assignmentsThisWeek, stats.assignmentsLastWeek)}
-              </span>
-            </div>
+            {loading ? (
+              <div className="mt-4 flex items-center text-xs">
+                <div className="h-3 w-3 bg-gray-200 rounded animate-pulse mr-1" />
+                <div className="h-3 w-24 bg-gray-200 rounded animate-pulse" />
+              </div>
+            ) : (
+              <div className="mt-4 flex items-center text-xs">
+                {calculateTrend(stats.assignmentsThisWeek, stats.assignmentsLastWeek) === 'up' ? (
+                  <TrendingUp className="h-3 w-3 text-green-600 mr-1" />
+                ) : calculateTrend(stats.assignmentsThisWeek, stats.assignmentsLastWeek) === 'down' ? (
+                  <TrendingDown className="h-3 w-3 text-red-600 mr-1" />
+                ) : null}
+                <span className={`font-medium ${
+                  calculateTrend(stats.assignmentsThisWeek, stats.assignmentsLastWeek) === 'up' ? 'text-green-600' : 
+                  calculateTrend(stats.assignmentsThisWeek, stats.assignmentsLastWeek) === 'down' ? 'text-red-600' : 
+                  'text-gray-600'
+                }`}>
+                  {getTrendText(stats.assignmentsThisWeek, stats.assignmentsLastWeek)}
+                </span>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -422,27 +501,43 @@ export default function DashboardHome() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600 mb-1">Workshops</p>
-                {loading ? <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" /> : <p className="text-2xl font-bold text-gray-900">{stats.attendanceTaken}</p>}
-                <p className="text-xs text-gray-500 mt-1">This week</p>
+                {loading ? (
+                  <div className="space-y-2">
+                    <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
+                    <div className="h-3 w-20 bg-gray-200 rounded animate-pulse" />
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-2xl font-bold text-gray-900">{stats.attendanceTaken}</p>
+                    <p className="text-xs text-gray-500 mt-1">This week</p>
+                  </>
+                )}
               </div>
               <div className="h-12 w-12 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
                 <Users className="h-6 w-6" />
               </div>
             </div>
-            <div className="mt-4 flex items-center text-xs">
-              {calculateTrend(stats.attendanceTaken, stats.attendanceTakenLastWeek) === 'up' ? (
-                <TrendingUp className="h-3 w-3 text-green-600 mr-1" />
-              ) : calculateTrend(stats.attendanceTaken, stats.attendanceTakenLastWeek) === 'down' ? (
-                <TrendingDown className="h-3 w-3 text-red-600 mr-1" />
-              ) : null}
-              <span className={`font-medium ${
-                calculateTrend(stats.attendanceTaken, stats.attendanceTakenLastWeek) === 'up' ? 'text-green-600' : 
-                calculateTrend(stats.attendanceTaken, stats.attendanceTakenLastWeek) === 'down' ? 'text-red-600' : 
-                'text-gray-600'
-              }`}>
-                {getTrendText(stats.attendanceTaken, stats.attendanceTakenLastWeek)}
-              </span>
-            </div>
+            {loading ? (
+              <div className="mt-4 flex items-center text-xs">
+                <div className="h-3 w-3 bg-gray-200 rounded animate-pulse mr-1" />
+                <div className="h-3 w-24 bg-gray-200 rounded animate-pulse" />
+              </div>
+            ) : (
+              <div className="mt-4 flex items-center text-xs">
+                {calculateTrend(stats.attendanceTaken, stats.attendanceTakenLastWeek) === 'up' ? (
+                  <TrendingUp className="h-3 w-3 text-green-600 mr-1" />
+                ) : calculateTrend(stats.attendanceTaken, stats.attendanceTakenLastWeek) === 'down' ? (
+                  <TrendingDown className="h-3 w-3 text-red-600 mr-1" />
+                ) : null}
+                <span className={`font-medium ${
+                  calculateTrend(stats.attendanceTaken, stats.attendanceTakenLastWeek) === 'up' ? 'text-green-600' : 
+                  calculateTrend(stats.attendanceTaken, stats.attendanceTakenLastWeek) === 'down' ? 'text-red-600' : 
+                  'text-gray-600'
+                }`}>
+                  {getTrendText(stats.attendanceTaken, stats.attendanceTakenLastWeek)}
+                </span>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -452,27 +547,43 @@ export default function DashboardHome() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600 mb-1">Essay Requests</p>
-                {loading ? <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" /> : <p className="text-2xl font-bold text-gray-900">{stats.essayRequestsThisWeek}</p>}
-                <p className="text-xs text-gray-500 mt-1">This week</p>
+                {loading ? (
+                  <div className="space-y-2">
+                    <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
+                    <div className="h-3 w-20 bg-gray-200 rounded animate-pulse" />
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-2xl font-bold text-gray-900">{stats.essayRequestsThisWeek}</p>
+                    <p className="text-xs text-gray-500 mt-1">This week</p>
+                  </>
+                )}
               </div>
               <div className="h-12 w-12 rounded-xl bg-green-100 text-green-700 flex items-center justify-center">
                 <FileText className="h-6 w-6" />
               </div>
             </div>
-            <div className="mt-4 flex items-center text-xs">
-              {calculateTrend(stats.essayRequestsThisWeek, stats.essayRequestsLastWeek) === 'up' ? (
-                <TrendingUp className="h-3 w-3 text-green-600 mr-1" />
-              ) : calculateTrend(stats.essayRequestsThisWeek, stats.essayRequestsLastWeek) === 'down' ? (
-                <TrendingDown className="h-3 w-3 text-red-600 mr-1" />
-              ) : null}
-              <span className={`font-medium ${
-                calculateTrend(stats.essayRequestsThisWeek, stats.essayRequestsLastWeek) === 'up' ? 'text-green-600' : 
-                calculateTrend(stats.essayRequestsThisWeek, stats.essayRequestsLastWeek) === 'down' ? 'text-red-600' : 
-                'text-gray-600'
-              }`}>
-                {getTrendText(stats.essayRequestsThisWeek, stats.essayRequestsLastWeek)}
-              </span>
-            </div>
+            {loading ? (
+              <div className="mt-4 flex items-center text-xs">
+                <div className="h-3 w-3 bg-gray-200 rounded animate-pulse mr-1" />
+                <div className="h-3 w-24 bg-gray-200 rounded animate-pulse" />
+              </div>
+            ) : (
+              <div className="mt-4 flex items-center text-xs">
+                {calculateTrend(stats.essayRequestsThisWeek, stats.essayRequestsLastWeek) === 'up' ? (
+                  <TrendingUp className="h-3 w-3 text-green-600 mr-1" />
+                ) : calculateTrend(stats.essayRequestsThisWeek, stats.essayRequestsLastWeek) === 'down' ? (
+                  <TrendingDown className="h-3 w-3 text-red-600 mr-1" />
+                ) : null}
+                <span className={`font-medium ${
+                  calculateTrend(stats.essayRequestsThisWeek, stats.essayRequestsLastWeek) === 'up' ? 'text-green-600' : 
+                  calculateTrend(stats.essayRequestsThisWeek, stats.essayRequestsLastWeek) === 'down' ? 'text-red-600' : 
+                  'text-gray-600'
+                }`}>
+                  {getTrendText(stats.essayRequestsThisWeek, stats.essayRequestsLastWeek)}
+                </span>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -482,27 +593,43 @@ export default function DashboardHome() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600 mb-1">Opportunities</p>
-                {loading ? <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" /> : <p className="text-2xl font-bold text-gray-900">{stats.opportunitiesAddedThisWeek}</p>}
-                <p className="text-xs text-gray-500 mt-1">Found this week</p>
+                {loading ? (
+                  <div className="space-y-2">
+                    <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
+                    <div className="h-3 w-20 bg-gray-200 rounded animate-pulse" />
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-2xl font-bold text-gray-900">{stats.opportunitiesAddedThisWeek}</p>
+                    <p className="text-xs text-gray-500 mt-1">Found this week</p>
+                  </>
+                )}
               </div>
               <div className="h-12 w-12 rounded-xl bg-orange-100 text-orange-700 flex items-center justify-center">
                 <Briefcase className="h-6 w-6" />
               </div>
             </div>
-            <div className="mt-4 flex items-center text-xs">
-              {calculateTrend(stats.opportunitiesAddedThisWeek, stats.opportunitiesAddedLastWeek) === 'up' ? (
-                <TrendingUp className="h-3 w-3 text-green-600 mr-1" />
-              ) : calculateTrend(stats.opportunitiesAddedThisWeek, stats.opportunitiesAddedLastWeek) === 'down' ? (
-                <TrendingDown className="h-3 w-3 text-red-600 mr-1" />
-              ) : null}
-              <span className={`font-medium ${
-                calculateTrend(stats.opportunitiesAddedThisWeek, stats.opportunitiesAddedLastWeek) === 'up' ? 'text-green-600' : 
-                calculateTrend(stats.opportunitiesAddedThisWeek, stats.opportunitiesAddedLastWeek) === 'down' ? 'text-red-600' : 
-                'text-gray-600'
-              }`}>
-                {getTrendText(stats.opportunitiesAddedThisWeek, stats.opportunitiesAddedLastWeek)}
-              </span>
-            </div>
+            {loading ? (
+              <div className="mt-4 flex items-center text-xs">
+                <div className="h-3 w-3 bg-gray-200 rounded animate-pulse mr-1" />
+                <div className="h-3 w-24 bg-gray-200 rounded animate-pulse" />
+              </div>
+            ) : (
+              <div className="mt-4 flex items-center text-xs">
+                {calculateTrend(stats.opportunitiesAddedThisWeek, stats.opportunitiesAddedLastWeek) === 'up' ? (
+                  <TrendingUp className="h-3 w-3 text-green-600 mr-1" />
+                ) : calculateTrend(stats.opportunitiesAddedThisWeek, stats.opportunitiesAddedLastWeek) === 'down' ? (
+                  <TrendingDown className="h-3 w-3 text-red-600 mr-1" />
+                ) : null}
+                <span className={`font-medium ${
+                  calculateTrend(stats.opportunitiesAddedThisWeek, stats.opportunitiesAddedLastWeek) === 'up' ? 'text-green-600' : 
+                  calculateTrend(stats.opportunitiesAddedThisWeek, stats.opportunitiesAddedLastWeek) === 'down' ? 'text-red-600' : 
+                  'text-gray-600'
+                }`}>
+                  {getTrendText(stats.opportunitiesAddedThisWeek, stats.opportunitiesAddedLastWeek)}
+                </span>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -543,7 +670,20 @@ export default function DashboardHome() {
               ) : assignments.length > 0 ? (
                 <div className="space-y-4">
                   {assignments.map((assignment) => (
-                    <div key={assignment.id} className="group relative p-4 border border-gray-200 rounded-xl hover:border-purple-200 hover:bg-gradient-to-r hover:from-purple-50 hover:to-transparent transition-all duration-200 cursor-pointer">
+                    <div 
+                      key={assignment.id} 
+                      className="group relative p-4 border border-gray-200 rounded-xl hover:border-purple-200 hover:bg-gradient-to-r hover:from-purple-50 hover:to-transparent transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50"
+                      onClick={() => handleAssignmentClick(assignment)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleAssignmentClick(assignment);
+                        }
+                      }}
+                      tabIndex={0}
+                      role="button"
+                      aria-label={`View assignment: ${assignment.title}`}
+                    >
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center space-x-2 mb-2">
@@ -576,6 +716,9 @@ export default function DashboardHome() {
                               {format(new Date(assignment.submission_idate), "MMM dd")}
                             </div>
                             <div className="text-xs text-gray-500">Due Date</div>
+                          </div>
+                          <div className="mt-2 flex justify-end">
+                            <ArrowRight className="h-4 w-4 text-purple-500 group-hover:text-purple-600 transition-all duration-200 group-hover:translate-x-1 group-hover:scale-110" />
                           </div>
                         </div>
                       </div>
@@ -690,9 +833,36 @@ export default function DashboardHome() {
                     </div>
                   ))}
                   
-                
+                  {/* Assignments needing attention */}
+                  {assignmentsNeedingAttention.map((assignment, index) => (
+                    <div 
+                      key={`assignment-${index}`} 
+                      className="group relative p-3 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-all duration-200 cursor-pointer"
+                      onClick={() => handleAssignmentClick(assignment)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleAssignmentClick(assignment);
+                        }
+                      }}
+                      tabIndex={0}
+                      role="button"
+                      aria-label={`View assignment: ${assignment.title}`}
+                    >
+                      <div className="flex items-start">
+                        <AlertTriangle className="h-4 w-4 text-red-600 mr-3 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <span className="text-sm text-red-800 font-medium">{assignment.title}</span>
+                          <div className="text-xs text-red-600 mt-1">Assignment due soon or overdue</div>
+                        </div>
+                        <div className="ml-2 flex-shrink-0">
+                          <ArrowRight className="h-3 w-3 text-red-500 group-hover:text-red-600 transition-colors" />
+                        </div>
+                      </div>
+                      <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                    </div>
+                  ))}
                   
-                 
                 </div>
               ) : (
                 <div className="text-center py-8 text-gray-500">

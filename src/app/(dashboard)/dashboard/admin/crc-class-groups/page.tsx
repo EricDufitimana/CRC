@@ -10,6 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Skeleton } from "../../../../../../zenith/src/components/ui/skeleton";
 import { Plus, Users, GraduationCap, Calendar, Trash2, Edit, Eye } from "lucide-react";
 import { useUserData } from "@/hooks/useUserData";
+import { showToastSuccess, showToastError, showToastPromise } from "@/components/toasts";
 
 type Group = {
   id: string;
@@ -39,7 +40,7 @@ export default function CrcClassGroupsPage() {
   
   // Delete dialog state
   const [deletingGroup, setDeletingGroup] = useState<Group | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  const [deletingClassId, setDeletingClassId] = useState<string | null>(null);
 
   const fetchGroups = async () => {
     setLoading(true);
@@ -98,7 +99,8 @@ export default function CrcClassGroupsPage() {
     if (!name.trim()) return;
     setCreating(true);
     setError(null);
-    try {
+    
+    const createPromise = (async () => {
       const res = await fetch("/api/admin/crc-classes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -108,6 +110,21 @@ export default function CrcClassGroupsPage() {
       if (!res.ok) throw new Error(json?.error || "Failed to create class");
       setName("");
       fetchGroups();
+      return json;
+    })();
+
+    showToastPromise({
+      promise: createPromise,
+      loadingText: 'Creating class...',
+      successText: 'The class has been saved in the system.',
+      successHeaderText: 'Class created successfully',
+      errorText: 'Failed to create class. Please try again.',
+      errorHeaderText: 'Class Creation Failed',
+      direction: 'right'
+    });
+
+    try {
+      await createPromise;
     } catch (e: any) {
       setError(e?.message || "Unknown error");
     } finally {
@@ -121,8 +138,9 @@ export default function CrcClassGroupsPage() {
 
   const confirmDelete = async () => {
     if (!deletingGroup) return;
-    setDeleting(true);
-    try {
+    setDeletingClassId(deletingGroup.id);
+    
+    const deletePromise = (async () => {
       const res = await fetch("/api/admin/crc-classes", { 
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
@@ -131,11 +149,22 @@ export default function CrcClassGroupsPage() {
       if (!res.ok) throw new Error("Failed to delete");
       setGroups(prev => prev.filter(g => g.id !== deletingGroup.id));
       setDeletingGroup(null);
-    } catch (e) {
-      alert((e as any).message || "Failed to delete");
-    } finally {
-      setDeleting(false);
-    }
+    })();
+
+    showToastPromise({
+      promise: deletePromise,
+      loadingText: 'Deleting class...',
+      successText: 'The class has been removed from the system.',
+      successHeaderText: 'Class deleted successfully',
+      errorText: 'Failed to delete class. Please try again.',
+      errorHeaderText: 'Class Deletion Failed',
+      direction: 'right'
+    });
+
+    // Let the toast handle the promise, just set loading state
+    deletePromise.finally(() => {
+      setDeletingClassId(null);
+    });
   };
 
   const onView = async (group: Group) => {
@@ -272,9 +301,14 @@ export default function CrcClassGroupsPage() {
                             size="sm" 
                             className="gap-1 text-red-600 hover:text-red-700"
                             onClick={() => onDelete(g)}
+                            disabled={deletingClassId === g.id}
                           >
-                            <Trash2 className="h-3 w-3" />
-                            Delete
+                            {deletingClassId === g.id ? (
+                              <div className="animate-spin h-3 w-3 border-2 border-red-600 border-t-transparent rounded-full"></div>
+                            ) : (
+                              <Trash2 className="h-3 w-3" />
+                            )}
+                            {deletingClassId === g.id ? 'Deleting...' : 'Delete'}
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
@@ -288,10 +322,10 @@ export default function CrcClassGroupsPage() {
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
                             <AlertDialogAction
                               onClick={confirmDelete}
-                              disabled={deleting}
+                              disabled={deletingClassId === deletingGroup?.id}
                               className="bg-red-600 hover:bg-red-700 text-white"
                             >
-                              {deleting ? (
+                              {deletingClassId === deletingGroup?.id ? (
                                 <div className="flex items-center justify-center">
                                   <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
                                 </div>

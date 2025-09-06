@@ -30,6 +30,12 @@ export const getRecurringOpportunities = groq`
 }
 `;
 
+export const getInternships = groq`
+  *[_type == "resource" && category=="internships"] | order(_createdAt desc) {
+  _id, category, description, title, url, image_address, __createdAt, opportunity_deadline
+}
+`;
+
 
 export const getUpcomingEvents = groq`
   *[_type == "resource" && category=="upcoming_events"] | order(_createdAt desc) {
@@ -45,9 +51,17 @@ export const getWorkshopByCategory = groq`
 
 export const getPreviousEvents = groq`
 *[_type=="events" && type=="previous_events"] | order(_createdAt desc){
-  _id, _createdAt, category, date, description, event_organizer, gallery, location, title
+  _id, _createdAt, category, date, description, event_organizer, gallery, location, title, type
 }
 `;
+
+export const getEventsByType = groq`
+*[_type=="events" && type==$eventType] | order(_createdAt desc){
+  _id, _createdAt, category, date, description, event_organizer, gallery, location, title, type
+}
+`;
+
+
 
 export const getS4Workshops = groq`
   *[_type=="workshops" && workshop_group=="senior_4"] | order(_createdAt desc) {

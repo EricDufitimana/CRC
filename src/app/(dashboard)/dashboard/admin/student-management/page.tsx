@@ -14,8 +14,11 @@ import { Textarea } from "../../../../../../zenith/src/components/ui/textarea";
 import { Checkbox } from "../../../../../../zenith/src/components/ui/checkbox";
 import { ChevronDown } from "lucide-react";
 import MDEditor from '@uiw/react-md-editor';
-import { sendBulkEmails } from "@/actions/sendBulkEmails";
+import { sendBulkEmails } from "@/actions/emails/sendBulkEmails";
 import MarkdownIt from 'markdown-it';
+import { showToastPromise } from "@/components/toasts/ToastPromise";
+import { showToastSuccess } from "@/components/toasts/ToastSuccess";
+import { showToastError } from "@/components/toasts/ToastError";
 
 export default function StudentManagement() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -37,6 +40,8 @@ export default function StudentManagement() {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(15);
+  
+
 
   // Filter students based on search term and filters
   const filteredStudents = students.filter(student => {
@@ -230,8 +235,29 @@ export default function StudentManagement() {
     e.preventDefault();
     setState(prev => ({ ...prev, isPending: true }));
     const formData = new FormData(e.currentTarget);
-    const result = await handleSendEmail(state, formData);
-    setState({ ...result, isPending: false });
+    
+    // Create a promise for the email sending operation
+    const emailPromise = handleSendEmail(state, formData);
+    
+    // Show promise toast
+    showToastPromise({
+      promise: emailPromise,
+      loadingText: "Sending emails...",
+      successText: "Emails sent successfully!",
+      errorText: "Failed to send emails. Please try again.",
+      direction: 'right'
+    });
+    
+    try {
+      const result = await emailPromise;
+      setState({ ...result, isPending: false });
+    } catch (error) {
+      setState({ 
+        success: false, 
+        message: "Failed to send emails", 
+        isPending: false 
+      });
+    }
   };
 
   // Clear form when email is sent successfully
@@ -276,8 +302,8 @@ export default function StudentManagement() {
       <div className="space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-4xl font-bold font-cal-sans text-gray-800 mb-3">Student Management</h1>
-          <p className="text-md text-gray-600 ">
+          <h1 className="text-4xl font-bold font-cal-sans mb-3 transition-colors duration-300 text-gray-800 dark:text-white">Student Management</h1>
+          <p className="text-md transition-colors duration-300 text-gray-600 dark:text-gray-300">
             Manage student records, grades, and communications
           </p>
         </div>
@@ -287,56 +313,67 @@ export default function StudentManagement() {
           {/* Search Bar and Save Button Row */}
           <div className="flex gap-3 items-center">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 transition-colors duration-300 text-gray-400 dark:text-gray-500" />
               <Input
                 placeholder="Search students by name..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-10 bg-white/80 border-gray-300"
+                className="pl-10 pr-10 transition-colors duration-300 focus-visible:ring-2 focus-visible:ring-offset-2 bg-white/80 border-gray-300 text-gray-900 placeholder:text-gray-500 focus-visible:ring-black dark:bg-gray-800/80 dark:border-gray-600 dark:text-white dark:placeholder:text-gray-400 dark:focus-visible:ring-white"
               />
               {searchTerm && (
                 <button
                   onClick={() => setSearchTerm("")}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 hover:text-gray-600 cursor-pointer"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 transition-colors duration-300 cursor-pointer text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
                 >
                   <X className="h-4 w-4" />
                 </button>
               )}
             </div>
             
-            {/* Save Button with Hover Tooltip */}
-            <div className="relative">
-              <Button 
-                onClick={handleSaveSelection}
-                disabled={selectedStudents.length === 0}
-                className="bg-black hover:bg-gray-800 text-white shadow-lg whitespace-nowrap"
-              >
-                Save ({selectedStudents.length})
-              </Button>
-              
-              {/* Saved Selections Tooltip - Appears on hover when there are saved selections */}
-              {savedSelections.length > 0 && (
-                <div className="absolute bottom-full mb-2 right-0 bg-blue-50 border border-blue-200 rounded-lg p-3 shadow-lg z-50 min-w-max">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                      <span className="text-sm font-medium text-blue-800">
-                        Saved: {savedSelections.length} students
-                      </span>
+            {/* Save and Clear Buttons */}
+            <div className="flex gap-2">
+              <div className="relative">
+                <Button 
+                  onClick={handleSaveSelection}
+                  disabled={selectedStudents.length === 0}
+                  className="bg-black hover:bg-gray-800 text-white shadow-lg whitespace-nowrap shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition duration-200"
+                >
+                  Save ({selectedStudents.length})
+                </Button>
+                
+                {/* Saved Selections Tooltip - Appears on hover when there are saved selections */}
+                {savedSelections.length > 0 && (
+                  <div className="absolute bottom-full mb-2 right-0 bg-blue-50 border border-blue-200 rounded-lg p-3 shadow-lg z-50 min-w-max">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        <span className="text-sm font-medium text-blue-800">
+                          Saved: {savedSelections.length} students
+                        </span>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={handleClearSavedSelections}
+                        className="text-blue-600 hover:text-blue-700 h-6 px-2"
+                      >
+                        Clear
+                      </Button>
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={handleClearSavedSelections}
-                      className="text-blue-600 hover:text-blue-700 h-6 px-2"
-                    >
-                      Clear
-                    </Button>
+                    {/* Arrow pointing down to the button */}
+                    <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-blue-200"></div>
                   </div>
-                  {/* Arrow pointing down to the button */}
-                  <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-blue-200"></div>
-                </div>
-              )}
+                )}
+              </div>
+              
+              <Button 
+                onClick={() => setSelectedStudents([])}
+                disabled={selectedStudents.length === 0}
+                variant="outline"
+                className="transition-colors duration-300 border-gray-300 hover:bg-gray-50 text-gray-700 dark:border-gray-600 dark:hover:bg-gray-800 dark:text-gray-300 dark:hover:text-white"
+              >
+                Clear Selected
+              </Button>
             </div>
           </div>
           
@@ -344,7 +381,7 @@ export default function StudentManagement() {
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="w-full gap-2 justify-between bg-white/80 border-gray-300/80 hover:bg-white/90">
+                <Button variant="outline" className="w-full gap-2 justify-between bg-white/80 border-gray-300/80 hover:bg-white/90 dark:bg-gray-800/80 dark:border-gray-600/80 dark:hover:bg-gray-700/90">
                   <span className="hidden sm:inline">Grade</span>
                   <span className="sm:hidden">Grade</span>
                   {filters.grade.length > 0 && (
@@ -404,7 +441,7 @@ export default function StudentManagement() {
 
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="w-full gap-2 justify-between bg-white/80 border-gray-300/80">
+                <Button variant="outline" className="w-full gap-2 justify-between bg-white/80 border-gray-300/80 dark:bg-gray-800/80 dark:border-gray-600/80">
                   <span className="hidden sm:inline">Major</span>
                   <span className="sm:hidden">Major</span>
                   {filters.major.length > 0 && (
@@ -464,7 +501,7 @@ export default function StudentManagement() {
 
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="w-full gap-2 justify-between bg-white/80 border-gray-300/80">
+                <Button variant="outline" className="w-full gap-2 justify-between bg-white/80 border-gray-300/80 dark:bg-gray-800/80 dark:border-gray-600/80">
                   <span className="hidden sm:inline">GPA</span>
                   <span className="sm:hidden">GPA</span>
                   {filters.gpa.length > 0 && (
@@ -524,7 +561,7 @@ export default function StudentManagement() {
 
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="w-full gap-2 justify-between bg-white/80 border-gray-300/80">
+                <Button variant="outline" className="w-full gap-2 justify-between bg-white/80 border-gray-300/80 dark:bg-gray-800/80 dark:border-gray-600/80">
                   <span className="hidden sm:inline">CRC Class</span>
                   <span className="sm:hidden">CRC</span>
                   {filters.crcClass.length > 0 && (
@@ -594,9 +631,30 @@ export default function StudentManagement() {
               <DialogTrigger asChild>
                 <Button 
                   variant="outline" 
-                  className="w-full gap-2 bg-white/80 border-gray-300/80" 
+                  className="w-full gap-2 bg-white/80 border-gray-300/80 dark:bg-gray-800/80 dark:border-gray-600/80" 
                   disabled={totalSelections === 0 || state.isPending}
-                  onClick={() => setIsEmailDialogOpen(true)}
+                  onClick={() => {
+                    // Check if any selected students don't have emails
+                    const studentsWithoutEmails = selectedStudents.filter(student => !student.email || student.email.trim() === '');
+                    
+                    if (studentsWithoutEmails.length > 0) {
+                      // Show error toast for students without emails
+                      const studentNames = studentsWithoutEmails.map(student => {
+                        const fullStudent = students.find(s => s.id === student.id);
+                        return fullStudent?.full_name || `Student ${student.id}`;
+                      }).join(', ');
+                      
+                      showToastError({
+                        headerText: "Selected students missing emails",
+                        paragraphText: `${studentNames}`,
+                        direction: 'right'
+                      });
+                      return;
+                    }
+                    
+                    // If all students have emails, open the dialog
+                    setIsEmailDialogOpen(true);
+                  }}
                 >
                   {state.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -625,6 +683,7 @@ export default function StudentManagement() {
                         value={emailSubject} 
                         onChange={e => setEmailSubject(e.target.value)} 
                         placeholder="Enter email subject" 
+                        className="focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 rounded-xl"
                         required
                       />
                     </div>
@@ -638,11 +697,12 @@ export default function StudentManagement() {
                       <MDEditor 
                         value={emailContent} 
                         onChange={(value) => setEmailContent(value || "")}
-                        preview="edit"
+                        preview="live"
                         height={300}
                         id='email-content' 
                         textareaProps={{
                           placeholder: "Enter email content...",
+                         
                         }}
                       />
                     </div>
@@ -651,14 +711,23 @@ export default function StudentManagement() {
                         variant="outline" 
                         type="button" 
                         onClick={handleCloseEmailDialog}
+                        className="rounded-xl"
                       >
                         Cancel
                       </Button>
                       <Button 
                         type="submit"
                         disabled={!emailSubject || !emailContent || state.isPending}
+                        className="text-white shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] rounded-xl transition duration-200"
                       >
-                        {state.isPending ? "Sending..." : "Send Email"}
+                        {state.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Sending...
+                          </>
+                        ) : (
+                          "Send Email"
+                        )}
                       </Button>
                     </div>
                   </div>
@@ -669,18 +738,20 @@ export default function StudentManagement() {
         </div>
         
         {/* Student Table */}
-        <div className="border border-gray-300/80 rounded-lg bg-white/80 backdrop-blur-sm">
+        <div className="border border-gray-300/80 rounded-lg bg-white/80 backdrop-blur-sm dark:border-gray-600/80 dark:bg-gray-800/80">
           <Table>
-            <TableHeader>
+            <TableHeader className="bg-white/80 dark:bg-gray-800/80">
               <TableRow>
-                <TableHead className="w-12 bg-white/80 rounded-2xl">
-                  <Checkbox checked={filteredStudents.length > 0 && selectedStudents.length === filteredStudents.length} onCheckedChange={handleSelectAll} className="border-black data-[state=checked]:text-white data-[state=checked]:border-white"/>
+                <TableHead className="w-12 bg-white/80 dark:bg-gray-800/80 rounded-2xl">
+                  <div className="flex items-center justify-center mr-2">
+                    <Checkbox checked={filteredStudents.length > 0 && selectedStudents.length === filteredStudents.length} onCheckedChange={handleSelectAll} className="border-black data-[state=checked]:text-white data-[state=checked]:border-white dark:border-gray-400"/>
+                  </div>
                 </TableHead>
-                <TableHead className="bg-white/80">Name</TableHead>
-                <TableHead className="bg-white/80">Grade</TableHead>
-                <TableHead className="bg-white/80">Major</TableHead>
-                <TableHead className="bg-white/80">GPA</TableHead>
-                <TableHead className="bg-white/80 rounded-2xl">View</TableHead>
+                <TableHead className="bg-white/80 dark:bg-gray-800/80 text-gray-600 dark:text-gray-300 pl-4">Name</TableHead>
+                <TableHead className="bg-white/80 dark:bg-gray-800/80 text-gray-600 dark:text-gray-300">Grade</TableHead>
+                <TableHead className="bg-white/80 dark:bg-gray-800/80 text-gray-600 dark:text-gray-300">Major</TableHead>
+                <TableHead className="bg-white/80 dark:bg-gray-800/80 text-gray-600 dark:text-gray-300">GPA</TableHead>
+                <TableHead className="bg-white/80 dark:bg-gray-800/80 rounded-2xl text-gray-600 dark:text-gray-300">View</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -688,28 +759,30 @@ export default function StudentManagement() {
                 // Loading skeleton for table rows only
                 Array.from({ length: 5 }).map((_, index) => (
                   <TableRow key={index}>
-                    <TableCell className="bg-white/80 rounded-2xl">
-                      <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
-                    </TableCell>
-                    <TableCell className="font-medium bg-white/80">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
-                        <div className="h-4 bg-gray-200 rounded w-32 animate-pulse"></div>
+                    <TableCell className="bg-white/80 dark:bg-gray-800/80 rounded-2xl">
+                      <div className="flex items-center justify-center ">
+                        <div className="w-4 h-4 bg-gray-200 dark:bg-gray-600 rounded animate-pulse"></div>
                       </div>
                     </TableCell>
-                    <TableCell className="bg-white/80">
-                      <div className="h-6 bg-gray-200 rounded w-20 animate-pulse"></div>
+                    <TableCell className="font-medium bg-white/80 dark:bg-gray-800/80">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-gray-200 dark:bg-gray-600 rounded-full animate-pulse"></div>
+                        <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-32 animate-pulse"></div>
+                      </div>
                     </TableCell>
-                    <TableCell className="bg-white/80">
-                      <div className="h-6 bg-gray-200 rounded w-12 animate-pulse"></div>
+                    <TableCell className="bg-white/80 dark:bg-gray-800/80">
+                      <div className="h-6 bg-gray-200 dark:bg-gray-600 rounded w-20 animate-pulse"></div>
                     </TableCell>
-                    <TableCell className="bg-white/80">
-                      <div className="h-6 bg-gray-200 rounded w-16 animate-pulse"></div>
+                    <TableCell className="bg-white/80 dark:bg-gray-800/80">
+                      <div className="h-6 bg-gray-200 dark:bg-gray-600 rounded w-12 animate-pulse"></div>
                     </TableCell>
-                    <TableCell className="bg-white/80 rounded-2xl">
+                    <TableCell className="bg-white/80 dark:bg-gray-800/80">
+                      <div className="h-6 bg-gray-200 dark:bg-gray-600 rounded w-16 animate-pulse"></div>
+                    </TableCell>
+                    <TableCell className="bg-white/80 dark:bg-gray-800/80 rounded-2xl">
                       <div className="flex gap-2">
-                        <div className="h-8 bg-gray-200 rounded w-16 animate-pulse"></div>
-                        <div className="h-8 bg-gray-200 rounded w-16 animate-pulse"></div>
+                        <div className="h-8 bg-gray-200 dark:bg-gray-600 rounded w-16 animate-pulse"></div>
+                        <div className="h-8 bg-gray-200 dark:bg-gray-600 rounded w-16 animate-pulse"></div>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -717,33 +790,35 @@ export default function StudentManagement() {
               ) : (
                 paginatedStudents.map(student => (
                   <TableRow key={student.id}>
-                    <TableCell className="bg-white/80 rounded-2xl">
-                      <Checkbox checked={selectedStudents.some(s => s.id === student.id)} onCheckedChange={() => handleSelectStudent(student.id, student.email)} className="border-black data-[state=checked]:text-white data-[state=checked]:border-white"/>
-                    </TableCell>
-                    <TableCell className="font-medium bg-white/80">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                          <User className="h-4 w-4" />
-                        </div>
-                        {student.full_name}
+                    <TableCell className="bg-white/80 dark:bg-gray-800/80 rounded-2xl">
+                      <div className="flex items-center justify-center mr-2">
+                        <Checkbox checked={selectedStudents.some(s => s.id === student.id)} onCheckedChange={() => handleSelectStudent(student.id, student.email)} className="border-black data-[state=checked]:text-white data-[state=checked]:border-white dark:border-gray-400"/>
                       </div>
                     </TableCell>
-                    <TableCell className="bg-white/80">
+                    <TableCell className="font-medium bg-white/80 dark:bg-gray-800/80">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
+                          <User className="h-4 w-4" />
+                        </div>
+                        <span className="dark:text-white">{student.full_name}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="bg-white/80 dark:bg-gray-800/80">
                       <Badge variant="outline" className={getGradeColor(student.grade)}>{student.grade}</Badge>
                     </TableCell>
-                    <TableCell className="bg-white/80 ">{student.major_short}</TableCell>
-                    <TableCell className="bg-white/80">
-                      <Badge className={getGPAColor(student.gpa)}>
+                    <TableCell className="bg-white/80 dark:bg-gray-800/80 dark:text-white">{student.major_short}</TableCell>
+                    <TableCell className="bg-white/80 dark:bg-gray-800/80">
+                      <Badge className={`${getGPAColor(student.gpa)} text-xs`}>
                         {student.gpa}%
                       </Badge>
                     </TableCell>
-                    <TableCell className="bg-white/80 rounded-2xl">
+                    <TableCell className="bg-white/80 dark:bg-gray-800/80 rounded-2xl">
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm" className="gap-1">
+                        <Button variant="outline" size="sm" className="gap-1 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
                           <FileText className="h-3 w-3" />
                           Report
                         </Button>
-                        <Button variant="outline" size="sm" className="gap-1">
+                        <Button variant="outline" size="sm" className="gap-1 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
                           <Eye className="h-3 w-3" />
                           Resume
                         </Button>
@@ -759,10 +834,10 @@ export default function StudentManagement() {
         
         {/* Pagination Controls */}
         {!loading && filteredStudents.length > 0 && (
-          <div className="flex items-center justify-between px-4 py-3 bg-white/80 border border-gray-300/80 rounded-lg mt-4">
+          <div className="flex items-center justify-between px-4 py-3 bg-white/80 border border-gray-300/80 rounded-lg mt-4 dark:bg-gray-800/80 dark:border-gray-600/80">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">Rows per page:</span>
+                <span className="text-sm text-gray-600 dark:text-gray-300">Rows per page:</span>
                 <Select value={rowsPerPage.toString()} onValueChange={(value) => {
                   setRowsPerPage(parseInt(value));
                   setCurrentPage(1);
@@ -778,7 +853,7 @@ export default function StudentManagement() {
                   </SelectContent>
                 </Select>
               </div>
-              <span className="text-sm text-gray-600">
+              <span className="text-sm text-gray-600 dark:text-gray-300">
                 Showing {startIndex + 1} to {Math.min(endIndex, filteredStudents.length)} of {filteredStudents.length} results
               </span>
             </div>
@@ -835,7 +910,7 @@ export default function StudentManagement() {
         )}
         
         {!loading && filteredStudents.length === 0 && (
-          <div className="text-center py-8 text-gray-600">
+          <div className="text-center py-8 text-gray-600 dark:text-gray-300">
             {students.length === 0 ? "No students found." : "No students found matching your search criteria."}
           </div>
         )}

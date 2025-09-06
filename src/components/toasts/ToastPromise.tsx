@@ -8,19 +8,28 @@ interface ToastPromiseProps {
   loadingText: string;
   successText: string;
   errorText: string;
+  successHeaderText?: string;
+  errorHeaderText?: string;
+  direction?: 'left' | 'right';
 }
 
 export const showToastPromise = ({ 
   promise, 
   loadingText, 
   successText, 
-  errorText 
+  errorText,
+  successHeaderText = 'Success!',
+  errorHeaderText = 'Error',
+  direction = 'left'
 }: ToastPromiseProps) => {
+  const enterClass = direction === 'right' ? 'animate-custom-enter-right' : 'animate-custom-enter';
+  const leaveClass = direction === 'right' ? 'animate-custom-leave-right' : 'animate-custom-leave';
+
   // Show loading toast
   const loadingToast = toast.custom((t) => (
     <div
       className={`${
-        t.visible ? 'animate-custom-enter' : 'animate-custom-leave'
+        t.visible ? enterClass : leaveClass
       } bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-sm relative`}
     >
       {/* Content */}
@@ -50,14 +59,14 @@ export const showToastPromise = ({
       toast.custom((t) => (
         <div
           className={`${
-            t.visible ? 'animate-custom-enter' : 'animate-custom-leave'
+            t.visible ? enterClass : leaveClass
           } bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-sm relative`}
         >
           {/* Content */}
           <div className="flex items-center gap-3">
             <SuccessButton />
             <div>
-              <h4 className="text-gray-800 font-medium text-sm">Success!</h4>
+              <h4 className="text-gray-800 font-medium text-sm">{successHeaderText}</h4>
               <p className="text-gray-500 text-xs">{successText}</p>
             </div>
           </div>
@@ -80,14 +89,14 @@ export const showToastPromise = ({
       toast.custom((t) => (
         <div
           className={`${
-            t.visible ? 'animate-custom-enter' : 'animate-custom-leave'
+            t.visible ? enterClass : leaveClass
           } bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-sm relative`}
         >
           {/* Content */}
           <div className="flex items-center gap-3">
             <ErrorButton />
             <div>
-              <h4 className="text-gray-800 font-medium text-sm">Error</h4>
+              <h4 className="text-gray-800 font-medium text-sm">{errorHeaderText}</h4>
               <p className="text-gray-500 text-xs">{errorText}</p>
             </div>
           </div>

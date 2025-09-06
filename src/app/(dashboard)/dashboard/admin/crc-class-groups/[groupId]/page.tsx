@@ -8,7 +8,9 @@ import { Skeleton } from "../../../../../../../zenith/src/components/ui/skeleton
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../../../../../../zenith/src/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "../../../../../../../zenith/src/components/ui/alert-dialog";
 import { Checkbox } from "../../../../../../../zenith/src/components/ui/checkbox";
-import { Users, Plus, X, Check, ChevronDown, Loader2, ArrowLeft, AlertTriangle } from "lucide-react";
+import { Users, Plus, X, Check, ChevronDown, Loader2, ArrowLeft, AlertTriangle, Edit } from "lucide-react";
+import { updateClassName } from "@/actions/crc-classes/updateClassName";
+import { showToastSuccess, showToastError, showToastPromise } from "@/components/toasts";
 
 type Member = { id: string; student: { id: string; first_name: string | null; last_name: string | null; email: string | null } };
 
@@ -27,6 +29,11 @@ export default function CrcClassGroupDetailPage() {
   const [conflictStudents, setConflictStudents] = useState<any[]>([]);
   const [selectedToRemove, setSelectedToRemove] = useState<string[]>([]);
   const [isRemoving, setIsRemoving] = useState(false);
+  
+  // Edit class name state
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editingName, setEditingName] = useState("");
+  const [isSavingName, setIsSavingName] = useState(false);
 
   const fetchGroup = async () => {
     setLoading(true);
@@ -55,6 +62,54 @@ export default function CrcClassGroupDetailPage() {
   };
 
   useEffect(() => { if (groupId) { fetchGroup(); fetchStudents(); } }, [groupId]);
+
+  const startEditingName = () => {
+    setEditingName(group?.name || "");
+    setIsEditingName(true);
+  };
+
+  const saveClassName = async () => {
+    if (!editingName.trim() || editingName.trim() === group?.name) {
+      setIsEditingName(false);
+      return;
+    }
+
+    setIsSavingName(true);
+    
+    const updatePromise = (async () => {
+      const result = await updateClassName(groupId, editingName.trim());
+      
+      if (result.success) {
+        // Update local state
+        setGroup((prev: any) => prev ? { ...prev, name: editingName.trim() } : prev);
+        setIsEditingName(false);
+      }
+      return result;
+    })();
+
+    showToastPromise({
+      promise: updatePromise,
+      loadingText: 'Updating class name...',
+      successText: 'Class name updated successfully',
+      successHeaderText: 'Success',
+      errorText: 'Failed to update class name',
+      errorHeaderText: 'Error',
+      direction: 'right'
+    });
+
+    try {
+      await updatePromise;
+    } catch (error: any) {
+      console.error("Error updating class name:", error);
+    } finally {
+      setIsSavingName(false);
+    }
+  };
+
+  const cancelEditingName = () => {
+    setIsEditingName(false);
+    setEditingName("");
+  };
 
   const availableStudents = useMemo(() => {
     // Debug: Check what crc_class_id values look like
@@ -169,7 +224,7 @@ export default function CrcClassGroupDetailPage() {
     if (selected.length === 0) return;
     setIsAssigning(true);
     
-    try {
+    const assignPromise = (async () => {
       // Check for conflicts first
       const canAssign = await checkForConflicts(selected);
       if (!canAssign) {
@@ -198,11 +253,31 @@ export default function CrcClassGroupDetailPage() {
       setSelected([]);
 
       // Proceed with assignment in background
-      await fetch("/api/admin/crc-classes", {
+      const response = await fetch("/api/admin/crc-classes", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: groupId, student_ids_to_add: selectedIds }),
       });
+      
+      if (!response.ok) {
+        throw new Error("Failed to assign students");
+      }
+      
+      return { success: true, count: selectedIds.length };
+    })();
+
+    showToastPromise({
+      promise: assignPromise,
+      loadingText: 'Adding students to class...',
+      successText: `${selected.length} student(s) have been added to the class.`,
+      successHeaderText: 'Students Added Successfully',
+      errorText: 'Failed to add students to class. Please try again.',
+      errorHeaderText: 'Student Assignment Failed',
+      direction: 'right'
+    });
+
+    try {
+      await assignPromise;
     } catch (error) {
       console.error("Error assigning students:", error);
       // On error, refetch to restore correct state
@@ -251,7 +326,7 @@ export default function CrcClassGroupDetailPage() {
     if (selectedToRemove.length === 0) return;
     setIsRemoving(true);
     
-    try {
+    const removePromise = (async () => {
       // Save IDs before clearing
       const idsToRemove = [...selectedToRemove];
       
@@ -272,11 +347,31 @@ export default function CrcClassGroupDetailPage() {
       setSelectedToRemove([]);
 
       // API call in background
-      await fetch("/api/admin/crc-classes", {
+      const response = await fetch("/api/admin/crc-classes", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: groupId, student_ids_to_remove: idsToRemove }),
       });
+      
+      if (!response.ok) {
+        throw new Error("Failed to remove students");
+      }
+      
+      return { success: true, count: idsToRemove.length };
+    })();
+
+    showToastPromise({
+      promise: removePromise,
+      loadingText: 'Removing students from class...',
+      successText: `${selectedToRemove.length} student(s) have been removed from the class.`,
+      successHeaderText: 'Students Removed Successfully',
+      errorText: 'Failed to remove students from class. Please try again.',
+      errorHeaderText: 'Student Removal Failed',
+      direction: 'right'
+    });
+
+    try {
+      await removePromise;
     } catch (error) {
       console.error("Error removing students:", error);
       // On error, refetch to restore correct state
@@ -371,7 +466,56 @@ export default function CrcClassGroupDetailPage() {
               <span className="text-sm">Back to Classes</span>
             </div>
             <div>
-              <h1 className="text-2xl font-bold">{group.name}</h1>
+              {isEditingName ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={editingName}
+                    onChange={(e) => setEditingName(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        saveClassName();
+                      } else if (e.key === 'Escape') {
+                        cancelEditingName();
+                      }
+                    }}
+                    className="text-2xl font-bold h-10"
+                    autoFocus
+                  />
+                  <Button
+                    size="sm"
+                    onClick={saveClassName}
+                    disabled={isSavingName}
+                    className="h-8 text-white"
+                  >
+                    {isSavingName ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Check className="h-4 w-4" />
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={cancelEditingName}
+                    disabled={isSavingName}
+                    className="h-8"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl font-bold">{group.name}</h1>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={startEditingName}
+                    className="h-8 w-8 p-0"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
               <p className="text-neutral-600">Created by {group.created_by_name}</p>
             </div>
           </div>

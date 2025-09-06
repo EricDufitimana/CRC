@@ -5,6 +5,93 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Performance-optimized animations */
+@keyframes subtle-float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes hero-slide-up {
+  0% {
+    opacity: 0;
+    transform: translateY(60px);
+  }
+  60% {
+    opacity: 0.8;
+    transform: translateY(-5px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInFallback {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.hero-slide-up {
+  animation: hero-slide-up 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+/* Hardware acceleration for smooth animations */
+.will-change-transform {
+  will-change: transform;
+}
+
+.will-change-opacity {
+  will-change: opacity;
+}
+
+/* Framer Motion-style smooth animations */
+.slide-up-smooth {
+  transition: 
+    opacity 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  will-change: transform, opacity;
+}
+
+
+
+/* Reduce motion for accessibility and performance */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .subtle-float,
+  .hero-slide-up,
+  .slide-up-smooth {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
 body {
   font-family: "Inter", sans-serif;
 }
@@ -261,6 +348,29 @@ body {
   }
 }
 
+/* Custom right slide animations */
+@keyframes custom-enter-right {
+  from {
+    transform: translateX(150%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes custom-leave-right {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(150%);
+    opacity: 0;
+  }
+}
+
 /* Apply custom animations */
 .animate-custom-enter {
   animation: custom-enter 0.3s ease-out;
@@ -268,6 +378,60 @@ body {
 
 .animate-custom-leave {
   animation: custom-leave 0.3s ease-in forwards;
+}
+
+.animate-custom-enter-right {
+  animation: custom-enter-right 0.3s ease-out;
+}
+
+.animate-custom-leave-right {
+  animation: custom-leave-right 0.3s ease-in forwards;
+}
+
+/* Right slide animations for toasts */
+@keyframes slide-in-right {
+  from {
+    transform: translateX(150%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-out-right {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+/* Slide in from top animation for testing */
+@keyframes slide-in-top {
+  from {
+    transform: translateY(-150%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-out-top {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-150%);
+    opacity: 0;
+  }
 }
 @keyframes drawLine1 {
   0% {
@@ -312,33 +476,358 @@ body {
 }
 
 /* Toast animations - target react-hot-toast elements directly */
+/* Note: These are commented out to allow custom animations from the Toaster component */
+/*
 [data-sonner-toaster] > div,
 [data-sonner-toaster] > div > div {
   animation: slide-in-left 0.3s ease-out !important;
 }
 
-/* Alternative selectors for react-hot-toast */
+Alternative selectors for react-hot-toast
 div[role="status"] {
   animation: slide-in-left 0.3s ease-out !important;
 }
 
-/* Target the toast container */
+Target the toast container
 div[data-testid="toast"] {
   animation: slide-in-left 0.3s ease-out !important;
 }
 
-/* Exit animations for toasts */
+Exit animations for toasts
 div[data-testid="toast"][style*="transform: translateX(-100%)"],
 div[role="status"][style*="transform: translateX(-100%)"] {
   animation: slide-out-left 0.3s ease-in !important;
 }
 
-/* Force left slide animations on react-hot-toast */
+Force left slide animations on react-hot-toast
 div[class*="react-hot-toast"] {
   animation: slide-in-left 0.3s ease-out !important;
 }
 
-/* Handle exit animations for react-hot-toast */
+Handle exit animations for react-hot-toast
 div[class*="react-hot-toast"][style*="transform: translateX(-100%)"] {
   animation: slide-out-left 0.3s ease-in !important;
+}
+*/
+
+/* Fix for MDEditor webkit-text-fill-color transparency issue */
+[data-color-mode="light"] .w-md-editor-text-input {
+  -webkit-text-fill-color: var(--color-fg-default, #24292f) !important;
+}
+
+/* Define missing CSS variables for MDEditor in light mode */
+[data-color-mode="light"] {
+  --color-fg-default: #24292f;
+  --color-fg-muted: #57606a;
+  --color-fg-subtle: #6e7781;
+  --color-canvas-default: #ffffff;
+  --color-canvas-subtle: #f6f8fa;
+  --color-border-default: #d0d7de;
+  --color-neutral-muted: #afb8c1;
+}
+
+/* Ensure MDEditor respects light mode even in app dark mode */
+.dark [data-color-mode="light"] {
+  --color-fg-default: #24292f !important;
+  --color-fg-muted: #57606a !important;
+  --color-fg-subtle: #6e7781 !important;
+  --color-canvas-default: #ffffff !important;
+  --color-canvas-subtle: #f6f8fa !important;
+  --color-border-default: #d0d7de !important;
+  --color-neutral-muted: #afb8c1 !important;
+}
+
+.dark [data-color-mode="light"] .w-md-editor-text-input {
+  -webkit-text-fill-color: #24292f !important;
+  color: #24292f !important;
+}
+
+/* Hide the gray syntax highlighting content but keep the container structure */
+[data-color-mode="light"] .w-md-editor-text-pre {
+  color: transparent !important;
+}
+
+[data-color-mode="light"] .w-md-editor-text-pre * {
+  color: transparent !important;
+  opacity: 0 !important;
+}
+
+.dark [data-color-mode="light"] .w-md-editor-text-pre {
+  color: transparent !important;
+}
+
+.dark [data-color-mode="light"] .w-md-editor-text-pre * {
+  color: transparent !important;
+  opacity: 0 !important;
+}
+
+/* Ensure proper text containment in split view */
+[data-color-mode="light"] .w-md-editor-text {
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+[data-color-mode="light"] .w-md-editor-text-input {
+  word-wrap: break-word !important;
+  word-break: break-word !important;
+  white-space: pre-wrap !important;
+  overflow-wrap: break-word !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  resize: none !important;
+}
+
+/* Force proper width constraints in split view */
+[data-color-mode="light"] .w-md-editor-input {
+  width: 50% !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+
+[data-color-mode="light"] .w-md-editor-text-container,
+[data-color-mode="light"] .w-md-editor-text-area {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+
+/* Ensure text area respects container bounds */
+[data-color-mode="light"] .w-md-editor-text-input,
+[data-color-mode="light"] .w-md-editor-text-pre {
+  padding: 10px !important;
+  margin: 0 !important;
+  border: 0 !important;
+  width: calc(100% - 20px) !important;
+  max-width: calc(100% - 20px) !important;
+}
+
+/* Additional constraints for better text wrapping */
+[data-color-mode="light"] .w-md-editor-text-input {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace !important;
+  line-height: 1.5 !important;
+  tab-size: 2 !important;
+}
+
+/* Ensure the wrapper container properly constrains width */
+[data-color-mode="light"] .w-md-editor.w-md-editor-live .w-md-editor-input {
+  width: 50% !important;
+  min-width: 0 !important;
+}
+
+[data-color-mode="light"] .w-md-editor.w-md-editor-live .w-md-editor-preview {
+  width: 50% !important;
+  left: 50% !important;
+}
+
+/* Force text to stay within bounds */
+[data-color-mode="light"] .w-md-editor-text-input {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+/* Lexical Editor Styles */
+.lexical-editor-container {
+  position: relative;
+}
+
+.lexical-editor-inner {
+  position: relative;
+}
+
+.lexical-content-editable {
+  background: white;
+  color: #1f2937;
+}
+
+.lexical-content-editable:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+.lexical-placeholder {
+  user-select: none;
+  position: absolute !important;
+  top: 12px !important;
+  left: 12px !important;
+  pointer-events: none !important;
+}
+
+/* Ensure placeholder is positioned relative to the content editable area */
+.lexical-content-editable {
+  position: relative;
+}
+
+/* Dark mode support for Lexical editor */
+.dark .lexical-content-editable {
+  background: #1f2937;
+  color: #f9fafb;
+  border-color: #374151;
+}
+
+.dark .lexical-placeholder {
+  color: #6b7280;
+}
+
+.dark .lexical-content-editable:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+/* Lexical Toolbar Styles */
+.lexical-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-bottom: none;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  background: #f9fafb;
+}
+
+.toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toolbar-btn:hover {
+  background: #e5e7eb;
+  color: #1f2937;
+}
+
+.toolbar-btn:active {
+  background: #d1d5db;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: #d1d5db;
+  margin: 0 4px;
+}
+
+/* Dark mode toolbar styles */
+.dark .lexical-toolbar {
+  background: #374151;
+  border-color: #4b5563;
+}
+
+.dark .toolbar-btn {
+  color: #d1d5db;
+}
+
+.dark .toolbar-btn:hover {
+  background: #4b5563;
+  color: #f9fafb;
+}
+
+.dark .toolbar-btn:active {
+  background: #6b7280;
+}
+
+.dark .toolbar-divider {
+  background: #6b7280;
+}
+
+/* Rich text styling within the editor */
+.lexical-content-editable h1 {
+  font-size: 2em;
+  font-weight: bold;
+  margin: 0.67em 0;
+}
+
+.lexical-content-editable h2 {
+  font-size: 1.5em;
+  font-weight: bold;
+  margin: 0.75em 0;
+}
+
+.lexical-content-editable h3 {
+  font-size: 1.17em;
+  font-weight: bold;
+  margin: 0.83em 0;
+}
+
+.lexical-content-editable blockquote {
+  border-left: 4px solid #d1d5db;
+  padding-left: 16px;
+  margin: 16px 0;
+  color: #6b7280;
+  font-style: italic;
+}
+
+.lexical-content-editable ul {
+  list-style-type: disc;
+  margin: 16px 0;
+  padding-left: 32px;
+}
+
+.lexical-content-editable ol {
+  list-style-type: decimal;
+  margin: 16px 0;
+  padding-left: 32px;
+}
+
+.lexical-content-editable li {
+  margin: 4px 0;
+}
+
+.lexical-content-editable strong {
+  font-weight: bold;
+}
+
+.lexical-content-editable em {
+  font-style: italic;
+}
+
+.lexical-content-editable u {
+  text-decoration: underline;
+}
+
+/* Dark mode rich text styling */
+.dark .lexical-content-editable blockquote {
+  border-left-color: #4b5563;
+  color: #9ca3af;
+}
+
+/* Link styling in Lexical editor */
+.lexical-content-editable a {
+  color: #3b82f6;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.lexical-content-editable a:hover {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+/* Image styling in Lexical editor */
+.lexical-content-editable img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin: 8px 0;
+  display: block;
+}
+
+/* Dark mode link and image styling */
+.dark .lexical-content-editable a {
+  color: #60a5fa;
+}
+
+.dark .lexical-content-editable a:hover {
+  color: #93c5fd;
 }

@@ -59,6 +59,8 @@ const config: any = {
           6: '#F2EDD1',
           7: '#BBDCE5',
           8: '#F78D60',
+          9: '#F97A00',
+          10: '#FED16A',
         },
         card: {
           DEFAULT: 'hsl(var(--card))',

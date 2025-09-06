@@ -16,7 +16,7 @@ export default function ErrorButton({ onClick, className = "" }: ErrorButtonProp
                 scale: { type: "spring", visualDuration: 0.4, bounce: 0.3, delay: 0.05 },
             }}
             onClick={onClick}
-            className={`w-8 h-8 rounded-full bg-red-100 hover:bg-red-200 flex items-center justify-center transition-colors duration-200 relative ${className}`}
+            className={`w-8 h-8 rounded-full bg-red-100 hover:bg-red-200 flex items-center justify-center transition-colors duration-200 relative flex-shrink-0 ${className}`}
         >
             {/* First X line - flows from top-left to bottom-right */}
             <motion.svg 

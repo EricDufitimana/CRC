@@ -4,24 +4,12 @@ import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ChevronLeft, User, Shield, ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { sendWelcomeEmail } from "@/utils/sendWelcomeEmail";
-import { useUserData } from "@/hooks/useUserData";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { showToastSuccess, showToastError } from "@/components/toasts";
-import { Toaster } from "react-hot-toast";
 
 export default function SignInForm() {
-  const {userId} = useUserData();
   const searchParams = useSearchParams();
   const toastShownRef = useRef(false);
-
-  if(!userId){
-    console.log("No user ID found");
-  }
-  else{
-    console.log(userId);
-  }
 
   // Check for success/error messages from registration - run once on component mount
   useEffect(() => {
@@ -84,20 +72,6 @@ export default function SignInForm() {
     }
   }, [searchParams]);
 
-  useEffect(() => {
-    if (!userId) return;
-    
-    const handleWelcomeEmail = async() => {
-      try{
-        await sendWelcomeEmail(userId);
-      } catch (error) {
-        console.error("Error sending welcome email:", error);
-      }
-    }
-    handleWelcomeEmail();
-  },[userId]);
-
-  
   return (
     <div className="flex flex-col flex-1 w-full overflow-y-auto lg:w-1/2 no-scrollbar py-4">
       <div className="w-full max-w-md mx-auto mb-5 sm:pt-10">

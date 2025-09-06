@@ -35,14 +35,16 @@ export async function GET(request) {
           select: {
             first_name: true,
             last_name: true,
-            honorific: true
+            honorific: true,
+            email: true
           }
         },
         students: {
           select: {
             first_name: true,
             last_name: true,
-            grade: true
+            grade: true,
+            email: true
           }
         }
       },
@@ -82,6 +84,8 @@ export async function GET(request) {
         completed_at: request.completed_at,
         admin_name: adminName || 'Unknown',
         student_name: studentName || 'Unknown',
+        admin_email: request.admin?.email || null,
+        student_email: request.students?.email || null,
         status: request.status,
         grade: request.students?.grade ? request.students.grade.replace(/_/g, ' ') : null,
         referred: request.referred || false

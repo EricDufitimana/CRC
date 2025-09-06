@@ -7,6 +7,8 @@ import Image from "next/image";
 import { EventCard, EventDetailsModal } from "@/components/Events";
 import { useState, useEffect } from "react";
 import EventsNotificationBanner from "@/components/Banner/EventsNotificationBanner";
+import MultipleAnnouncementsBanner from "@/components/Banner/MultipleAnnouncementsBanner";
+import SectionTitle from "@/components/Common/SectionTitle";
 
 // Type definition based on Sanity schema
 type Event = {
@@ -48,12 +50,6 @@ type Event = {
   };
 }
 // Hero section image grid data
-const heroImages = [
-  "/images/blog/article-author-01.png",
-  "/images/blog/article-author-02.png", 
-  "/images/blog/article-author-03.png",
-  "/images/blog/article-author-04.png"
-];
 
 export default function UpcomingEventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -104,6 +100,9 @@ export default function UpcomingEventsPage() {
         {/* Bleed Effect Background */}
         <div className="absolute inset-0 bg-gradient-to-r from-orange-100/30 via-transparent to-orange-200/20"></div>
         
+        {/* Zigzag circle positioned at screen edge */}
+        
+        
         <div className="container mx-auto px-4 py-20 lg:py-32">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Left Column - Text Content */}
@@ -126,35 +125,18 @@ export default function UpcomingEventsPage() {
               
             </div>
             
-            {/* Right Column - Image Grid */}
+            {/* Right Column - Image */}
             <div className="relative">
-              {/* Decorative Elements */}
-              <div className="absolute -top-4 -right-4 w-24 h-24 bg-orange-200/30 rounded-full blur-xl"></div>
-              <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-orange-300/20 rounded-full blur-xl"></div>
-              
-              {/* Image Grid */}
-              <div className="grid grid-cols-2 gap-4 relative z-10">
-                {heroImages.map((image, index) => (
-                  <div key={index} className="relative group">
-                    <div className="aspect-square rounded-lg overflow-hidden border-2 border-white shadow-lg group-hover:shadow-xl transition-all duration-300">
-                      <Image
-                        src={image}
-                        alt={`Event preview ${index + 1}`}
-                        width={200}
-                        height={200}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    {/* Hover overlay */}
-                    <div className="absolute inset-0 bg-orange-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
-                  </div>
-                ))}
-              </div>
-              
-              {/* Decorative Lines */}
-              <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
-                <div className="absolute top-4 left-4 w-16 h-1 bg-orange-300/40 rounded-full"></div>
-                <div className="absolute bottom-8 right-8 w-12 h-1 bg-orange-400/40 rounded-full"></div>
+              <div className="relative">
+                <div className="w-full h-[38rem] relative">
+                  <Image
+                    src={"/images/events/upcoming-events.svg"}
+                    alt={`Upcoming events illustration`}
+                    fill
+                    priority
+                    className="object-contain"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -169,19 +151,18 @@ export default function UpcomingEventsPage() {
         <div className="container mx-auto px-4 relative z-10">
           <Card className="mx-4 p-8 bg-white/90 backdrop-blur-sm shadow-lg border-0">
             {/* Section Header */}
-            <div className="text-center mb-16">
-              <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
-                Featured Upcoming Events
-              </h2>
-              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                Get ready for our most exciting gatherings—discover what's coming up and mark your calendar.
-              </p>
+            <div className="mb-16">
+              <SectionTitle
+                title="Featured Upcoming Events"
+                paragraph="Get ready for our most exciting gatherings—discover what's coming up and mark your calendar."
+                center={true}
+              />
             </div>
             
-            <EventsNotificationBanner page="upcoming_events" />
+            <MultipleAnnouncementsBanner page="upcoming_events" theme="orange" maxAnnouncements={3} />
             
             {/* Event Cards Grid */}
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-12">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-12 mt-8">
               {loading ? (
                 <div className="col-span-full text-center py-16">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
@@ -209,7 +190,13 @@ export default function UpcomingEventsPage() {
                 events.map((event) => (
                   <EventCard
                     key={event._id}
-                    event={event}
+                    event={{
+                      ...event,
+                      event_organizer: event.event_organizer ? {
+                        ...event.event_organizer,
+                        image: event.event_organizer.image?.asset?.url
+                      } : undefined
+                    }}
                   />
                 ))
               ) : (

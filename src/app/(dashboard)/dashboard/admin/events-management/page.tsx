@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useActionState, useTransition } from "react";
+import { useState, useEffect, useActionState, useTransition, startTransition } from "react";
 import { Button } from "../../../../../../zenith/src/components/ui/button";
 import { Input } from "../../../../../../zenith/src/components/ui/input";
 import { Label } from "../../../../../../zenith/src/components/ui/label";
@@ -17,15 +17,26 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../../../../../../zenith/src/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../../../../../zenith/src/components/ui/select";
 import { Plus, Edit, Trash2, Calendar, MapPin, Users, Image as ImageIcon } from "lucide-react";
 import { format } from "date-fns";
 import { urlFor } from "@/sanity/lib/image";
 import Image from "next/image";
 import { FileUpload } from "../../../../../../zenith/src/components/ui/file-upload";
 import MDEditor from '@uiw/react-md-editor';
-import { addEvent, updateEvent, deleteEvent } from "@/lib/action";
-import { uploadImages } from "@/actions/gallery";
+import { addEvent, updateEvent, deleteEvent, fetchEventsByType } from "@/lib/action";
+import { showToastSuccess, showToastError, showToastPromise } from "@/components/toasts";
+
 import { Loader2 } from "lucide-react";
+import imageCompression from "browser-image-compression";
+import { useRouter, useSearchParams } from "next/navigation";
+import { z } from "zod";
 
 type SanityEvent = {
   _id: string;
@@ -53,7 +64,7 @@ type SanityEvent = {
 };
 
 const categories = [
-  { id: "previous-events", label: "Previous Events", icon: Calendar, color: "bg-green-100 text-green-900 border-green-200" },
+  { id: "previous-events", label: "Previous Events", icon: Calendar, color: "bg-orange-100 text-orange-900 border-orange-200" },
   { id: "upcoming-events", label: "Upcoming Events", icon: Calendar, color: "bg-orange-100 text-orange-900 border-orange-200" },
 ];
 
@@ -66,15 +77,37 @@ const eventCategories = [
   "other"
 ];
 
+// Validation schema for events
+const eventSchema = z.object({
+  title: z.string().min(1, "Title is required").max(60, "Title must be 60 characters or less"),
+  description: z.string().min(1, "Description is required").max(460, "Description must be 460 characters or less"),
+  date: z.string().min(1, "Date is required"),
+  location: z.string().min(1, "Location is required"),
+  category: z.string().min(1, "Category is required"),
+  type: z.string().min(1, "Event type is required"),
+  event_organizer_name: z.string().optional(),
+  event_organizer_role: z.string().optional(),
+  event_organizer_image: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+});
+
 export default function EventsManagement() {
-  const [selectedCategory, setSelectedCategory] = useState("previous-events");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // Get category from URL params or default to previous-events
+  const [selectedCategory, setSelectedCategory] = useState(() => {
+    const categoryFromUrl = searchParams.get('category');
+    return categoryFromUrl || "previous-events";
+  });
   const [events, setEvents] = useState<SanityEvent[]>([]);
   const [isAddEventOpen, setIsAddEventOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
   const [eventIdToDelete, setEventIdToDelete] = useState<string | null>(null);
+  const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [eventToEdit, setEventToEdit] = useState<SanityEvent | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [editForm, setEditForm] = useState({
     title: "",
     description: "",
@@ -90,18 +123,22 @@ export default function EventsManagement() {
   // Edit image upload states
   const [editSelectedImages, setEditSelectedImages] = useState<File[]>([]);
   const [editImagePreviewUrls, setEditImagePreviewUrls] = useState<string[]>([]);
+  const [editCurrentStep, setEditCurrentStep] = useState(1);
+  const [editExistingImages, setEditExistingImages] = useState<Array<{
+    _key: string;
+    _type: "image";
+    asset: {
+      _id: string;
+      url: string;
+    };
+    isHero?: boolean;
+  }>>([]);
 
-  // Form state for adding new events
+
+
+  // Form state for description
   const [form, setForm] = useState({
-    title: "",
-    description: "",
-    date: "",
-    location: "",
-    category: "",
-    type: "previous_events",
-    event_organizer_name: "",
-    event_organizer_role: "",
-    event_organizer_image: "",
+    description: ""
   });
 
   // Image upload states
@@ -112,130 +149,152 @@ export default function EventsManagement() {
   const [formError, setFormError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
 
-  const [state, formAction, isPending] = useActionState(addEvent, {error:"", status: "INITIAL"})
-  const [isUploading, startUploadTransition] = useTransition();
-  const [uploadedAssets, setUploadedAssets] = useState<any[]>([]);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
-  const [imageProcessingStatus, setImageProcessingStatus] = useState<Record<number, 'processing' | 'ready' | 'error'>>({});
+  // Step management
+  const [currentStep, setCurrentStep] = useState(1);
+  const [formData, setFormData] = useState({
+    type: "previous_events",
+    category: "",
+    title: "",
+    description: "",
+    date: "",
+    location: "",
+    event_organizer_name: "",
+    event_organizer_role: "",
+    event_organizer_image: "",
+  });
 
-  // Image upload handler using Cloudinary
-  const handleImageUploadAction = async (formData: FormData) => {
-    setUploadStatus('uploading');
-    setUploadProgress(0);
+  const [selectedHeroImage, setSelectedHeroImage] = useState<number>(0);
+  const [editSelectedHeroImage, setEditSelectedHeroImage] = useState<number>(0);
+
+  // Zod validation states
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [editValidationErrors, setEditValidationErrors] = useState<Record<string, string>>({});
+  const [isCreatingEvent, setIsCreatingEvent] = useState(false);
+
+  // Manage body scroll when dialogs are open
+  useEffect(() => {
+    if (isAddEventOpen || editDialogOpen || deleteConfirmationOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    // Cleanup function to restore scroll when component unmounts
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isAddEventOpen, editDialogOpen, deleteConfirmationOpen]);
+
+  // Image compression function
+  async function compressImage(file: File) {
+    if(!file) return null;
+    try{
+      console.log(`🔧 Compressing image: ${file.name} (${file.size} bytes)`);
+      const options = {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+      };
+
+      const compressedFile = await imageCompression(file, options);
+      console.log(`✅ Compression complete: ${file.name} - ${(file.size / 1024 / 1024).toFixed(2)}MB → ${(compressedFile.size / 1024 / 1024).toFixed(2)}MB`);
+      return compressedFile;
+    } catch (error) {
+      console.error(`❌ Compression failed for ${file.name}:`, error);
+      return null;
+    }
+  }
+
+
+
+  // Form submission handler for useActionState
+  const handleEventSubmission = async (prevState: any, formData: FormData) => {
+    console.log("🚀 Event submission started");
+    console.log("📦 Selected images count:", selectedImages.length);
+    console.log("🎯 Hero image index:", selectedHeroImage);
+    console.log("🎯 Hero image index type:", typeof selectedHeroImage);
     
-    startUploadTransition(async () => {
-      try {
-        console.log("🚀 Starting Cloudinary image upload...");
-        
-        // Simulate progress for better UX
-        const progressInterval = setInterval(() => {
-          setUploadProgress(prev => {
-            if (prev >= 90) {
-              clearInterval(progressInterval);
-              return prev;
-            }
-            return prev + 10;
-          });
-        }, 200);
-        
-        // Create event first to get eventId
-        const eventFormData = new FormData();
-        Object.entries(form).forEach(([key, value]) => {
-          if (value) eventFormData.append(key, value);
+    try {
+      // Validate form data before submission
+      const formValue = {
+        title: formData.get("title") as string,
+        description: form.description,
+        date: formData.get("date") as string,
+        location: formData.get("location") as string,
+        category: formData.get("category") as string,
+        type: formData.get("type") as string,
+        event_organizer_name: formData.get("event_organizer_name") as string,
+        event_organizer_role: formData.get("event_organizer_role") as string,
+        event_organizer_image: formData.get("event_organizer_image") as string,
+      };
+      
+      console.log("🔍 Form values for validation:", formValue);
+      
+      await eventSchema.parseAsync(formValue);
+      console.log("✅ Validation passed");
+      
+      // Add images if any are selected
+      if (selectedImages.length > 0) {
+        console.log("📤 Adding images to FormData...");
+        selectedImages.forEach((file, index) => {
+          console.log(`📤 Adding image ${index + 1}: ${file.name} (${file.size} bytes)`);
+          formData.append('images', file);
         });
-        
-        const eventResult = await addEvent(state, eventFormData);
-        
-        if (eventResult.status === "SUCCESS" && eventResult._id) {
-          console.log("✅ Event created successfully:", eventResult._id);
-          
-          // Now upload images to the event
-          const result = await uploadImages(formData, eventResult._id);
-          
-          clearInterval(progressInterval);
-          setUploadProgress(100);
-          
-          if (result.success) {
-            console.log("✅ Images uploaded successfully:", result.images);
-            setUploadedAssets(result.images || []);
-            setUploadStatus('success');
-            
-            // Reset progress after showing success
-            setTimeout(() => {
-              setUploadProgress(0);
-            }, 2000);
-            
-            // Close dialog and refresh events
-            setIsAddEventOpen(false);
-            fetchEvents(selectedCategory === "previous-events" ? "previous_events" : "upcoming_events");
-          } else {
-            console.error("❌ Image upload failed:", result.message);
-            setFormError(result.message || "Failed to upload images");
-            setUploadStatus('error');
-            setUploadProgress(0);
-          }
-        } else {
-          console.error("❌ Event creation failed:", eventResult.error);
-          setFormError(eventResult.error || "Failed to create event");
-          setUploadStatus('error');
-          setUploadProgress(0);
-        }
-      } catch (error) {
-        console.error("💥 Upload error:", error);
-        setFormError("Upload failed. Please try again.");
-        setUploadStatus('error');
-        setUploadProgress(0);
       }
-    });
-  };
-
-  // Form submission handler - now handled by handleImageUploadAction
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    
-    if (selectedImages.length === 0) {
-      // No images to upload, just create the event
-      const formData = new FormData(e.currentTarget);
-      const result = await addEvent(state, formData);
+      
+      // Add hero image index
+      console.log("🎯 Adding hero image index to FormData:", selectedHeroImage.toString());
+      formData.append('heroImageIndex', selectedHeroImage.toString());
+      
+      console.log("📞 Calling addEvent server action...");
+      let result;
+      try {
+        console.log("⏳ Starting server action call...");
+        result = await addEvent(prevState, formData);
+        console.log("📥 Server action result:", result);
+        console.log("📥 Result status:", result?.status);
+        console.log("📥 Result error:", result?.error);
+      } catch (error) {
+        console.error("💥 Server action error:", error);
+        throw error;
+      }
       
       if (result.status === "SUCCESS") {
         console.log("✅ Event added successfully");
         setIsAddEventOpen(false);
-        // Clear form
-        setForm({
-          title: "",
-          description: "",
-          date: "",
-          location: "",
-          category: "",
-          type: "previous_events",
-          event_organizer_name: "",
-          event_organizer_role: "",
-          event_organizer_image: "",
-        });
+        
+        // Reset form
+        resetForm();
+        
+        // Refresh events
         fetchEvents(selectedCategory === "previous-events" ? "previous_events" : "upcoming_events");
-      } else {
-        console.log("❌ Event addition failed:", result.error);
-        setFormError(result.error || "Failed to add event");
       }
-    } else {
-      // Images selected, use the Cloudinary upload flow
-      const formData = new FormData();
-      selectedImages.forEach((file, index) => {
-        formData.append('images', file);
-      });
-      handleImageUploadAction(formData);
+      
+      return result;
+    } catch (error) {
+      console.error("💥 Error adding event:", error);
+      
+      // Handle validation errors
+      if (error instanceof z.ZodError) {
+        const validationErrors: Record<string, string> = {};
+        error.errors.forEach((err) => {
+          if (err.path) {
+            validationErrors[err.path[0] as string] = err.message;
+          }
+        });
+        setValidationErrors(validationErrors);
+        
+        return { status: "ERROR", error: "Validation failed" };
+      }
+      
+      return { status: "ERROR", error: "Failed to add event. Please try again." };
     }
   };
 
-  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setForm(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
+  const [eventState, eventFormAction, isEventPending] = useActionState(handleEventSubmission, {
+    status: "INITIAL",
+    error: ""
+  });
 
   const handleEditFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -243,35 +302,6 @@ export default function EventsManagement() {
       ...prev,
       [name]: value
     }));
-  };
-
-  const handleImageUpload = (files: File[]) => {
-    console.log("🖼️ Images selected:", files.length);
-    
-    // Set processing status for each image
-    const processingStatus: Record<number, 'processing' | 'ready' | 'error'> = {};
-    files.forEach((_, index) => {
-      processingStatus[index] = 'processing';
-    });
-    setImageProcessingStatus(processingStatus);
-    
-    // Simulate image processing
-    setTimeout(() => {
-      setSelectedImages(files);
-      
-      // Create preview URLs
-      const urls = files.map(file => URL.createObjectURL(file));
-      setImagePreviewUrls(urls);
-      
-      // Mark images as ready
-      const readyStatus: Record<number, 'processing' | 'ready' | 'error'> = {};
-      files.forEach((_, index) => {
-        readyStatus[index] = 'ready';
-      });
-      setImageProcessingStatus(readyStatus);
-      
-      console.log("✅ Images processed and ready for upload");
-    }, 1000); // Simulate 1 second processing time
   };
 
   const removeImage = (index: number) => {
@@ -283,19 +313,8 @@ export default function EventsManagement() {
     setImagePreviewUrls(newUrls);
   };
 
-  const handleEventTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setForm(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    
-    // Clear images when switching event type
-    setSelectedImages([]);
-    setImagePreviewUrls([]);
-  };
-
   const handleEditImageUpload = (files: File[]) => {
+    console.log("🖼️ Edit images selected:", files.length);
     setEditSelectedImages(files);
     
     // Create preview URLs
@@ -312,6 +331,27 @@ export default function EventsManagement() {
     setEditImagePreviewUrls(newUrls);
   };
 
+  const removeExistingImage = (key: string) => {
+    console.log("🗑️ Removing existing image with key:", key);
+    setEditExistingImages(prev => {
+      const filtered = prev.filter(img => img._key !== key);
+      console.log("🖼️ Remaining images after deletion:", filtered.length);
+      return filtered;
+    });
+  };
+
+  const setExistingImageAsHero = (key: string) => {
+    console.log("👑 Setting image as hero with key:", key);
+    setEditExistingImages(prev => {
+      const updated = prev.map(img => ({
+        ...img,
+        isHero: img._key === key
+      }));
+      console.log("🖼️ Updated images with hero:", updated.map(img => ({ key: img._key, isHero: img.isHero })));
+      return updated;
+    });
+  };
+
   const handleEditEventTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const { name, value } = e.target;
     setEditForm(prev => ({
@@ -322,6 +362,7 @@ export default function EventsManagement() {
     // Clear images when switching event type
     setEditSelectedImages([]);
     setEditImagePreviewUrls([]);
+    setEditSelectedHeroImage(0);
   };
 
   const handleDeleteClick = (eventId: string) => {
@@ -329,11 +370,37 @@ export default function EventsManagement() {
     setDeleteConfirmationOpen(true);
   };
 
-  const handleDeleteConfirm = () => {
-    // TODO: Implement delete functionality
-    console.log("Deleting event:", eventIdToDelete);
-    setDeleteConfirmationOpen(false);
-    setEventIdToDelete(null);
+  const handleDeleteConfirm = async () => {
+    if (!eventIdToDelete) return;
+    
+    setDeletingEventId(eventIdToDelete);
+    
+    const deletePromise = (async () => {
+      try {
+        const result = await deleteEvent(eventIdToDelete);
+        if (result.status === "SUCCESS") {
+          console.log("Event deleted successfully");
+          await fetchEvents(selectedCategory);
+          return { success: true };
+        } else {
+          throw new Error(result.error || "Failed to delete event");
+        }
+      } finally {
+        setDeletingEventId(null);
+        setDeleteConfirmationOpen(false);
+        setEventIdToDelete(null);
+      }
+    })();
+
+    showToastPromise({
+      promise: deletePromise,
+      loadingText: 'Deleting event...',
+      successText: 'The event has been removed',
+      successHeaderText: 'Event Deleted Successfully',
+      errorText: 'We couldn\'t delete the event. Please try again or contact support.',
+      errorHeaderText: 'Failed To Delete Event',
+      direction: 'right'
+    });
   };
 
   const handleDeleteCancel = () => {
@@ -342,65 +409,496 @@ export default function EventsManagement() {
   };
 
   const handleEditClick = (event: SanityEvent) => {
-    setEventToEdit(event);
-    setEditForm({
+    console.log("🔧 ===== EDIT EVENT CLICKED =====");
+    console.log("📋 Full Event Object:", event);
+    console.log("🆔 Event ID:", event._id);
+    console.log("📝 Event Type:", event.type);
+    console.log("📅 Event Date:", event.date);
+    console.log("📍 Event Location:", event.location);
+    console.log("🏷️ Event Category:", event.category);
+    console.log("📖 Event Title:", event.title);
+    console.log("📄 Event Description:", event.description);
+    console.log("👤 Event Organizer:", event.event_organizer);
+    console.log("🖼️ Event Gallery:", event.gallery);
+    console.log("📸 Gallery Length:", event.gallery?.length || 0);
+    
+    if (event.gallery && event.gallery.length > 0) {
+      console.log("🖼️ Gallery Details:");
+      event.gallery.forEach((img, index) => {
+        console.log(`  Image ${index + 1}:`, {
+          _key: img._key,
+          _type: img._type,
+          isHero: img.isHero,
+          asset: img.asset
+        });
+      });
+    }
+    
+    if (event.event_organizer) {
+      console.log("👤 Organizer Details:", {
+        name: event.event_organizer.name,
+        role: event.event_organizer.role,
+        image: event.event_organizer.image
+      });
+    }
+    
+    console.log("🔧 ===== SETTING EDIT FORM =====");
+    // Use the actual event type from the database, fallback to determined type if not available
+    const eventType = event.type || (selectedCategory === "previous-events" ? "previous_events" : "upcoming_events");
+    console.log("🔧 Event type from database:", event.type);
+    console.log("🔧 Using event type:", eventType);
+    
+    const editFormData = {
       title: event.title,
       description: event.description,
       date: event.date,
       location: event.location,
       category: event.category,
-      type: event.type,
+      type: eventType, // Use actual type from database with fallback
       event_organizer_name: event.event_organizer?.name || "",
       event_organizer_role: event.event_organizer?.role || "",
       event_organizer_image: event.event_organizer?.image || "",
-    });
+    };
+    console.log("📝 Edit Form Data:", editFormData);
+    
+    setEventToEdit(event);
+    setEditForm(editFormData);
+    
+    // Set existing images
+    console.log("🖼️ Setting existing images:", event.gallery || []);
+    setEditExistingImages(event.gallery || []);
+    setEditSelectedImages([]);
+    setEditImagePreviewUrls([]);
+    setEditSelectedHeroImage(0);
+    setEditCurrentStep(1);
+    
+    console.log("✅ Edit dialog opening...");
     setEditDialogOpen(true);
+    console.log("🔧 ===== EDIT EVENT SETUP COMPLETE =====");
   };
 
   const handleEditSubmit = async () => {
-    // TODO: Implement edit functionality
-    console.log("Updating event:", eventToEdit?._id, editForm);
-    setEditDialogOpen(false);
-    setEventToEdit(null);
+    if (!eventToEdit) return;
+
+    setIsUpdating(true);
+
+    const updateEventPromise = (async () => {
+      try {
+        // Validate form data before submission
+        const formValue = {
+          title: editForm.title,
+          description: editForm.description,
+          date: editForm.date,
+          location: editForm.location,
+          category: editForm.category,
+          type: editForm.type,
+          event_organizer_name: editForm.event_organizer_name,
+          event_organizer_role: editForm.event_organizer_role,
+          event_organizer_image: editForm.event_organizer_image,
+        };
+        
+        await eventSchema.parseAsync(formValue);
+        
+        // Create FormData for the update
+        const formData = new FormData();
+        
+        // Add basic form fields
+        formData.append('eventId', eventToEdit._id);
+        formData.append('type', editForm.type);
+        formData.append('category', editForm.category);
+        formData.append('title', editForm.title);
+        formData.append('description', editForm.description);
+        formData.append('date', editForm.date);
+        formData.append('location', editForm.location);
+        formData.append('event_organizer_name', editForm.event_organizer_name);
+        formData.append('event_organizer_role', editForm.event_organizer_role);
+        formData.append('event_organizer_image', editForm.event_organizer_image);
+        
+        // Add existing images that weren't deleted
+        // For upcoming events with new images, ignore existing images (replacement logic)
+        if (editForm.type === "upcoming_events" && editSelectedImages.length > 0) {
+          console.log("🔄 Upcoming event with new image: Implementing replacement logic");
+          console.log("🗑️ Ignoring existing images - they will be replaced by new image");
+          console.log("📤 Only new image will be sent to server");
+        } else {
+          // For previous events or when no new images, include existing images
+          editExistingImages.forEach((img, index) => {
+            formData.append('existingImages', JSON.stringify(img));
+          });
+        }
+        
+        // Add new images if any are selected
+        if (editSelectedImages.length > 0) {
+          editSelectedImages.forEach((file) => {
+            formData.append('newImages', file);
+          });
+        }
+        
+        console.log("🔄 Update FormData created with:");
+        console.log("📝 Basic fields:", {
+          eventId: eventToEdit._id,
+          type: editForm.type,
+          category: editForm.category,
+          title: editForm.title,
+          description: editForm.description,
+          date: editForm.date,
+          location: editForm.location
+        });
+        console.log("🖼️ Existing images count:", editExistingImages.length);
+        console.log("🖼️ New images count:", editSelectedImages.length);
+        
+        // Call the updateEvent server action with FormData
+        const result = await updateEvent(formData);
+        if (result.status === "SUCCESS") {
+          setEditDialogOpen(false);
+          setEventToEdit(null);
+          fetchEvents(selectedCategory);
+          return { success: true };
+        } else {
+          throw new Error(result.error || "Failed to update event");
+        }
+      } catch (error) {
+        // Handle validation errors
+        if (error instanceof z.ZodError) {
+          const validationErrors: Record<string, string> = {};
+          error.errors.forEach((err) => {
+            if (err.path) {
+              validationErrors[err.path[0] as string] = err.message;
+            }
+          });
+          setEditValidationErrors(validationErrors);
+          
+          showToastError({
+            headerText: "Validation Error",
+            paragraphText: "Please check the form fields and try again.",
+            direction: "right"
+          });
+          
+          throw new Error("Validation failed");
+        }
+        
+        throw error;
+      } finally {
+        setIsUpdating(false);
+      }
+    })();
+
+    showToastPromise({
+      promise: updateEventPromise,
+      loadingText: 'Updating event...',
+      successText: 'The event has been updated successfully',
+      successHeaderText: 'Event Updated Successfully',
+      errorText: 'We couldn\'t update the event. Please try again or contact support.',
+      errorHeaderText: 'Failed To Update Event',
+      direction: 'right'
+    });
   };
 
   const handleEditCancel = () => {
     setEditDialogOpen(false);
     setEventToEdit(null);
+    setEditCurrentStep(1);
+    setEditValidationErrors({});
   };
 
-  const fetchEvents = async (type: string) => {
-    setLoading(true);
-    try {
-      let apiUrl = '';
-      if (type === "previous-events") {
-        apiUrl = '/api/events/previous';
-      } else if (type === "upcoming-events") {
-        apiUrl = '/api/events/upcoming';
-      } else {
+  const handleEditNextStep = () => {
+    if (editCurrentStep === 1) {
+      // Validate step 1 fields
+      if (!editForm.type || !editForm.category || !editForm.title || !editForm.description || !editForm.date || !editForm.location) {
+        setFormError("Please fill in all required fields before proceeding.");
         return;
       }
+      setFormError("");
+      setEditCurrentStep(2);
+    }
+  };
 
-      const response = await fetch(apiUrl);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+  const handleEditPrevStep = () => {
+    if (editCurrentStep === 2) {
+      setEditCurrentStep(1);
+    }
+  };
+
+  // Step navigation functions
+  const handleNextStep = () => {
+    if (currentStep === 1) {
+      // Validate step 1 fields
+      if (!formData.type || !formData.category || !formData.title || !form.description || !formData.date || !formData.location) {
+        setFormError("Please fill in all required fields before proceeding.");
+        return;
       }
+      setFormError("");
+      setCurrentStep(2);
+    }
+  };
+
+  const handlePrevStep = () => {
+    if (currentStep === 2) {
+      setCurrentStep(1);
+    }
+  };
+
+  const handleFormDataChange = (field: string, value: string) => {
+    // Update form data
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+
+    // Clear validation error for this field when user starts typing
+    if (validationErrors[field]) {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+
+    // If switching to upcoming events (single image), clear existing images
+    if (field === 'type' && value === 'upcoming_events' && selectedImages.length > 1) {
+      setSelectedImages(selectedImages.slice(0, 1));
+      setImagePreviewUrls(imagePreviewUrls.slice(0, 1));
+      setSelectedHeroImage(0);
+    }
+  };
+
+  const resetForm = () => {
+    setCurrentStep(1);
+    setFormData({
+      type: "previous_events",
+      category: "",
+      title: "",
+      description: "",
+      date: "",
+      location: "",
+      event_organizer_name: "",
+      event_organizer_role: "",
+      event_organizer_image: "",
+    });
+    setForm({ description: "" });
+    setSelectedImages([]);
+    setImagePreviewUrls([]);
+    setSelectedHeroImage(0);
+    setFormError("");
+    setValidationErrors({});
+    setEditValidationErrors({});
+  };
+
+  const handleCreateEvent = () => {
+    console.log("🚀 handleCreateEvent called");
+    console.log("📝 Form data:", formData);
+    console.log("📄 Form description:", form.description);
+    console.log("🖼️ Selected images:", selectedImages.length);
+    console.log("🎯 Selected hero image:", selectedHeroImage);
+    
+    // Create FormData with all the form values
+    const formDataToSubmit = new FormData();
+    formDataToSubmit.append('type', formData.type);
+    formDataToSubmit.append('category', formData.category);
+    formDataToSubmit.append('title', formData.title);
+    formDataToSubmit.append('description', form.description);
+    formDataToSubmit.append('date', formData.date);
+    formDataToSubmit.append('location', formData.location);
+    formDataToSubmit.append('event_organizer_name', formData.event_organizer_name);
+    formDataToSubmit.append('event_organizer_role', formData.event_organizer_role);
+    formDataToSubmit.append('event_organizer_image', formData.event_organizer_image);
+    formDataToSubmit.append('heroImageIndex', selectedHeroImage.toString());
+    
+    // Add images if any are selected
+    if (selectedImages.length > 0) {
+      selectedImages.forEach((file) => {
+        formDataToSubmit.append('images', file);
+      });
+    }
+    
+    console.log("📤 FormData created, calling addEvent directly...");
+    
+    // Set loading state
+    setIsCreatingEvent(true);
+    
+    // Create a promise that calls the addEvent server action directly
+    const createEventPromise = (async () => {
+      try {
+        // Validate form data before submission
+        const formValue = {
+          title: formDataToSubmit.get("title") as string,
+          description: form.description,
+          date: formDataToSubmit.get("date") as string,
+          location: formDataToSubmit.get("location") as string,
+          category: formDataToSubmit.get("category") as string,
+          type: formDataToSubmit.get("type") as string,
+          event_organizer_name: formDataToSubmit.get("event_organizer_name") as string,
+          event_organizer_role: formDataToSubmit.get("event_organizer_role") as string,
+          event_organizer_image: formDataToSubmit.get("event_organizer_image") as string,
+        };
+        
+        console.log("🔍 Form values for validation:", formValue);
+        
+        await eventSchema.parseAsync(formValue);
+        console.log("✅ Validation passed");
+        
+        // Add images if any are selected
+        if (selectedImages.length > 0) {
+          console.log("📤 Adding images to FormData...");
+          selectedImages.forEach((file, index) => {
+            console.log(`📤 Adding image ${index + 1}: ${file.name} (${file.size} bytes)`);
+            formDataToSubmit.append('images', file);
+          });
+        }
+        
+        // Add hero image index
+        console.log("🎯 Adding hero image index to FormData:", selectedHeroImage.toString());
+        formDataToSubmit.append('heroImageIndex', selectedHeroImage.toString());
+        
+        console.log("📞 Calling addEvent server action...");
+        const result = await addEvent({}, formDataToSubmit);
+        console.log("📥 Server action result:", result);
+        
+        if (result.status === "SUCCESS") {
+          console.log("✅ Event added successfully");
+          setIsAddEventOpen(false);
+          
+          // Reset form
+          resetForm();
+          
+          // Refresh events silently to avoid loading state flash
+          fetchEvents(selectedCategory === "previous-events" ? "previous_events" : "upcoming_events", false);
+          
+          return { success: true };
+        } else {
+          throw new Error(result.error || "Failed to add event");
+        }
+      } catch (error) {
+        console.error("💥 Error adding event:", error);
+        
+        // Handle validation errors
+        if (error instanceof z.ZodError) {
+          const validationErrors: Record<string, string> = {};
+          error.errors.forEach((err) => {
+            if (err.path) {
+              validationErrors[err.path[0] as string] = err.message;
+            }
+          });
+          setValidationErrors(validationErrors);
+          throw new Error("Validation failed. Please check the form fields.");
+        }
+        
+        throw error;
+      }
+    })();
+
+    // Use showToastPromise to show loading, success, and error toasts
+    showToastPromise({
+      promise: createEventPromise
+        .then((result) => {
+          setIsCreatingEvent(false);
+          return result;
+        })
+        .catch((error) => {
+          setIsCreatingEvent(false);
+          throw error;
+        }),
+      loadingText: 'Creating event...',
+      successText: 'The event has been created successfully',
+      successHeaderText: 'Event Created Successfully',
+      errorText: 'We couldn\'t create the event. Please try again or contact support.',
+      errorHeaderText: 'Failed To Create Event',
+      direction: 'right'
+    });
+  };
+
+  const fetchEvents = async (type: string, showLoadingState: boolean = true) => {
+    if (showLoadingState) {
+      setLoading(true);
+    }
+    try {
+      // Convert category format to event type format
+      const eventType = type === "previous-events" ? "previous_events" : "upcoming_events";
       
-      const data = await response.json();
-      console.log(`Fetched ${type}:`, data.events);
+      console.log(`🔄 fetchEvents called with type: "${type}" at ${new Date().toISOString()}`);
+      console.log(`🔄 Converted to eventType: "${eventType}"`);
+      console.log(`🔄 Fetching ${eventType} using sanityFetch...`);
+      const result = await fetchEventsByType(eventType);
       
-      setEvents(data.events || []);
+      if (result.status === "SUCCESS") {
+        console.log(`✅ Fetched ${eventType}:`, result.data);
+        setEvents(result.data || []);
+      } else {
+        console.error(`❌ Error fetching ${eventType}:`, result.error);
+        setEvents([]);
+      }
     } catch (error) {
       console.error("Error fetching events:", error);
       setEvents([]);
     } finally {
-      setLoading(false);
+      if (showLoadingState) {
+        setLoading(false);
+      }
     }
   };
 
+  // Update URL when category changes
+  const updateCategoryInUrl = (category: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('category', category);
+    router.push(`?${params.toString()}`);
+  };
+
+  // Handle category change
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category);
+    updateCategoryInUrl(category);
+  };
+
+  // Fetch data when category changes
   useEffect(() => {
     fetchEvents(selectedCategory);
   }, [selectedCategory]);
+
+  // Force refresh data when component mounts or when add event dialog closes
+  useEffect(() => {
+    if (!isAddEventOpen) {
+      // Small delay to ensure server action has completed
+      const timer = setTimeout(() => {
+        // Silent refresh to avoid loading state flash
+        fetchEvents(selectedCategory, false);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isAddEventOpen, selectedCategory]);
+
+  // Monitor eventState changes for form submission results
+  useEffect(() => {
+    console.log("🔄 eventState changed:", eventState);
+    if (eventState.status === "SUCCESS") {
+      console.log("✅ Event form submission successful:", eventState);
+      // Toast is handled by showToastPromise
+    } else if (eventState.status === "ERROR") {
+      console.log("❌ Event form submission failed:", eventState.error);
+      // Toast is handled by showToastPromise
+    }
+  }, [eventState]);
+
+  // Debug editForm changes
+  useEffect(() => {
+    if (editDialogOpen) {
+      console.log("🔍 ===== EDIT FORM STATE UPDATE =====");
+      console.log("📝 Current Edit Form State:", editForm);
+      console.log("🆔 Event Type:", editForm.type);
+      console.log("🏷️ Category:", editForm.category);
+      console.log("📖 Title:", editForm.title);
+      console.log("📄 Description:", editForm.description);
+      console.log("📅 Date:", editForm.date);
+      console.log("📍 Location:", editForm.location);
+      console.log("👤 Organizer Name:", editForm.event_organizer_name);
+      console.log("👤 Organizer Role:", editForm.event_organizer_role);
+      console.log("🖼️ Organizer Image:", editForm.event_organizer_image);
+      console.log("🖼️ Existing Images Count:", editExistingImages.length);
+      console.log("🖼️ Selected Images Count:", editSelectedImages.length);
+      console.log("🎯 Selected Hero Image Index:", editSelectedHeroImage);
+      console.log("🔧 ===== EDIT FORM STATE END =====");
+    }
+  }, [editForm, editDialogOpen, editExistingImages.length, editSelectedImages.length, editSelectedHeroImage]);
 
   const getCategoryColor = (category: string) => {
     const colors = {
@@ -468,15 +966,16 @@ export default function EventsManagement() {
                 return (
                   <button
                     key={category.id}
-                    onClick={() => setSelectedCategory(category.id)}
-                    className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center gap-3 ${
+                    onClick={() => handleCategoryChange(category.id)}
+                    className={`w-full text-left px-4 py-3 rounded-lg transition-all duration-200 flex items-center gap-3 font-medium ${
                       selectedCategory === category.id
-                        ? category.color
-                        : "text-gray-700 hover:bg-gray-100"
+                        ? "bg-orange-100 text-orange-700 shadow-none"
+                        : "text-gray-700 hover:bg-gray-100 "
                     }`}
                   >
-                    <IconComponent className="h-4 w-4" />
+                    <IconComponent className={`h-4 w-4 ${selectedCategory === category.id ? "text-orange-700" : "text-gray-500"}`} />
                     {category.label}
+                   
                   </button>
                 );
               })}
@@ -486,368 +985,418 @@ export default function EventsManagement() {
             <div className="space-y-2 pt-4">
               <Dialog open={isAddEventOpen} onOpenChange={setIsAddEventOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" className="w-full bg-green-600 hover:bg-green-700 text-white hover:text-white">
+                  <Button variant="outline" className="w-full bg-orange-500 hover:bg-orange-600 text-white hover:text-white shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition duration-200">
                     <Plus className="h-4 w-4 mr-2" />
                     Add Event
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col">
+                                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col">
                   <DialogHeader>
                     <DialogTitle>Add New Event</DialogTitle>
                     <DialogDescription>
                       Create a new event for the platform
                     </DialogDescription>
                   </DialogHeader>
+                  
+                  {/* Step Indicator */}
+                  <div className="flex items-center justify-center ">
+                    <div className="flex items-center space-x-4">
+                      <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
+                        currentStep >= 1 ? 'bg-orange-500 border-orange-500 text-white' : 'bg-gray-100 border-gray-300 text-gray-500'
+                      }`}>
+                        <span className="text-sm font-medium">1</span>
+                      </div>
+                      <div className={`w-16 h-0.5 ${
+                        currentStep >= 2 ? 'bg-orange-500' : 'bg-gray-300'
+                      }`}></div>
+                      <div className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
+                        currentStep >= 2 ? 'bg-orange-500 border-orange-500 text-white' : 'bg-gray-100 border-gray-300 text-gray-500'
+                      }`}>
+                        <span className="text-sm font-medium">2</span>
+                      </div>
+                    </div>
+                  </div>
+                  
                   <div className="flex-1 overflow-y-auto px-2">
-                    <form 
-                      className="space-y-4" 
-                      onSubmit={handleSubmit}
-                    >
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label className="text-sm font-medium mb-1 block">Event Type</Label>
-                                                  <select
-                            name="type"
-                            value={form.type}
-                            onChange={handleEventTypeChange}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-dark"
-                          >
-                            <option value="previous_events">Previous Events</option>
-                            <option value="upcoming_events">Upcoming Events</option>
-                          </select>
-                        </div>
-                        <div>
-                          <Label className="text-sm font-medium mb-1 block">Category</Label>
-                          <select
-                            name="category"
-                            value={form.category}
-                            onChange={handleFormChange}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-dark"
-                          >
-                            <option value="">Select Category</option>
-                            {eventCategories.map(cat => (
-                              <option key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</option>
-                            ))}
-                          </select>
-                        </div>
+                    {formError && (
+                      <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <p className="text-sm text-red-600">{formError}</p>
                       </div>
-                      
-                      <div>
-                        <Label className="text-sm font-medium mb-1 block">Event Title</Label>
-                        <Input
-                          name="title"
-                          value={form.title}
-                          onChange={handleFormChange}
-                          placeholder="Enter event title"
-                          required
-                        />
-                      </div>
-                      
-                      <div data-color-mode="light">
-                         <Label className="text-sm font-medium mb-1 block">Description</Label>
-                         <MDEditor 
-                           value={form.description} 
-                           onChange={(value) => setForm(prev => ({ ...prev, description: value || "" }))}
-                           preview="edit"
-                           height={200}
-                           textareaProps={{
-                             placeholder: "Enter event description with markdown support...",
-                           }}
-                         />
-                         {/* Hidden input to include description in form submission */}
-                         <input 
-                           type="hidden" 
-                           name="description" 
-                           value={form.description} 
-                         />
-                       </div>
-                      
-                                          <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label className="text-sm font-medium mb-1 block">Date</Label>
-                          <Input
-                            name="date"
-                            type="date"
-                            value={form.date}
-                            onChange={handleFormChange}
-                            required
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-sm font-medium mb-1 block">Location</Label>
-                          <Input
-                            name="location"
-                            value={form.location}
-                            onChange={handleFormChange}
-                            placeholder="Enter event location"
-                            required
-                          />
-                        </div>
-                      </div>
-
-                      {/* Event Organizer Section */}
+                    )}
+                    
+                    {currentStep === 1 ? (
+                      /* Step 1: Basic Event Information */
                       <div className="space-y-4">
-                        <h3 className="text-lg font-semibold">Event Organizer</h3>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label className="text-sm font-medium mb-1 block">Event Type</Label>
+                            <Select 
+                              value={formData.type} 
+                              onValueChange={(value) => handleFormDataChange('type', value)}
+                            >
+                              <SelectTrigger className={`w-full rounded-xl ${validationErrors.type ? 'border-red-300 focus:border-red-500' : ''}`}>
+                                <SelectValue placeholder="Select event type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="previous_events">Previous Events</SelectItem>
+                                <SelectItem value="upcoming_events">Upcoming Events</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            {validationErrors.type && (
+                              <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                                <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                </svg>
+                                {validationErrors.type}
+                              </p>
+                            )}
+                          </div>
+                          <div>
+                            <Label className="text-sm font-medium mb-1 block">Category</Label>
+                            <Select 
+                              value={formData.category} 
+                              onValueChange={(value) => handleFormDataChange('category', value)}
+                            >
+                              <SelectTrigger className={`w-full rounded-xl ${validationErrors.category ? 'border-red-300 focus:border-red-500' : ''}`}>
+                                <SelectValue placeholder="Select category" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {eventCategories.map(cat => (
+                                  <SelectItem key={cat} value={cat}>
+                                    {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {validationErrors.category && (
+                              <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                                <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                </svg>
+                                {validationErrors.category}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <Label className="text-sm font-medium mb-1 block">Event Title</Label>
+                          <Input
+                            value={formData.title}
+                            onChange={(e) => handleFormDataChange('title', e.target.value)}
+                            placeholder="Enter event title"
+                            className={`rounded-xl ${validationErrors.title ? 'border-red-300 focus:border-red-500' : ''}`}
+                            maxLength={60}
+                          />
+                          <p className="text-xs text-gray-500 mt-1">
+                            {60 - formData.title.length} characters left
+                          </p>
+                          {validationErrors.title && (
+                            <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                              <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                              </svg>
+                              {validationErrors.title}
+                            </p>
+                          )}
+                        </div>
+                        
+                        <div data-color-mode="light">
+                          <Label className="text-sm font-medium mb-1 block">Description</Label>
+                          <MDEditor 
+                            value={form.description} 
+                            onChange={(value) => {
+                              const newValue = value || "";
+                              if (newValue.length <= 460) {
+                                setForm(prev => ({ ...prev, description: newValue }));
+                                
+                                // Clear validation error for description when user starts typing
+                                if (validationErrors.description) {
+                                  setValidationErrors(prev => {
+                                    const newErrors = { ...prev };
+                                    delete newErrors.description;
+                                    return newErrors;
+                                  });
+                                }
+                              }
+                            }}
+                            preview="live"
+                            height={200}
+                            textareaProps={{
+                              placeholder: "Enter event description with markdown support...",
+                              className: `rounded-xl ${validationErrors.description ? 'border-red-300 focus:border-red-500' : ''}`,
+                              maxLength: 460
+                            }}
+                          />
+                          <p className="text-xs text-gray-500 mt-1">
+                            {460 - form.description.length} characters left
+                          </p>
+                          {validationErrors.description && (
+                            <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                              <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                              </svg>
+                              {validationErrors.description}
+                            </p>
+                          )}
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label className="text-sm font-medium mb-1 block">Date</Label>
+                            <Input
+                              value={formData.date}
+                              onChange={(e) => handleFormDataChange('date', e.target.value)}
+                              type="date"
+                              className={`rounded-xl ${validationErrors.date ? 'border-red-300 focus:border-red-500' : ''}`}
+                            />
+                            {validationErrors.date && (
+                              <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                                <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                </svg>
+                                {validationErrors.date}
+                              </p>
+                            )}
+                          </div>
+                          <div>
+                            <Label className="text-sm font-medium mb-1 block">Location</Label>
+                            <Input
+                              value={formData.location}
+                              onChange={(e) => handleFormDataChange('location', e.target.value)}
+                              placeholder="Enter event location"
+                              className={`rounded-xl ${validationErrors.location ? 'border-red-300 focus:border-red-500' : ''}`}
+                            />
+                            {validationErrors.location && (
+                              <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                                <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                </svg>
+                                {validationErrors.location}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Step 2: Event Organizer Information */
+                      <div className="space-y-4">
+                        <div className="text-center mb-4">
+                          <h3 className="text-lg font-semibold text-gray-800">Event Organizer Details</h3>
+                          <p className="text-sm text-gray-600">Add information about the event organizer</p>
+                        </div>
+                        
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <Label className="text-sm font-medium mb-1 block">Organizer Name</Label>
                             <Input
-                              name="event_organizer_name"
-                              value={form.event_organizer_name}
-                              onChange={handleFormChange}
+                              value={formData.event_organizer_name}
+                              onChange={(e) => handleFormDataChange('event_organizer_name', e.target.value)}
                               placeholder="Enter organizer name"
+                              className="rounded-xl"
                             />
                           </div>
                           <div>
                             <Label className="text-sm font-medium mb-1 block">Organizer Role</Label>
                             <Input
-                              name="event_organizer_role"
-                              value={form.event_organizer_role}
-                              onChange={handleFormChange}
+                              value={formData.event_organizer_role}
+                              onChange={(e) => handleFormDataChange('event_organizer_role', e.target.value)}
                               placeholder="Enter organizer role"
+                              className="rounded-xl"
                             />
                           </div>
                         </div>
-                        <div>
-                          <Label className="text-sm font-medium mb-1 block">Organizer Image</Label>
-                          <Input
-                            name="event_organizer_image"
-                            value={form.event_organizer_image}
-                            onChange={handleFormChange}
-                            placeholder="Enter image URL or upload image"
-                          />
-                        </div>
-                      </div>
+                        
+                                                 <div>
+                           <Label className="text-sm font-medium mb-1 block">Organizer Image</Label>
+                           <Input
+                             value={formData.event_organizer_image}
+                             onChange={(e) => handleFormDataChange('event_organizer_image', e.target.value)}
+                             placeholder="Enter image URL"
+                             className={`rounded-xl ${validationErrors.event_organizer_image ? 'border-red-300 focus:border-red-500' : ''}`}
+                           />
+                           {validationErrors.event_organizer_image && (
+                             <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                               <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                               </svg>
+                               {validationErrors.event_organizer_image}
+                             </p>
+                           )}
+                         </div>
 
-                      {/* Image Upload Section */}
-                      <div>
-                        <Label className="text-sm font-medium mb-1 block">
-                          {form.type === "upcoming_events" ? "Event Image" : "Event Images"}
-                        </Label>
-                        
-                       {/* File Upload Component */}
-                        <FileUpload
-                          multiple={form.type === "previous_events"}
-                          accept="image/*"
-                          maxFiles={form.type === "previous_events" ? 10 : 1}
-                          value={selectedImages}
-                          onChange={handleImageUpload}
-                          onRemove={removeImage}
-                          placeholder={
-                            form.type === "upcoming_events"
-                              ? "Drop a single image here or click to upload"
-                              : "Drop multiple images here or click to upload"
-                          }
-                        />
-                        
-                        {/* Upload Button */}
-                        {selectedImages.length > 0 && (
-                          <div className="mt-4 space-y-3">
-                            <Button
-                              type="button"
-                              onClick={() => {
-                                const formData = new FormData();
-                                selectedImages.forEach((file, index) => {
-                                  formData.append('images', file);
-                                });
-                                handleImageUploadAction(formData);
-                              }}
-                              disabled={
-                                isUploading || 
-                                uploadStatus === 'uploading' ||
-                                Object.values(imageProcessingStatus).some(status => status === 'processing')
-                              }
-                              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                            >
-                              {isUploading || uploadStatus === 'uploading' ? (
-                                <>
-                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                  Uploading Images...
-                                </>
-                              ) : Object.values(imageProcessingStatus).some(status => status === 'processing') ? (
-                                <>
-                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                  Processing Images...
-                                </>
-                              ) : (
-                                <>
-                                  <ImageIcon className="h-4 w-4 mr-2" />
-                                  Upload {selectedImages.length} Image{selectedImages.length !== 1 ? 's' : ''}
-                                </>
-                              )}
-                            </Button>
-                            
-                            {/* Progress Bar */}
-                            {(uploadStatus === 'uploading' || uploadProgress > 0) && (
-                              <div className="w-full">
-                                <div className="flex justify-between text-sm text-gray-600 mb-1">
-                                  <span>Uploading images...</span>
-                                  <span>{uploadProgress}%</span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                  <div 
-                                    className="bg-blue-600 h-2 rounded-full transition-all duration-300 ease-out"
-                                    style={{ width: `${uploadProgress}%` }}
-                                  />
-                                </div>
-                              </div>
-                            )}
-                            
-                            {/* Status Messages */}
-                            {uploadStatus === 'success' && (
-                              <div className="flex items-center gap-2 text-green-600 text-sm">
-                                <div className="w-4 h-4 bg-green-600 rounded-full flex items-center justify-center">
-                                  <span className="text-white text-xs">✓</span>
-                                </div>
-                                Images uploaded successfully!
-                              </div>
-                            )}
-                            
-                            {uploadStatus === 'error' && (
-                              <div className="flex items-center gap-2 text-red-600 text-sm">
-                                <div className="w-4 h-4 bg-red-600 rounded-full flex items-center justify-center">
-                                  <span className="text-white text-xs">✕</span>
-                                </div>
-                                Upload failed. Please try again.
-                              </div>
-                            )}
-                          </div>
-                        )}
-                        
-                        {/* Uploaded Assets Display */}
-                        {uploadedAssets.length > 0 && (
-                          <div className="mt-4">
-                            <Label className="text-sm font-medium mb-2 block text-green-600">
-                              ✅ Uploaded Images ({uploadedAssets.length})
-                            </Label>
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                              {uploadedAssets.map((asset, index) => (
-                                <div key={index} className="relative h-20 rounded-lg overflow-hidden border bg-gray-100">
-                                  <div className="absolute inset-0 flex items-center justify-center">
-                                    <span className="text-xs text-gray-500">{asset.filename}</span>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        
-                        {/* Image Previews */}
-                        {imagePreviewUrls.length > 0 && (
-                          <div className={`grid gap-3 mt-4 ${
-                            form.type === "upcoming_events" 
-                              ? "grid-cols-1" 
-                              : "grid-cols-2 md:grid-cols-3"
-                          }`}>
-                            {imagePreviewUrls.map((url, index) => (
-                              <div key={index} className="relative group">
-                                <div className="relative h-32 w-full rounded-lg overflow-hidden border">
-                                  <Image
-                                    src={url}
-                                    alt={`Preview ${index + 1}`}
-                                    fill
-                                    className="object-cover"
-                                  />
-                                  
-                                  {/* Processing Overlay */}
-                                  {imageProcessingStatus[index] === 'processing' && (
-                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                                      <div className="flex flex-col items-center gap-2">
-                                        <Loader2 className="h-6 w-6 animate-spin text-white" />
-                                        <span className="text-white text-xs">Processing...</span>
-                                      </div>
-                                    </div>
-                                  )}
-                                  
-                                  {/* Ready Status */}
-                                  {imageProcessingStatus[index] === 'ready' && (
-                                    <div className="absolute top-2 right-2">
-                                      <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                                        <span className="text-white text-xs">✓</span>
-                                      </div>
-                                    </div>
-                                  )}
-                                  
-                                  {/* Error Status */}
-                                  {imageProcessingStatus[index] === 'error' && (
-                                    <div className="absolute top-2 right-2">
-                                      <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
-                                        <span className="text-white text-xs">✕</span>
-                                      </div>
-                                    </div>
-                                  )}
-                                  
-                                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                                </div>
-                                
-                                {/* Image Status Text */}
-                                <div className="mt-1 text-xs text-gray-500">
-                                  {imageProcessingStatus[index] === 'processing' && (
-                                    <span className="text-blue-600">Processing image...</span>
-                                  )}
-                                  {imageProcessingStatus[index] === 'ready' && (
-                                    <span className="text-green-600">Ready for upload</span>
-                                  )}
-                                  {imageProcessingStatus[index] === 'error' && (
-                                    <span className="text-red-600">Processing failed</span>
-                                  )}
-                                </div>
-                                
-                                {form.type === "previous_events" && imageProcessingStatus[index] === 'ready' && (
-                                  <div className="mt-1 flex items-center gap-2">
-                                    <Label className="text-xs text-gray-500">Hero Image</Label>
-                                    <input
-                                      type="radio"
-                                      name="heroImage"
-                                      value={index}
-                                    />
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                         {/* Event Images Section */}
+                         <div className="space-y-4">
+                           <div>
+                             <Label className="text-sm font-medium mb-1 block">
+                               Event Images
+                             </Label>
+                             <p className="text-xs text-gray-500 mb-3">
+                               {formData.type === "upcoming_events" 
+                                 ? "Upload one image for your upcoming event." 
+                                 : "Upload images for your event. You can select one as the hero image."
+                               }
+                             </p>
+                           </div>
+                           
+                           <FileUpload
+                             multiple={formData.type === "previous_events"}
+                             accept="image/*"
+                             maxFiles={formData.type === "upcoming_events" ? 1 : 10}
+                             value={selectedImages}
+                             onChange={async (fileList) => {
+                               console.log("🖼️ Images selected:", fileList?.length || 0);
+                               
+                               // For upcoming events, only allow one image
+                               if (formData.type === "upcoming_events" && fileList && fileList.length > 1) {
+                                 console.log("⚠️ Upcoming events only allow one image, limiting to first image");
+                                 fileList = fileList.slice(0, 1);
+                               }
+                               
+                               if (fileList && fileList.length > 0) {
+                                 console.log("🔄 Starting image compression process...");
+                                 const compressedFiles: File[] = [];
+                                 
+                                 for (let i = 0; i < fileList.length; i++) {
+                                   const file = fileList[i];
+                                   console.log(`📸 Processing image ${i + 1}/${fileList.length}:`, {
+                                     name: file.name,
+                                     size: file.size,
+                                     type: file.type
+                                   });
+                                   
+                                   try {
+                                     const compressedFile = await compressImage(file);
+                                     if (compressedFile) {
+                                       compressedFiles.push(compressedFile);
+                                       console.log(`✅ Image ${i + 1} compressed successfully`);
+                                     } else {
+                                       console.error(`❌ Failed to compress image: ${file.name}`);
+                                       compressedFiles.push(file);
+                                     }
+                                   } catch (error) {
+                                     console.error(`❌ Error compressing image ${i + 1}:`, error);
+                                     compressedFiles.push(file);
+                                   }
+                                 }
+                                 
+                                 console.log("📦 Final compressed files count:", compressedFiles.length);
+                                 setSelectedImages(compressedFiles);
+                                 
+                                 // Create preview URLs from compressed files
+                                 const urls = compressedFiles.map(file => URL.createObjectURL(file));
+                                 console.log("🖼️ Created preview URLs count:", urls.length);
+                                 setImagePreviewUrls(urls);
+                                 
+                                 // Set first image as default hero
+                                 if (compressedFiles.length > 0) {
+                                   setSelectedHeroImage(0);
+                                 }
+                                 
+                                 console.log("✅ All images compressed and ready for upload");
+                               } else {
+                                 console.log("📭 No files received, clearing images");
+                                 setSelectedImages([]);
+                                 setImagePreviewUrls([]);
+                               }
+                             }}
+                             onRemove={removeImage}
+                             placeholder={formData.type === "upcoming_events" ? "Drop one image here or click to upload" : "Drop multiple images here or click to upload"}
+                             helperText={formData.type === "upcoming_events" ? "Only one image allowed for upcoming events" : "Upload up to 10 images for your event. You can select one as the hero image."}
+                           />
+                           
+                           {/* Image Previews */}
+                           {imagePreviewUrls.length > 0 && (
+                             <div className="space-y-3">
+                               <Label className="text-sm font-medium">Image Previews</Label>
+                               <div className="grid gap-3 grid-cols-2 md:grid-cols-3">
+                                 {imagePreviewUrls.map((url, index) => (
+                                   <div key={index} className="relative group">
+                                     <div className="relative h-32 w-full rounded-lg overflow-hidden border">
+                                       <Image
+                                         src={url}
+                                         alt={`Preview ${index + 1}`}
+                                         fill
+                                         className="object-cover"
+                                       />
+                                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                                     </div>
+                                     <div className="mt-2 flex items-center gap-2">
+                                       <input
+                                         type="radio"
+                                         name="heroImage"
+                                         id={`hero-${index}`}
+                                         value={index}
+                                         checked={selectedHeroImage === index}
+                                         onChange={(e) => setSelectedHeroImage(Number(e.target.value))}
+                                         className="w-4 h-4 text-orange-500 border-gray-300 focus:ring-orange-500"
+                                       />
+                                       <Label htmlFor={`hero-${index}`} className="text-xs text-gray-600 cursor-pointer">
+                                         Set as hero image
+                                       </Label>
+                                     </div>
+                                   </div>
+                                 ))}
+                               </div>
+                             </div>
+                           )}
+                         </div>
                       </div>
+                    )}
+                    
+                    {/* Step Navigation */}
+                    <div className="flex justify-between pt-6">
+                      <Button 
+                        type="button"
+                        variant="outline" 
+                        onClick={() => setIsAddEventOpen(false)}
+                        className="rounded-xl"
+                      >
+                        Cancel
+                      </Button>
                       
-                      {/* Form Actions */}
-                      <div className="flex justify-end space-x-2 pt-4">
-                        <Button 
-                          type="button"
-                          variant="outline" 
-                          onClick={() => setIsAddEventOpen(false)}
-                        >
-                          Cancel
-                        </Button>
-                        <Button 
-                          type="submit"
-                          disabled={isPending || (selectedImages.length > 0 && uploadStatus === 'uploading')}
-                          className="bg-dark text-white hover:bg-dark/80"
-                          onClick={() => {
-                            console.log("🔘 Add Event button clicked");
-                            console.log("📝 Current form state:", form);
-                            console.log("🖼️ Selected images:", selectedImages);
-                            console.log("📤 Upload status:", uploadStatus);
-                            
-                            // Test if form is valid
-                            const formElement = document.querySelector('form');
-                            if (formElement) {
-                              console.log("🔍 Form element found:", formElement);
-                              console.log("🔍 Form validity:", formElement.checkValidity());
-                              console.log("🔍 Form elements:", formElement.elements);
-                            }
-                          }}
-                        >
-                          {isPending || uploadStatus === 'uploading' ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              {selectedImages.length > 0 ? 'Creating Event & Uploading Images...' : 'Creating Event...'}
-                            </>
-                          ) : (
-                            'Add Event'
-                          )}
-                        </Button>
+                      <div className="flex space-x-2">
+                        {currentStep === 2 && (
+                          <Button 
+                            type="button"
+                            variant="outline" 
+                            onClick={handlePrevStep}
+                            className="rounded-xl"
+                          >
+                            Previous
+                          </Button>
+                        )}
+                        
+                        {currentStep === 1 ? (
+                          <Button 
+                            type="button"
+                            onClick={handleNextStep}
+                            className="bg-orange-500 hover:bg-orange-600 rounded-xl text-white shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition duration-200"
+                          >
+                            Next
+                          </Button>
+                                                 ) : (
+                           <Button 
+                             type="button"
+                             onClick={() => {
+                               console.log("🔘 Create Event button clicked");
+                               handleCreateEvent();
+                             }}
+                             disabled={isCreatingEvent}
+                             className="bg-orange-500 hover:bg-orange-600 rounded-xl text-white shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition duration-200"
+                           >
+                             {isCreatingEvent ? (
+                               <>
+                                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                 Creating Event...
+                               </>
+                             ) : (
+                               'Create Event'
+                             )}
+                           </Button>
+                         )}
                       </div>
-                    </form>
+                    </div>
                   </div>
                 </DialogContent>
               </Dialog>
@@ -857,13 +1406,62 @@ export default function EventsManagement() {
           {/* Right Content Area (80% width) */}
           <div className="col-span-4">
             {loading ? (
-              <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+              <div className="space-y-6">
+             
+                
+                {/* Events Grid Skeleton */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {Array.from({ length: 6 }).map((_, index) => (
+                    <div key={index} className="bg-white rounded-lg border border-gray-200 overflow-hidden h-full flex flex-col animate-pulse">
+                      {/* Image Skeleton */}
+                      <div className="h-48 bg-gray-200 relative">
+                        <div className="absolute inset-0 bg-gradient-to-t from-gray-300 via-transparent to-transparent"></div>
+                      </div>
+                      
+                      {/* Content Skeleton */}
+                      <div className="p-4 space-y-3 flex-1">
+                        {/* Badge and Actions Skeleton */}
+                        <div className="flex items-start justify-between">
+                          <div className="h-6 bg-gray-200 rounded-full w-20"></div>
+                          <div className="flex items-center gap-1">
+                            <div className="h-8 w-8 bg-gray-200 rounded"></div>
+                            <div className="h-8 w-8 bg-gray-200 rounded"></div>
+                          </div>
+                        </div>
+                        
+                        {/* Title Skeleton */}
+                        <div className="space-y-2">
+                          <div className="h-5 bg-gray-200 rounded w-3/4"></div>
+                          <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                        </div>
+                        
+                        {/* Description Skeleton */}
+                        <div className="space-y-2">
+                          <div className="h-4 bg-gray-200 rounded w-full"></div>
+                          <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+                          <div className="h-4 bg-gray-200 rounded w-4/6"></div>
+                        </div>
+                        
+                        {/* Date and Location Skeleton */}
+                        <div className="space-y-2 pt-2">
+                          <div className="flex items-center gap-2">
+                            <div className="h-4 w-4 bg-gray-200 rounded"></div>
+                            <div className="h-4 bg-gray-200 rounded w-24"></div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="h-4 w-4 bg-gray-200 rounded"></div>
+                            <div className="h-4 bg-gray-200 rounded w-32"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : (
               <div className="space-y-4">
                 {/* Events Grid */}
-                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                    {events.map((event) => {
                      const eventImage = getEventImage(event);
                      return (
@@ -943,23 +1541,42 @@ export default function EventsManagement() {
                  </div>
 
                 {events.length === 0 && (
-                  <div className="text-center py-12">
-                    <div className="text-gray-400 mb-4">
-                      <Calendar className="h-16 w-16 mx-auto" />
+                  <div className="text-center py-16">
+                    {/* Stylish illustration */}
+                    <div className="relative mb-8">
+                      <div className="w-32 h-32 mx-auto relative">
+                        {/* Background circle */}
+                        <div className="absolute inset-0 bg-gradient-to-br from-orange-100 to-orange-200 rounded-full opacity-60"></div>
+                        
+                        {/* Calendar icon */}
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Calendar className="h-16 w-16 text-orange-600" />
+                        </div>
+                        
+                        {/* Decorative elements */}
+                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-orange-300 rounded-full opacity-40"></div>
+                        <div className="absolute -bottom-2 -left-2 w-4 h-4 bg-orange-400 rounded-full opacity-60"></div>
+                        <div className="absolute top-1/2 -right-6 w-3 h-3 bg-orange-200 rounded-full opacity-80"></div>
+                        <div className="absolute top-1/2 -left-6 w-2 h-2 bg-orange-300 rounded-full opacity-50"></div>
+                      </div>
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-700 mb-2">
-                      No {selectedCategory === "previous-events" ? "Previous" : "Upcoming"} Events
-                    </h3>
-                    <p className="text-gray-500 mb-4">
-                      {selectedCategory === "previous-events" 
-                        ? "No previous events have been added yet." 
-                        : "No upcoming events have been added yet."
-                      }
-                    </p>
-                    <Button onClick={() => setIsAddEventOpen(true)}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Your First Event
-                    </Button>
+                    
+                    {/* Content */}
+                    <div className="max-w-md mx-auto">
+                      <h3 className="text-2xl font-bold text-gray-800 mb-3">
+                        No {selectedCategory === "previous-events" ? "Previous" : "Upcoming"} Events
+                      </h3>
+                      <p className="text-gray-600 mb-6 leading-relaxed">
+                        {selectedCategory === "previous-events" 
+                          ? "Your event history is waiting to be written. Start by adding your first past event to showcase CRC's journey."
+                          : "The stage is set for your next great event. Create your first upcoming event and start building excitement."
+                        }
+                      </p>
+                      
+                      {/* Decorative line */}
+                      
+                      {/* Stats or tips */}
+                    </div>
                   </div>
                 )}
               </div>
@@ -970,186 +1587,549 @@ export default function EventsManagement() {
 
       {/* Edit Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-                        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col">
-                  <DialogHeader>
-                    <DialogTitle>Edit Event</DialogTitle>
-                    <DialogDescription>
-                      Update event information
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="flex-1 overflow-y-auto px-2">
-                    <form className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label className="text-sm font-medium mb-1 block">Event Type</Label>
-                                 <select
-                   name="type"
-                   value={editForm.type}
-                   onChange={handleEditEventTypeChange}
-                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                 >
-                   <option value="previous_events">Previous Events</option>
-                   <option value="upcoming_events">Upcoming Events</option>
-                 </select>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Edit Event</DialogTitle>
+            <DialogDescription>
+              Update event information
+            </DialogDescription>
+          </DialogHeader>
+          
+          {/* Step Indicator */}
+          <div className="flex items-center justify-center">
+            <div className="flex items-center space-x-4">
+              <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
+                editCurrentStep >= 1 ? 'bg-orange-500 border-orange-500 text-white' : 'bg-gray-100 border-gray-300 text-gray-500'
+              }`}>
+                <span className="text-sm font-medium">1</span>
               </div>
-              <div>
-                <Label className="text-sm font-medium mb-1 block">Category</Label>
-                <select
-                  name="category"
-                  value={editForm.category}
-                  onChange={handleEditFormChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                >
-                  {eventCategories.map(cat => (
-                    <option key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</option>
-                  ))}
-                </select>
+              <div className={`w-16 h-0.5 ${
+                editCurrentStep >= 2 ? 'bg-orange-500' : 'bg-gray-300'
+              }`}></div>
+              <div className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
+                editCurrentStep >= 2 ? 'bg-orange-500 border-orange-500 text-white' : 'bg-gray-100 border-gray-300 text-gray-500'
+              }`}>
+                <span className="text-sm font-medium">2</span>
               </div>
             </div>
-            
-            <div>
-              <Label className="text-sm font-medium mb-1 block">Event Title</Label>
-              <Input
-                name="title"
-                value={editForm.title}
-                onChange={handleEditFormChange}
-                placeholder="Enter event title"
-                required
-              />
-            </div>
-            
-              <div data-color-mode="light">
-                <Label className="text-sm font-medium mb-1 block">Description</Label>
-                <MDEditor 
-                  value={editForm.description} 
-                  onChange={(value) => setEditForm(prev => ({ ...prev, description: value || "" }))}
-                  preview="edit"
-                  height={200}
-                  textareaProps={{
-                    placeholder: "Enter event description with markdown support...",
-                  }}
-                />
-              </div>
-            
-                         <div className="grid grid-cols-2 gap-4">
-               <div>
-                 <Label className="text-sm font-medium mb-1 block">Date</Label>
-                 <Input
-                   name="date"
-                   type="date"
-                   value={editForm.date}
-                   onChange={handleEditFormChange}
-                   required
-                 />
-               </div>
-               <div>
-                 <Label className="text-sm font-medium mb-1 block">Location</Label>
-                 <Input
-                   name="location"
-                   value={editForm.location}
-                   onChange={handleEditFormChange}
-                   placeholder="Enter event location"
-                   required
-                 />
-               </div>
-             </div>
-
-             {/* Event Organizer Section for Edit */}
-             <div className="space-y-4">
-               <h3 className="text-lg font-semibold">Event Organizer</h3>
-               <div className="grid grid-cols-2 gap-4">
-                 <div>
-                   <Label className="text-sm font-medium mb-1 block">Organizer Name</Label>
-                   <Input
-                     name="event_organizer_name"
-                     value={editForm.event_organizer_name}
-                     onChange={handleEditFormChange}
-                     placeholder="Enter organizer name"
-                   />
-                 </div>
-                 <div>
-                   <Label className="text-sm font-medium mb-1 block">Organizer Role</Label>
-                   <Input
-                     name="event_organizer_role"
-                     value={editForm.event_organizer_role}
-                     onChange={handleEditFormChange}
-                     placeholder="Enter organizer role"
-                   />
-                 </div>
-               </div>
-               <div>
-                 <Label className="text-sm font-medium mb-1 block">Organizer Image</Label>
-                 <Input
-                   name="event_organizer_image"
-                   value={editForm.event_organizer_image}
-                   onChange={handleEditFormChange}
-                   placeholder="Enter image URL or upload image"
-                 />
-               </div>
-             </div>
-
-             {/* Image Upload Section for Edit */}
-             <div>
-               <Label className="text-sm font-medium mb-1 block">
-                 {editForm.type === "upcoming_events" ? "Event Image" : "Event Images"}
-               </Label>
-               <FileUpload
-                 multiple={editForm.type === "previous_events"}
-                 accept="image/*"
-                 maxFiles={editForm.type === "previous_events" ? 10 : 1}
-                 value={editSelectedImages}
-                 onChange={handleEditImageUpload}
-                 onRemove={removeEditImage}
-                 placeholder={
-                   editForm.type === "upcoming_events"
-                     ? "Drop a single image here or click to upload"
-                     : "Drop multiple images here or click to upload"
-                 }
-               />
-               
-                                {/* Image Previews for Edit */}
-                 {editImagePreviewUrls.length > 0 && (
-                   <div className={`grid gap-3 mt-4 ${
-                     editForm.type === "upcoming_events" 
-                       ? "grid-cols-1" 
-                       : "grid-cols-2 md:grid-cols-3"
-                   }`}>
-                                        {editImagePreviewUrls.map((url, index) => (
-                       <div key={index} className="relative group">
-                       <div className="relative h-32 w-full rounded-lg overflow-hidden border">
-                         <Image
-                           src={url}
-                           alt={`Preview ${index + 1}`}
-                           fill
-                           className="object-cover"
-                         />
-                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                       </div>
-                       {editForm.type === "previous_events" && (
-                         <div className="mt-1 flex items-center gap-2">
-                           <Label className="text-xs text-gray-500">Hero Image</Label>
-                           <input
-                             type="radio"
-                             name="editHeroImage"
-                             value={index}
-                           />
-                         </div>
-                       )}
-                     </div>
-                   ))}
-                 </div>
-               )}
-             </div>
-          </form>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={handleEditCancel}>
-              Cancel
-            </Button>
-            <Button onClick={handleEditSubmit}>
-              Update Event
-            </Button>
-          </DialogFooter>
+          
+          <div className="flex-1 overflow-y-auto px-2">
+            {formError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-600">{formError}</p>
+              </div>
+            )}
+            
+            {editCurrentStep === 1 ? (
+              /* Step 1: Basic Event Information */
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium mb-1 block">Event Type</Label>
+                    <Select 
+                      value={editForm.type} 
+                      onValueChange={(value) => {
+                        console.log("🔄 Select value changed to:", value);
+                        setEditForm(prev => ({ ...prev, type: value }));
+                        
+                        // Clear validation error for type when user selects
+                        if (editValidationErrors.type) {
+                          setEditValidationErrors(prev => {
+                            const newErrors = { ...prev };
+                            delete newErrors.type;
+                            return newErrors;
+                          });
+                        }
+                      }}
+                    >
+                      <SelectTrigger className={`w-full rounded-xl ${editValidationErrors.type ? 'border-red-300 focus:border-red-500' : ''}`}>
+                        <SelectValue placeholder="Select event type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="previous_events">Previous Events</SelectItem>
+                        <SelectItem value="upcoming_events">Upcoming Events</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {editValidationErrors.type && (
+                      <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                        <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                        </svg>
+                        {editValidationErrors.type}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium mb-1 block">Category</Label>
+                    <Select 
+                      value={editForm.category} 
+                      onValueChange={(value) => {
+                        setEditForm(prev => ({ ...prev, category: value }));
+                        
+                        // Clear validation error for category when user selects
+                        if (editValidationErrors.category) {
+                          setEditValidationErrors(prev => {
+                            const newErrors = { ...prev };
+                            delete newErrors.category;
+                            return newErrors;
+                          });
+                        }
+                      }}
+                    >
+                      <SelectTrigger className={`w-full rounded-xl ${editValidationErrors.category ? 'border-red-300 focus:border-red-500' : ''}`}>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {eventCategories.map(cat => (
+                          <SelectItem key={cat} value={cat}>
+                            {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {editValidationErrors.category && (
+                      <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                        <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                        </svg>
+                        {editValidationErrors.category}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                
+                <div>
+                  <Label className="text-sm font-medium mb-1 block">Event Title</Label>
+                  <Input
+                    value={editForm.title}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value.length <= 60) {
+                        setEditForm(prev => ({ ...prev, title: value }));
+                        
+                        // Clear validation error for title when user starts typing
+                        if (editValidationErrors.title) {
+                          setEditValidationErrors(prev => {
+                            const newErrors = { ...prev };
+                            delete newErrors.title;
+                            return newErrors;
+                          });
+                        }
+                      }
+                    }}
+                    placeholder="Enter event title"
+                    className={`rounded-xl ${editValidationErrors.title ? 'border-red-300 focus:border-red-500' : ''}`}
+                    maxLength={60}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    {60 - editForm.title.length} characters left
+                  </p>
+                  {editValidationErrors.title && (
+                    <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                      <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
+                      {editValidationErrors.title}
+                    </p>
+                  )}
+                </div>
+                
+                <div data-color-mode="light">
+                  <Label className="text-sm font-medium mb-1 block">Description</Label>
+                  <MDEditor 
+                    value={editForm.description} 
+                    onChange={(value) => {
+                      const newValue = value || "";
+                      if (newValue.length <= 460) {
+                        setEditForm(prev => ({ ...prev, description: newValue }));
+                        
+                        // Clear validation error for description when user starts typing
+                        if (editValidationErrors.description) {
+                          setEditValidationErrors(prev => {
+                            const newErrors = { ...prev };
+                            delete newErrors.description;
+                            return newErrors;
+                          });
+                        }
+                      }
+                    }}
+                    preview="live"
+                    height={200}
+                    textareaProps={{
+                      placeholder: "Enter event description with markdown support...",
+                      className: `rounded-xl ${editValidationErrors.description ? 'border-red-300 focus:border-red-500' : ''}`,
+                      maxLength: 460
+                    }}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    {460 - editForm.description.length} characters left
+                  </p>
+                  {editValidationErrors.description && (
+                    <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                      <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
+                      {editValidationErrors.description}
+                    </p>
+                  )}
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium mb-1 block">Date</Label>
+                    <Input
+                      value={editForm.date}
+                      onChange={(e) => {
+                        setEditForm(prev => ({ ...prev, date: e.target.value }));
+                        
+                        // Clear validation error for date when user starts typing
+                        if (editValidationErrors.date) {
+                          setEditValidationErrors(prev => {
+                            const newErrors = { ...prev };
+                            delete newErrors.date;
+                            return newErrors;
+                          });
+                        }
+                      }}
+                      type="date"
+                      className={`rounded-xl ${editValidationErrors.date ? 'border-red-300 focus:border-red-500' : ''}`}
+                    />
+                    {editValidationErrors.date && (
+                      <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                        <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                        </svg>
+                        {editValidationErrors.date}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium mb-1 block">Location</Label>
+                    <Input
+                      value={editForm.location}
+                      onChange={(e) => {
+                        setEditForm(prev => ({ ...prev, location: e.target.value }));
+                        
+                        // Clear validation error for location when user starts typing
+                        if (editValidationErrors.location) {
+                          setEditValidationErrors(prev => {
+                            const newErrors = { ...prev };
+                            delete newErrors.location;
+                            return newErrors;
+                          });
+                        }
+                      }}
+                      placeholder="Enter event location"
+                      className={`rounded-xl ${editValidationErrors.location ? 'border-red-300 focus:border-red-500' : ''}`}
+                    />
+                    {editValidationErrors.location && (
+                      <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                        <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                        </svg>
+                        {editValidationErrors.location}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* Step 2: Event Organizer Information and Images */
+              <div className="space-y-4">
+                <div className="text-center mb-4">
+                  <h3 className="text-lg font-semibold text-gray-800">Event Organizer Details</h3>
+                  <p className="text-sm text-gray-600">Update information about the event organizer</p>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium mb-1 block">Organizer Name</Label>
+                    <Input
+                      value={editForm.event_organizer_name}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, event_organizer_name: e.target.value }))}
+                      placeholder="Enter organizer name"
+                      className="rounded-xl"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium mb-1 block">Organizer Role</Label>
+                    <Input
+                      value={editForm.event_organizer_role}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, event_organizer_role: e.target.value }))}
+                      placeholder="Enter organizer role"
+                      className="rounded-xl"
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <Label className="text-sm font-medium mb-1 block">Organizer Image</Label>
+                  <Input
+                    value={editForm.event_organizer_image}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setEditForm(prev => ({ ...prev, event_organizer_image: value }));
+                      
+                      // If the input is a URL, clear validation errors
+                      setEditValidationErrors(prev => {
+                        const newErrors = { ...prev };
+                        delete newErrors.event_organizer_image;
+                        return newErrors;
+                      });
+                    }}
+                    placeholder="Enter image URL or upload image"
+                    className={`rounded-xl ${editValidationErrors.event_organizer_image ? 'border-red-300 focus:border-red-500' : ''}`}
+                  />
+                  {editValidationErrors.event_organizer_image && (
+                    <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                      <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
+                      {editValidationErrors.event_organizer_image}
+                    </p>
+                  )}
+                </div>
+
+                {/* Existing Images Section */}
+                {editExistingImages.length > 0 && (
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-sm font-medium mb-1 block">
+                        Existing Event Images
+                      </Label>
+                      <p className="text-xs text-gray-500 mb-3">
+                        {editForm.type === "upcoming_events" 
+                          ? "These images will be replaced when you upload a new one. Only one image is allowed for upcoming events."
+                          : "Manage existing images. You can delete them or set one as the hero image."
+                        }
+                      </p>
+                      
+                      {/* Warning for upcoming events */}
+                      
+                    </div>
+                    
+                    <div className="grid gap-3 grid-cols-2 md:grid-cols-3">
+                      {editExistingImages.map((img, index) => (
+                        <div key={img._key} className="relative group">
+                          <div className="relative h-32 w-full rounded-lg overflow-hidden border">
+                            <Image
+                              src={
+                                img.asset?.url 
+                                  ? (img.asset.url.startsWith('http') ? img.asset.url : urlFor(img.asset).url())
+                                  : urlFor(img.asset).url()
+                              }
+                              alt={`Event image ${index + 1}`}
+                              fill
+                              className="object-cover"
+                            />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                            
+                            {/* Delete button */}
+                            <button
+                              type="button"
+                              onClick={() => removeExistingImage(img._key)}
+                              className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
+                          
+                          <div className="mt-2 flex items-center gap-2">
+                            {/* Only show hero image selection for previous events (multiple images) */}
+                            {editForm.type === "previous_events" && (
+                              <>
+                                <input
+                                  type="radio"
+                                  name="existingHeroImage"
+                                  id={`existing-hero-${img._key}`}
+                                  checked={img.isHero}
+                                  onChange={() => setExistingImageAsHero(img._key)}
+                                  className="w-4 h-4 text-orange-500 border-gray-300 focus:ring-orange-500"
+                                />
+                                <Label htmlFor={`existing-hero-${img._key}`} className="text-xs text-gray-600 cursor-pointer">
+                                  Set as hero image
+                                </Label>
+                              </>
+                            )}
+                            
+                            {/* For upcoming events, show a simple label indicating this is the main image */}
+                            {editForm.type === "upcoming_events" && (
+                              <span className="text-xs text-gray-500 font-medium">
+                                Main event image
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* New Images Section */}
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-medium mb-1 block">
+                      Add New Event Images
+                    </Label>
+                    <p className="text-xs text-gray-500 mb-3">
+                      {editForm.type === "upcoming_events" 
+                        ? "Upload a new image to replace the current one. You can see both images until you click Update Event to commit the change." 
+                        : "Upload additional images for your event. You can select one as the hero image."
+                      }
+                    </p>
+                  </div>
+                  
+                  <FileUpload
+                    multiple={editForm.type === "previous_events"}
+                    accept="image/*"
+                    maxFiles={editForm.type === "upcoming_events" ? 1 : 10}
+                    value={editSelectedImages}
+                    onChange={async (fileList) => {
+                      console.log("🖼️ Edit new images selected:", fileList?.length || 0);
+                      
+                      // For upcoming events, only allow one image and clear existing ones
+                      if (editForm.type === "upcoming_events") {
+                        if (fileList && fileList.length > 1) {
+                          console.log("⚠️ Upcoming events only allow one image, limiting to first image");
+                          fileList = fileList.slice(0, 1);
+                        }
+                        
+                        // Don't clear existing images yet - let user see both old and new
+                        // Replacement will happen when they click Update Event
+                        if (fileList && fileList.length > 0) {
+                          console.log("🔄 Upcoming event: New image uploaded, keeping existing images visible");
+                          console.log("ℹ️ User can now see both old and new images");
+                          console.log("ℹ️ Replacement will happen when Update Event is clicked");
+                        }
+                      }
+                      
+                      if (fileList && fileList.length > 0) {
+                        console.log("🔄 Starting image compression process...");
+                        const compressedFiles: File[] = [];
+                        
+                        for (let i = 0; i < fileList.length; i++) {
+                          const file = fileList[i];
+                          console.log(`📸 Processing edit image ${i + 1}/${fileList.length}:`, {
+                            name: file.name,
+                            size: file.size,
+                            type: file.type
+                          });
+                          
+                          try {
+                            const compressedFile = await compressImage(file);
+                            if (compressedFile) {
+                              compressedFiles.push(compressedFile);
+                              console.log(`✅ Edit image ${i + 1} compressed successfully`);
+                            } else {
+                              console.error(`❌ Failed to compress edit image: ${file.name}`);
+                              compressedFiles.push(file);
+                            }
+                          } catch (error) {
+                            console.error(`❌ Error compressing edit image ${i + 1}:`, error);
+                            compressedFiles.push(file);
+                          }
+                        }
+                        
+                        console.log("📦 Final compressed edit files count:", compressedFiles.length);
+                        setEditSelectedImages(compressedFiles);
+                        
+                        // Create preview URLs from compressed files
+                        const urls = compressedFiles.map(file => URL.createObjectURL(file));
+                        console.log("🖼️ Created edit preview URLs count:", urls.length);
+                        setEditImagePreviewUrls(urls);
+                        
+                        // Remove hero image selection for new images
+                        setEditSelectedHeroImage(-1);
+                        
+                        console.log("✅ All edit images compressed and ready for upload");
+                      } else {
+                        console.log("📭 No edit files received, clearing images");
+                        setEditSelectedImages([]);
+                        setEditImagePreviewUrls([]);
+                      }
+                    }}
+                    onRemove={removeEditImage}
+                    placeholder={editForm.type === "upcoming_events" ? "Drop a new image here to replace the current one" : "Drop additional images here or click to upload"}
+                    helperText={editForm.type === "upcoming_events" ? "Only one image allowed for upcoming events." : "Upload up to 10 additional images for your event."}
+                  />
+                  
+                  {/* New Image Previews */}
+                  {editImagePreviewUrls.length > 0 && (
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">New Image Previews</Label>
+                      <div className="grid gap-3 grid-cols-2 md:grid-cols-3">
+                        {editImagePreviewUrls.map((url, index) => (
+                          <div key={index} className="relative group">
+                            <div className="relative h-32 w-full rounded-lg overflow-hidden border">
+                              <Image
+                                src={url}
+                                alt={`New preview ${index + 1}`}
+                                fill
+                                className="object-cover"
+                              />
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {/* Step Navigation */}
+            <div className="flex justify-between pt-6">
+              <Button 
+                type="button"
+                variant="outline" 
+                onClick={handleEditCancel}
+                className="rounded-xl"
+              >
+                Cancel
+              </Button>
+              
+              <div className="flex space-x-2">
+                {editCurrentStep === 2 && (
+                  <Button 
+                    type="button"
+                    variant="outline" 
+                    onClick={handleEditPrevStep}
+                    className="rounded-xl"
+                  >
+                    Previous
+                  </Button>
+                )}
+                
+                {editCurrentStep === 1 ? (
+                  <Button 
+                    type="button"
+                    onClick={handleEditNextStep}
+                    className="bg-orange-500 hover:bg-orange-600 rounded-xl text-white shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition duration-200"
+                  >
+                    Next
+                  </Button>
+                ) : (
+                  <Button 
+                    type="button"
+                    onClick={handleEditSubmit}
+                    disabled={isUpdating}
+                    className="bg-orange-500 hover:bg-orange-600 rounded-xl text-white shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition duration-200"
+                  >
+                    {isUpdating ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Updating...
+                      </>
+                    ) : (
+                      'Update Event'
+                    )}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -1166,8 +2146,19 @@ export default function EventsManagement() {
             <Button variant="outline" onClick={handleDeleteCancel}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDeleteConfirm}>
-              Delete Event
+            <Button 
+              variant="destructive" 
+              onClick={handleDeleteConfirm}
+              disabled={deletingEventId === eventIdToDelete}
+            >
+              {deletingEventId === eventIdToDelete ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete Event'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

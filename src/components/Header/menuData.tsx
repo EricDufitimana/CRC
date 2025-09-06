@@ -19,6 +19,12 @@ const menuData: Menu[] = [
         newTab: false,
       },
       {
+        id:11,
+        title: "Recurring Opportunities",
+        path: "/resources/recurringopportunities",
+        newTab: false,
+      },
+      {
         id: 10,
         title: "Templates",
         path: "/resources/templates",
@@ -140,14 +146,6 @@ const menuData: Menu[] = [
       },
     ]
   },
-  
-  {
-    id: 4,
-    title: "Book A Meeting",
-    newTab: false,
-    path: "/"
 
-  },
- 
 ];
 export default menuData;

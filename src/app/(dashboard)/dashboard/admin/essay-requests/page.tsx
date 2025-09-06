@@ -8,11 +8,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../../../zenith/src/components/ui/tabs";
 import { Calendar, Clock, Users, FileText, AlertTriangle, Loader2, Send, Inbox, User, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
-import { ToggleGroup, ToggleGroupItem } from "../../../../../../zenith/src/components/ui/toggle-group"; import {useUserData} from '@/hooks/useUserData'
-import {deferTo} from '@/actions/deferTo'
-import {changeReferStatus} from '@/actions/changeReferStatus'
-import {essayCompleted} from '@/actions/essayCompleted'
-import {markReferralCompleted, markReferralCompletedByEssayId} from '@/actions/markReferralCompleted'
+import { ToggleGroup, ToggleGroupItem } from "../../../../../../zenith/src/components/ui/toggle-group";
+import {useUserData} from '@/hooks/useUserData'
+import {deferTo} from '@/actions/essays/deferTo'
+import {changeReferStatus} from '@/actions/essays/changeReferStatus'
+import {essayCompleted} from '@/actions/essays/essayCompleted'
+import {markReferralCompleted, markReferralCompletedByEssayId} from '@/actions/essays/markReferralCompleted'
+import { showToastPromise, showToastSuccess, showToastError } from "@/components/toasts";
 
 type EssayRequest = {
   id: string;
@@ -43,6 +45,7 @@ type Referral = {
   submittedAt?: Date | null;
   wordCount: string;
   has_completed?: boolean;
+  completed_at?: Date | null;
 };
 
 export default function EssayRequests() {
@@ -65,34 +68,35 @@ export default function EssayRequests() {
   const getUrgencyColor = (urgency: string) => {
     switch (urgency) {
       case 'high':
-        return 'bg-red-100 text-red-800 border-red-200';
+        return 'bg-red-100 text-red-800 border-red-200 hover:bg-red-200 hover:text-red-900 hover:border-red-300';
       case 'medium':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200 hover:text-yellow-900 hover:border-yellow-300';
       case 'low':
-        return 'bg-green-100 text-green-800 border-green-200';
+        return 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200 hover:text-green-900 hover:border-green-300';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200 hover:text-gray-900 hover:border-gray-300';
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200 hover:text-blue-900 hover:border-blue-300';
       case 'in_review':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'completed': return 'bg-green-100 text-green-800 border-green-200';
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200 hover:text-yellow-900 hover:border-yellow-300';
+      case 'completed': 
+        return 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200 hover:text-green-900 hover:border-green-300';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200 hover:text-gray-900 hover:border-gray-300';
     }
   };
 
   const getGradeColor = (grade: string) => {
-    if (grade === "Enrichment Year") return "bg-yearcolors-ey text-black";
-    if (grade === "Senior 4") return "bg-yearcolors-s4 text-black";
-    if (grade === "Senior 5") return "bg-yearcolors-s5 text-black";
-    if (grade === "Senior 6") return "bg-yearcolors-s6 text-black";
-    return "bg-gray-200 text-gray-700";
+    if (grade === "Enrichment Year") return "bg-yearcolors-ey text-black hover:bg-yearcolors-ey/80 hover:text-black";
+    if (grade === "Senior 4") return "bg-yearcolors-s4 text-black hover:bg-yearcolors-s4/80 hover:text-black";
+    if (grade === "Senior 5") return "bg-yearcolors-s5 text-black hover:bg-yearcolors-s5/80 hover:text-black";
+    if (grade === "Senior 6") return "bg-yearcolors-s6 text-black hover:bg-yearcolors-s6/80 hover:text-black";
+    return "bg-gray-200 text-gray-700 hover:bg-gray-300 hover:text-gray-800";
   };
 
   const filteredEssayRequests = essayRequests
@@ -130,7 +134,7 @@ export default function EssayRequests() {
       if (activeTab === 'referrals') {
         // For sent referrals: show if status is not completed (including has_completed: true ones)
         if (referralSubTab === 'sent') {
-          return referral.type === 'sent' && !referral.status.includes('completed');
+          return referral.type === 'sent' && !referral.has_completed;
         }
         // For received referrals: show all (including has_completed: true ones)
         if (referralSubTab === 'received') {
@@ -172,7 +176,7 @@ export default function EssayRequests() {
       return completedEssays + completedReferrals;
     }
     if (tab === 'referrals') {
-      return referrals.length;
+      return getReferralSubTabCount('sent') + getReferralSubTabCount('received');
     }
     return 0;
   };
@@ -181,13 +185,14 @@ export default function EssayRequests() {
     return referrals.filter(referral => {
       if (referral.type !== subTab) return false;
       
-      // For sent referrals: exclude completed status from count
+      // For sent referrals: only count if essay is still pending in essay_requests table
       if (subTab === 'sent') {
-        return !referral.status.includes('completed');
+        const actualEssay = essayRequests.find(req => req.id === referral.essayId);
+        return actualEssay ? actualEssay.status === 'pending' : false;
       }
-      // For received referrals: include all (including has_completed ones)
+      // For received referrals: exclude completed status from count
       if (subTab === 'received') {
-        return true;
+        return !referral.has_completed;
       }
       
       return false;
@@ -257,24 +262,50 @@ export default function EssayRequests() {
 
   // Function to get essays that have been sent by the current admin
   const getSentEssays = () => {
-    return essayRequests.filter(essay => {
-      // Check if this essay has been referred by the current admin
-      const referral = referrals.find(ref => 
-        ref.essayId === essay.id && ref.type === 'sent'
-      );
-      return referral !== undefined;
-    });
+    return referrals
+      .filter(ref => ref.type === 'sent')
+      .map(referral => ({
+        id: `sent-${referral.id}`, // Make key unique by combining type and referral ID
+        essayId: referral.essayId, // Keep original essay ID for other operations
+        title: referral.essayTitle,
+        description: '', // Not available in referral data
+        deadline: referral.deadline,
+        essay_link: referral.essayLink,
+        student_id: '', // Not available in referral data
+        admin_id: '', // Not available in referral data
+        admin_name: referral.referredBy,
+        student_name: referral.studentName,
+        created_at: referral.submittedAt || referral.referredAt,
+        completed_at: undefined,
+        status: referral.has_completed ? 'completed' : 'pending',
+        word_count: referral.wordCount,
+        grade: '', // Not available in referral data
+        referred: true
+      }));
   };
 
   // Function to get essays that have been received by the current admin
   const getReceivedEssays = () => {
-    return essayRequests.filter(essay => {
-      // Check if this essay has been referred to the current admin
-      const referral = referrals.find(ref => 
-        ref.essayId === essay.id && ref.type === 'received'
-      );
-      return referral !== undefined;
-    });
+    return referrals
+      .filter(ref => ref.type === 'received')
+      .map(referral => ({
+        id: `received-${referral.id}`, // Make key unique by combining type and referral ID
+        essayId: referral.essayId, // Keep original essay ID for other operations
+        title: referral.essayTitle,
+        description: '', // Not available in referral data
+        deadline: referral.deadline,
+        essay_link: referral.essayLink,
+        student_id: '', // Not available in referral data
+        admin_id: '', // Not available in referral data
+        admin_name: referral.referredBy,
+        student_name: referral.studentName,
+        created_at: referral.submittedAt || referral.referredAt,
+        completed_at: undefined,
+        status: referral.has_completed ? 'completed' : 'pending',
+        word_count: referral.wordCount,
+        grade: '', // Not available in referral data
+        referred: true
+      }));
   };
 
   // Handler functions for essay actions
@@ -284,6 +315,7 @@ export default function EssayRequests() {
       const response = await fetch(`/api/essay-view?id=${essay.id}`);
       if(response.ok){
         const data = await response.json();
+        
         setEssayRequests(prevRequests => 
           prevRequests.map(request => 
             request.id === essay.id 
@@ -310,24 +342,44 @@ export default function EssayRequests() {
 
   const handleRefer = async (essay_id:string, from_admin_id:string, to_admin_id:string) => {
     setLoadingRefer(essay_id);
-    try {
-      const response = await deferTo(essay_id, from_admin_id, to_admin_id);
-      const referResponse = await changeReferStatus(essay_id);
-      
+    
+    const promise = Promise.all([
+      deferTo(essay_id, from_admin_id, to_admin_id),
+      changeReferStatus(essay_id)
+    ]).then(([response, referResponse]) => {
       if(response.success && referResponse.success){
         setShowReferModal(false);
         setSelectedMemberId(null);
+        
         // Reload the page after successful referral
-        window.location.reload();
-      }else{
-        console.error('Error deferring essay:', response.message);
-        console.error('Error changing refer status:', referResponse.message);
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+        
+        return { success: true };
+      } else {
+        throw new Error(response.message || referResponse.message || "Failed to refer the essay.");
       }
-    } catch (error) {
-      console.error('Error in handleRefer:', error);
-    } finally {
-      setLoadingRefer(null);
-    }
+    });
+    
+    showToastPromise({
+      promise,
+      loadingText: "Referring essay...",
+      successText: "The essay has been referred to the selected admin.",
+      errorText: "Failed to refer the essay. Please try again.",
+      successHeaderText: "Essay referred successfully!",
+      errorHeaderText: "Referral failed",
+      direction: 'right'
+    });
+    
+    // Handle loading state
+    promise
+      .then(() => {
+        setLoadingRefer(null);
+      })
+      .catch(() => {
+        setLoadingRefer(null);
+      });
   };
 
   const handleReferView = async (essay:any) => {
@@ -354,11 +406,11 @@ export default function EssayRequests() {
 
   const handleMarkDone = async (essay_id: string) => {
     setLoadingMarkDone(essay_id);
-    try{
-      // Update both the referral has_completed status and the essay status
-      const referralResponse = await markReferralCompletedByEssayId(essay_id);
-      const essayResponse = await essayCompleted(essay_id);
-      
+    
+    const promise = Promise.all([
+      markReferralCompletedByEssayId(essay_id),
+      essayCompleted(essay_id)
+    ]).then(([referralResponse, essayResponse]) => {
       if(referralResponse.success && essayResponse.success){
         // Update the referral status in local state
         setReferrals(prevReferrals =>
@@ -377,14 +429,31 @@ export default function EssayRequests() {
               : request
           )
         );
+        
+        return { success: true };
       } else {
-        console.error('Completion failed:', referralResponse.message || essayResponse.message);
+        throw new Error(referralResponse.message || essayResponse.message || "Failed to complete the essay.");
       }
-    }catch(error){
-      console.error('Error completing essay:', error);
-    }finally{
-      setLoadingMarkDone(null);
-    }
+    });
+    
+    showToastPromise({
+      promise,
+      loadingText: "Marking essay as done...",
+      successText: "The essay has been successfully completed.",
+      errorText: "Failed to mark essay as done. Please try again.",
+      successHeaderText: "Essay marked as done!",
+      errorHeaderText: "Failed to mark essay as done",
+      direction: 'right'
+    });
+    
+    // Handle loading state
+    promise
+      .then(() => {
+        setLoadingMarkDone(null);
+      })
+      .catch(() => {
+        setLoadingMarkDone(null);
+      });
   };
 
 
@@ -392,9 +461,8 @@ export default function EssayRequests() {
   // Function to handle marking referrals as completed (for received referrals)
   const handleMarkReferralCompleted = async (referral_id: string) => {
     setLoadingMarkDone(referral_id);
-    try{
-      const response = await markReferralCompleted(referral_id);
-      
+    
+    const promise = markReferralCompleted(referral_id).then((response) => {
       if(response.success){
         // Update the referral status in local state
         setReferrals(prevReferrals =>
@@ -404,14 +472,31 @@ export default function EssayRequests() {
               : referral
           )
         );
+        
+        return { success: true };
       } else {
-        console.error('Referral completion failed:', response.message);
+        throw new Error(response.message || "Failed to complete the referral.");
       }
-    }catch(error){
-      console.error('Error completing referral:', error);
-    }finally{
-      setLoadingMarkDone(null);
-    }
+    });
+    
+    showToastPromise({
+      promise,
+      loadingText: "Marking referral as completed...",
+      successText: "The referral has been successfully completed.",
+      errorText: "Failed to mark referral as completed. Please try again.",
+      successHeaderText: "Referral marked as completed!",
+      errorHeaderText: "Failed to mark referral as completed",
+      direction: 'right'
+    });
+    
+    // Handle loading state
+    promise
+      .then(() => {
+        setLoadingMarkDone(null);
+      })
+      .catch(() => {
+        setLoadingMarkDone(null);
+      });
   };
 
   const handleReferToMember = async (memberId: string) => {
@@ -501,45 +586,18 @@ export default function EssayRequests() {
     }
   };
 
-  // Helper function to get color based on submission time
-  const getSubmissionTimeColor = (dateValue: any) => {
-    if (!dateValue) return 'bg-gray-200 text-gray-800 border-gray-300';
-    
-    try {
-      const date = new Date(dateValue);
-      if (isNaN(date.getTime())) {
-        return 'bg-gray-200 text-gray-800 border-gray-300';
-      }
-      
-      const now = new Date();
-      const diffInMs = now.getTime() - date.getTime();
-      const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
-      
-      if (diffInDays >= 1 && diffInDays <= 3) {
-        return 'bg-green-50 text-green-800 border-green-300';
-      } else if (diffInDays >= 4 && diffInDays <= 7) {
-        return 'bg-yellow-50 text-yellow-800 border-yellow-300';
-      } else if (diffInDays > 7) {
-        return 'bg-red-50 text-red-800 border-red-300';
-      } else {
-        // For same day submissions (less than 1 day)
-        return 'bg-green-200 text-green-800 border-green-300';
-      }
-    } catch (error) {
-      return 'bg-gray-200 text-gray-800 border-gray-300';
-    }
-  };
+
 
   // Helper function to get color based on completion time (descending order - most recent first)
   const getCompletionTimeColor = (dateValue: any) => {
     if (!dateValue) {
-      return 'bg-gray-50 text-gray-800 border-gray-300';
+      return 'bg-gray-50 text-gray-800 border-gray-300 hover:bg-gray-100 hover:text-gray-900 hover:border-gray-400';
     }
     
     try {
       const date = new Date(dateValue);
       if (isNaN(date.getTime())) {
-        return 'bg-gray-50 text-gray-800 border-gray-300';
+        return 'bg-gray-50 text-gray-800 border-gray-300 hover:bg-gray-100 hover:text-gray-900 hover:border-gray-400';
       }
       
       const now = new Date();
@@ -547,18 +605,18 @@ export default function EssayRequests() {
       const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
       
       if (diffInDays === 0) {
-        return 'bg-green-50 text-green-800 border-green-300';
+        return 'bg-green-50 text-green-800 border-green-300 hover:bg-green-100 hover:text-green-900 hover:border-green-400';
       } else if (diffInDays >= 1 && diffInDays <= 3) {
-        return 'bg-green-50 text-green-800 border-green-300';
+        return 'bg-green-50 text-green-800 border-green-300 hover:bg-green-100 hover:text-green-900 hover:border-green-400';
       } else if (diffInDays >= 4 && diffInDays <= 7) {
-        return 'bg-yellow-50 text-yellow-800 border-yellow-300';
+        return 'bg-yellow-50 text-yellow-800 border-yellow-300 hover:bg-yellow-100 hover:text-yellow-900 hover:border-yellow-400';
       } else if (diffInDays > 7) {
-        return 'bg-red-50 text-red-800 border-red-300';
+        return 'bg-red-50 text-red-800 border-red-300 hover:bg-red-100 hover:text-red-900 hover:border-red-400';
       } else {
-        return 'bg-green-50 text-green-800 border-green-300';
+        return 'bg-green-50 text-green-800 border-green-300 hover:bg-green-100 hover:text-green-900 hover:border-green-400';
       }
     } catch (error) {
-      return 'bg-gray-50 text-gray-800 border-gray-300';
+      return 'bg-gray-50 text-gray-800 border-gray-300 hover:bg-gray-100 hover:text-gray-900 hover:border-gray-400';
     }
   };
 
@@ -724,7 +782,7 @@ export default function EssayRequests() {
                 ) : (
                   <div className="grid gap-4">
                     {referralSubTab === 'sent' && getSentEssays().map((essay) => {
-                      const referral = referrals.find(ref => ref.essayId === essay.id && ref.type === 'sent');
+                      const referral = referrals.find(ref => ref.essayId === essay.essayId && ref.type === 'sent');
                       if (!referral) return null;
                       
                       return (
@@ -746,9 +804,29 @@ export default function EssayRequests() {
                                 </div>
                               </div>
                               <div className="flex flex-col items-end gap-2">
-                                <Badge className={referral.has_completed ? 'bg-green-100 text-green-800 border-green-200' : 'bg-yellow-100 text-yellow-800 border-yellow-200'}>
-                                  {referral.has_completed ? 'Completed' : 'Pending'}
-                                </Badge>
+                                {(() => {
+                                  console.log('🔍 Debug referral data:', {
+                                    id: referral.id,
+                                    has_completed: referral.has_completed,
+                                    completed_at: referral.completed_at,
+                                    completed_at_type: typeof referral.completed_at,
+                                    status: referral.status
+                                  });
+                                  return (
+                                    <Badge className={referral.has_completed ? 'bg-green-100 text-green-800 border-green-200' : 'bg-yellow-100 text-yellow-800 border-yellow-200'}>
+                                      {referral.has_completed ? (
+                                        <div className="flex items-center gap-1">
+                                          <span>Completed</span>
+                                          <span className="text-xs">
+                                            {referral.completed_at ? getRelativeTime(referral.completed_at) : 'No date'}
+                                          </span>
+                                        </div>
+                                      ) : (
+                                        'Pending'
+                                      )}
+                                    </Badge>
+                                  );
+                                })()}
                               </div>
                             </div>
                           </CardHeader>
@@ -761,7 +839,7 @@ export default function EssayRequests() {
                             <div className="flex items-center gap-2">
                               <Clock className="h-4 w-4 text-dashboard-muted-foreground" />
                               <span>Submitted: </span>
-                              <Badge variant="outline" className={getSubmissionTimeColor(essay.created_at)}>
+                              <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-300 hover:bg-gray-200 hover:text-gray-900 hover:border-gray-400">
                                 {getRelativeTime(essay.created_at)}
                               </Badge>
                             </div>
@@ -773,6 +851,7 @@ export default function EssayRequests() {
                               <Send className="h-4 w-4 text-dashboard-muted-foreground" />
                               <span>Referred: {format(new Date(referral.referredAt), 'MMM dd, yyyy')}</span>
                             </div>
+                           
                           </div>
                         </CardContent>
                         <CardFooter className="gap-2">
@@ -781,9 +860,9 @@ export default function EssayRequests() {
                             size="sm"
                             className="px-8"
                             onClick={() => handleReferView(essay)}
-                            disabled={!essay.essay_link || loadingView === essay.id}
+                            disabled={!essay.essay_link || loadingView === essay.essayId}
                           >
-                            {loadingView === essay.id ? (
+                            {loadingView === essay.essayId ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
                               "View Essay"
@@ -791,14 +870,18 @@ export default function EssayRequests() {
                           </Button>
                           
                           {/* For sent essays that haven't been completed */}
-                          {referral.has_completed && (
+                          {referral.has_completed && (() => {
+                            // Find the actual essay from essayRequests to check its status
+                            const actualEssay = essayRequests.find(req => req.id === essay.essayId);
+                            return actualEssay ? actualEssay.status !== 'completed' : true;
+                          })() && (
                             <Button 
-                              onClick={() => handleMarkDone(essay.id)}
+                              onClick={() => handleMarkDone(essay.essayId)}
                               size="sm"
                               className="bg-orange-500 text-white hover:bg-orange-700 px-8 text-sm shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(255,165,0,0.4)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_4px_rgba(255,165,0,0.1)] transition duration-200"
-                              disabled={loadingMarkDone === essay.id}
+                              disabled={loadingMarkDone === essay.essayId}
                             >
-                              {loadingMarkDone === essay.id ? (
+                              {loadingMarkDone === essay.essayId ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
                                 "Mark as Done"
@@ -810,7 +893,7 @@ export default function EssayRequests() {
                       );
                     })}
                     {referralSubTab === 'received' && getReceivedEssays().map((essay) => {
-                      const referral = referrals.find(ref => ref.essayId === essay.id && ref.type === 'received');
+                      const referral = referrals.find(ref => ref.essayId === essay.essayId && ref.type === 'received');
                       if (!referral) return null;
                       
                       return (
@@ -833,7 +916,16 @@ export default function EssayRequests() {
                               </div>
                               <div className="flex flex-col items-end gap-2">
                                 <Badge className={referral.has_completed ? 'bg-green-100 text-green-800 border-green-200' : 'bg-yellow-100 text-yellow-800 border-yellow-200'}>
-                                  {referral.has_completed ? 'Completed' : 'Pending'}
+                                  {referral.has_completed ? (
+                                    <div className="flex items-center gap-1">
+                                      <span>Completed</span>
+                                      <span className="text-xs">
+                                        {referral.completed_at ? getRelativeTime(referral.completed_at) : 'No date'}
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    'Pending'
+                                  )}
                                 </Badge>
                               </div>
                             </div>
@@ -847,7 +939,7 @@ export default function EssayRequests() {
                               <div className="flex items-center gap-2">
                                 <Clock className="h-4 w-4 text-dashboard-muted-foreground" />
                                 <span>Submitted: </span>
-                                <Badge variant="outline" className={getSubmissionTimeColor(essay.created_at)}>
+                                <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-300 hover:bg-gray-200 hover:text-gray-900 hover:border-gray-400">
                                   {getRelativeTime(essay.created_at)}
                                 </Badge>
                               </div>
@@ -867,9 +959,9 @@ export default function EssayRequests() {
                               size="sm"
                               className="px-8"
                               onClick={() => handleReferView(essay)}
-                              disabled={!essay.essay_link || loadingView === essay.id}
+                              disabled={!essay.essay_link || loadingView === essay.essayId}
                             >
-                              {loadingView === essay.id ? (
+                              {loadingView === essay.essayId ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
                                 "View Essay"
@@ -1139,7 +1231,7 @@ export default function EssayRequests() {
                             <div className="flex items-center gap-2">
                               <Clock className="h-4 w-4 text-dashboard-muted-foreground" />
                               <span>Submitted: </span>
-                              <Badge variant="outline" className={getSubmissionTimeColor(referral.submittedAt)}>
+                              <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-300 hover:bg-gray-200 hover:text-gray-900 hover:border-gray-400">
                                 {getRelativeTime(referral.submittedAt)}
                               </Badge>
                             </div>

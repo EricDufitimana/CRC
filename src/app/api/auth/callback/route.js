@@ -105,6 +105,7 @@ export async function POST(request) {
       .from('students')
       .update({ 
         user_id: user.user.id,
+        email: user.user.email,
         date_of_registration: new Date().toISOString()
       })
       .eq('id', existingStudent.id)

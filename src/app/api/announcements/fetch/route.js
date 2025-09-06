@@ -70,8 +70,13 @@ export async function GET(request) {
 
     if (single) {
       const whereClause = {
-        OR: [{ is_active: true }, { is_active: null }],
-        end_time: { gt: new Date(nowIso) },
+        AND: [
+          { OR: [{ is_active: true }, { is_active: null }] },
+          { OR: [
+            { end_time: null }, // Never expires
+            { end_time: { gt: new Date(nowIso) } } // Or hasn't expired yet
+          ]}
+        ],
         ...(page ? { page } : {}),
       };
 
@@ -94,8 +99,19 @@ export async function GET(request) {
     }
 
     // Default: list announcements (optionally by page) for admin UI compatibility
+    const listWhereClause = {
+      AND: [
+        { OR: [{ is_active: true }, { is_active: null }] },
+        { OR: [
+          { end_time: null }, // Never expires
+          { end_time: { gt: new Date(nowIso) } } // Or hasn't expired yet
+        ]}
+      ],
+      ...(page ? { page } : {}),
+    };
+    
     const list = await prisma.announcements.findMany({
-      where: page ? { page } : undefined,
+      where: listWhereClause,
       orderBy: { created_at: "desc" },
     });
     const serialized = list.map((n) => ({
@@ -106,7 +122,7 @@ export async function GET(request) {
       created_at: n.created_at,
       page: n.page,
     }));
-    return NextResponse.json(serialized);
+    return NextResponse.json({ announcements: serialized });
   } catch (err) {
     console.error("❌ Error in announcements/fetch API:", err);
     console.error("Error name:", err.name);

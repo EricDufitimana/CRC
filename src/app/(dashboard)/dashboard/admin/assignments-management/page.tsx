@@ -9,7 +9,9 @@ import { Input } from "../../../../../../zenith/src/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../../../../zenith/src/components/ui/table";
 import { Skeleton } from "../../../../../../zenith/src/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../../../zenith/src/components/ui/select";
-import { Calendar, Clock, Download, Filter, Search, Upload, ChevronLeft, ChevronRight, FileText, Users, CheckCircle2, XCircle, ArrowUpRight, ChevronsUpDown, Check } from "lucide-react";
+import { Calendar, Clock, Download, Filter, Search, Upload, ChevronLeft, ChevronRight, FileText, Users, CheckCircle2, XCircle, ArrowUpRight, ChevronsUpDown, Check, Eye } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../../../../../zenith/src/components/ui/tooltip";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 // =============================================================================
 // TYPES AND INTERFACES
@@ -268,7 +270,9 @@ const useAssignmentData = () => {
   
   // State for data
   const [classes, setClasses] = useState<CrcClass[]>([]);
+  const [allWorkshops, setAllWorkshops] = useState<Workshop[]>([]);
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
+  const [allAssignments, setAllAssignments] = useState<AssignmentLite[]>([]);
   const [assignments, setAssignments] = useState<AssignmentLite[]>([]);
   const [assignmentData, setAssignmentData] = useState<any>(null);
   const [rows, setRows] = useState<Row[]>([]);
@@ -277,8 +281,10 @@ const useAssignmentData = () => {
   // Loading states
   const [classesLoading, setClassesLoading] = useState(false);
   const [workshopsLoading, setWorkshopsLoading] = useState(false);
+  const [allAssignmentsLoading, setAllAssignmentsLoading] = useState(false);
   const [assignmentsLoading, setAssignmentsLoading] = useState(false);
   const [assignmentDataLoading, setAssignmentDataLoading] = useState(false);
+  const [allWorkshopsLoading, setAllWorkshopsLoading] = useState(false);
   
   // Fetch classes
   useEffect(() => {
@@ -301,30 +307,81 @@ const useAssignmentData = () => {
     fetchClasses();
   }, []);
   
-  // Fetch workshops when we have an effective class ID
+  // Fetch ALL workshops on component mount (for testing purposes)
   useEffect(() => {
-    if (!effectiveClassId) {
-      setWorkshops([]);
-      return;
-    }
-    
-    const fetchWorkshops = async () => {
-      setWorkshopsLoading(true);
+    const fetchAllWorkshops = async () => {
+      setAllWorkshopsLoading(true);
       try {
-        const response = await fetch(`/api/admin/workshops?crcClassId=${effectiveClassId}&useCase=assignment`);
+    
+        const response = await fetch('/api/admin/workshops?useCase=assignment');
         const data = await response.json();
         if (data.workshops) {
-          setWorkshops(data.workshops);
+          setAllWorkshops(data.workshops);
+
         }
       } catch (error) {
-        console.error('Failed to fetch workshops:', error);
+        console.error('Failed to fetch all workshops:', error);
       } finally {
-        setWorkshopsLoading(false);
+        setAllWorkshopsLoading(false);
       }
     };
     
-    fetchWorkshops();
-  }, [effectiveClassId]);
+    fetchAllWorkshops();
+  }, []);
+  
+  // Fetch ALL assignments on component mount (for testing purposes)
+  useEffect(() => {
+    const fetchAllAssignments = async () => {
+      setAllAssignmentsLoading(true);
+      try {
+
+        const response = await fetch('/api/admin/assignments/for-management');
+        const data = await response.json();
+        if (data.assignments) {
+          setAllAssignments(data.assignments);
+
+        }
+      } catch (error) {
+        console.error('Failed to fetch all assignments:', error);
+      } finally {
+        setAllAssignmentsLoading(false);
+      }
+    };
+    
+    fetchAllAssignments();
+  }, []);
+  
+  // Filter workshops based on effective class ID (client-side filtering for testing)
+  useEffect(() => {
+
+    
+    if (!effectiveClassId) {
+      // If no class selected, show all workshops
+      setWorkshops(allWorkshops);
+      console.log('🔍 Testing: No class selected, showing all workshops:', allWorkshops.length);
+      return;
+    }
+    
+    if (allWorkshops.length === 0) {
+      console.log('🔍 Testing: No workshops loaded yet, skipping filter');
+      return;
+    }
+    
+    // Filter workshops that belong to the selected class
+    const filteredWorkshops = allWorkshops.filter(workshop => {
+      const hasMatchingClass = workshop.crc_classes?.some(crcClass => crcClass.id === effectiveClassId);
+      console.log('🔍 Testing: Workshop filtering:', {
+        workshopTitle: workshop.title,
+        workshopClasses: workshop.crc_classes,
+        effectiveClassId,
+        hasMatchingClass
+      });
+      return hasMatchingClass;
+    });
+    
+    console.log('🔍 Testing: Filtered workshops for class', effectiveClassId, ':', filteredWorkshops.length);
+    setWorkshops(filteredWorkshops);
+  }, [effectiveClassId, allWorkshops]);
   
   // Fetch assignment data when we have an assignment ID
   useEffect(() => {
@@ -355,40 +412,55 @@ const useAssignmentData = () => {
     fetchAssignmentData();
   }, [assignmentId, effectiveClassId]);
   
-  // Fetch assignments list when we have an effective class ID
+  // Filter assignments based on selected workshop (client-side filtering for testing)
   useEffect(() => {
-    if (!effectiveClassId) {
-      setAssignments([]);
-        return;
-      }
-      
-    const fetchAssignments = async () => {
-      setAssignmentsLoading(true);
-      try {
-        const response = await fetch(`/api/admin/assignments/for-management?selectedClassId=${effectiveClassId}`);
-        const data = await response.json();
-        if (data.assignments) {
-          setAssignments(data.assignments);
-        }
-      } catch (error) {
-        console.error('Failed to fetch assignments:', error);
-      } finally {
-        setAssignmentsLoading(false);
-      }
-    };
+    console.log('🔍 Testing: Assignment filtering effect triggered:', {
+      selectedWorkshop: selectedWorkshop,
+      allAssignmentsLength: allAssignments.length,
+      allAssignments: allAssignments.slice(0, 2) // Log first 2 assignments for debugging
+    });
     
-    fetchAssignments();
-  }, [effectiveClassId]);
+    if (!selectedWorkshop) {
+      // If no workshop selected, show all assignments
+      setAssignments(allAssignments);
+      console.log('🔍 Testing: No workshop selected, showing all assignments:', allAssignments.length);
+      return;
+    }
+    
+    if (allAssignments.length === 0) {
+      console.log('🔍 Testing: No assignments loaded yet, skipping filter');
+      return;
+    }
+    
+    // Filter assignments that belong to the selected workshop
+    const filteredAssignments = allAssignments.filter(assignment => {
+      const matchesWorkshop = assignment.workshop_title === selectedWorkshop;
+      console.log('🔍 Testing: Assignment filtering:', {
+        assignmentTitle: assignment.title,
+        assignmentWorkshop: assignment.workshop_title,
+        selectedWorkshop: selectedWorkshop,
+        matchesWorkshop
+      });
+      return matchesWorkshop;
+    });
+    
+    console.log('🔍 Testing: Filtered assignments for workshop', selectedWorkshop, ':', filteredAssignments.length);
+    setAssignments(filteredAssignments);
+  }, [selectedWorkshop, allAssignments]);
   
   return {
     classes,
+    allWorkshops,
     workshops,
+    allAssignments,
     assignments,
     assignmentData,
     rows,
     metrics,
     classesLoading,
+    allWorkshopsLoading,
     workshopsLoading,
+    allAssignmentsLoading,
     assignmentsLoading,
     assignmentDataLoading
   };
@@ -416,6 +488,12 @@ export default function AdminAssignmentsManagement() {
   const [workshopPopoverOpen, setWorkshopPopoverOpen] = useState(false);
   const [assignmentPopoverOpen, setAssignmentPopoverOpen] = useState(false);
   
+  // State for signed URLs and dialog
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+  const [loadingUrls, setLoadingUrls] = useState<Record<string, boolean>>({});
+  const [selectedSubmission, setSelectedSubmission] = useState<Row | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  
   // Group classes for display
   const groupedClasses = useMemo(() => {
     return groupCrcClasses(data.classes);
@@ -436,12 +514,10 @@ export default function AdminAssignmentsManagement() {
     return data.workshops;
   }, [data.workshops]);
   
-  // Get assignment options from selected workshop
+  // Get assignment options from filtered assignments (now loaded upfront)
   const assignmentOptions = useMemo(() => {
-    if (!navigation.selectedWorkshop || !workshopOptions.length) return [];
-    const workshop = workshopOptions.find(w => w.title === navigation.selectedWorkshop);
-    return workshop?.assignments || [];
-  }, [navigation.selectedWorkshop, workshopOptions]);
+    return data.assignments || [];
+  }, [data.assignments]);
 
   // Filtered data for table
   const filtered = useMemo(() => {
@@ -503,25 +579,104 @@ export default function AdminAssignmentsManagement() {
     }
   };
 
+  // Function to get signed URL
+  const getSignedUrl = async (filePath: string, studentId: string) => {
+    if (!filePath) return;
+    
+    // Create a unique key combining student ID and file path
+    const urlKey = `${studentId}-${filePath}`;
+    
+    // Check if we already have this specific file's signed URL
+    if (signedUrls[urlKey]) return;
+    
+    setLoadingUrls(prev => ({ ...prev, [urlKey]: true }));
+    
+    try {
+      const response = await fetch('/api/admin/get-signed-url', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ filePath }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.signedUrl) {
+        setSignedUrls(prev => ({ ...prev, [urlKey]: data.signedUrl }));
+      }
+    } catch (error) {
+      console.error('Error fetching signed URL:', error);
+    } finally {
+      setLoadingUrls(prev => ({ ...prev, [urlKey]: false }));
+    }
+  };
+
+  // Function to clear signed URLs cache when switching assignments
+  const clearSignedUrlsCache = () => {
+    setSignedUrls({});
+    setLoadingUrls({});
+    setSelectedSubmission(null);
+    setDialogOpen(false);
+  };
+
   const renderSubmissionType = (row: Row) => {
     if (row.status !== 'submitted') return <span className="text-neutral-500">N/A</span>;
     const late = row.on_time === false;
+    const hasFileUpload = !!row.file_upload_link;
+    const hasGoogleDoc = row.submission_type === 'google link' && row.google_doc_link;
+    
     return (
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
           <Clock className={`h-4 w-4 ${late ? 'text-red-600' : 'text-emerald-600'}`} />
           <span className="text-sm text-neutral-600">{late ? 'Late submit' : 'On time'}</span>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className={`h-8 w-8 ${(!row.view_url) ? 'text-neutral-300 cursor-not-allowed' : 'text-neutral-600 hover:text-black'}`}
-          disabled={!row.view_url}
-          title={row.view_url ? 'Open submission' : 'No submission'}
-          onClick={() => row.view_url && window.open(row.view_url as string, '_blank', 'noopener,noreferrer')}
-        >
-          <ArrowUpRight className="h-4 w-4" />
-        </Button>
+        {hasFileUpload ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-black hover:text-gray-700 bg-gray-100 hover:translate-x-0.5 hover:-translate-y-0.5"
+            title="View submission image"
+            onClick={() => {
+              setSelectedSubmission(row);
+              setDialogOpen(true);
+              // Fetch signed URL if not already available
+              if (row.file_upload_link) {
+                const urlKey = `${row.student_id}-${row.file_upload_link}`;
+                if (!signedUrls[urlKey]) {
+                  getSignedUrl(row.file_upload_link, row.student_id);
+                }
+              }
+            }}
+          >
+            <ArrowUpRight className="h-4 w-4 transition-transform duration-200 hover:translate-x-0.5 hover:-translate-y-0.5" />
+          </Button>
+        ) : hasGoogleDoc ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-black hover:text-gray-500"
+            title="Open Google Doc"
+            onClick={() => window.open(row.google_doc_link as string, '_blank', 'noopener,noreferrer')}
+          >
+            <ArrowUpRight className="h-4 w-4 transition-transform duration-200 hover:translate-x-0.5 hover:-translate-y-0.5" />
+          </Button>
+        ) : row.view_url ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-black hover:text-gray-500"
+            title="Open submission"
+            onClick={() => window.open(row.view_url as string, '_blank', 'noopener,noreferrer')}
+          >
+            <ArrowUpRight className="h-4 w-4 transition-transform duration-200 hover:translate-x-0.5 hover:-translate-y-0.5" />
+          </Button>
+        ) : (
+          <div className="h-8 w-8 flex items-center justify-center text-neutral-300">
+            <ArrowUpRight className="h-4 w-4" />
+          </div>
+        )}
       </div>
     );
   };
@@ -530,7 +685,9 @@ export default function AdminAssignmentsManagement() {
     <div className="p-6 space-y-6">
       {/* Header / Controls */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <h1 className="text-4xl font-bold font-cal-sans text-gray-800">Assignments</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-4xl font-bold font-cal-sans text-gray-800">Assignments</h1>
+        </div>
         
         {/* Hierarchical Navigation */}
         <div className="flex items-center gap-3">
@@ -563,6 +720,8 @@ export default function AdminAssignmentsManagement() {
                       key={classGroup.id}
                       onClick={() => {
                         navigation.updateNavigation({ selectedClass: classGroup.id });
+                        // Clear signed URLs cache when switching classes
+                        clearSignedUrlsCache();
                       }}
                       className={`flex w-full items-center gap-2 px-3 py-2 text-sm text-left hover:bg-neutral-50 rounded-md ${navigation.selectedClass === classGroup.id ? 'bg-neutral-50' : ''}`}
                     >
@@ -610,6 +769,8 @@ export default function AdminAssignmentsManagement() {
                           key={subClass.id}
                           onClick={() => {
                         navigation.updateNavigation({ selectedSubClass: subClass.id });
+                        // Clear signed URLs cache when switching subclasses
+                        clearSignedUrlsCache();
                       }}
                       className={`flex w-full items-center gap-2 px-3 py-2 text-sm text-left hover:bg-neutral-50 rounded-md ${navigation.selectedSubClass === subClass.id ? 'bg-neutral-50' : ''}`}
                     >
@@ -670,8 +831,8 @@ export default function AdminAssignmentsManagement() {
                       </div>;
                     }
                     
-                  // Only check for no workshops if we're not loading and have received data
-                  if (!data.workshopsLoading && workshopOptions.length === 0) {
+                  // Check for no workshops
+                  if (workshopOptions.length === 0) {
                       return <div className="py-6 text-center text-sm text-neutral-500">
                         No workshops found for this class
                       </div>;
@@ -692,19 +853,21 @@ export default function AdminAssignmentsManagement() {
                         onClick={() => {
                         navigation.updateNavigation({ selectedWorkshop: workshop.title });
                         setWorkshopPopoverOpen(false);
+                        // Clear signed URLs cache when switching workshops
+                        clearSignedUrlsCache();
                       }}
                       className={`flex w-full items-center gap-2 px-3 py-2 text-sm text-left hover:bg-neutral-50 rounded-md ${navigation.selectedWorkshop === workshop.title ? 'bg-neutral-50' : ''}`}
                     >
-                      <Check className={`h-4 w-4 ${navigation.selectedWorkshop === workshop.title ? 'opacity-100' : 'opacity-0'}`} />
-                        <div className="flex flex-col">
-                          <span className="truncate font-normal">{workshop.title}</span>
+                      <Check className={`h-4 w-4 flex-shrink-0 ${navigation.selectedWorkshop === workshop.title ? 'opacity-100' : 'opacity-0'}`} />
+                        <div className="flex flex-col min-w-0 flex-1">
+                          <span className="break-words font-normal leading-relaxed">{workshop.title}</span>
                         </div>
                       </button>
                     ));
                   })()}
                 </div>
               </PopoverContent>
-            </Popover>
+    </Popover>
 
           {/* Step 4: Assignment Selection */}
             <Popover open={assignmentPopoverOpen} onOpenChange={setAssignmentPopoverOpen}>
@@ -738,6 +901,8 @@ export default function AdminAssignmentsManagement() {
                           onClick={() => {
                         navigation.updateNavigation({ assignmentId: assignment.id });
                         setAssignmentPopoverOpen(false);
+                        // Clear signed URLs cache when switching assignments
+                        clearSignedUrlsCache();
                           }}
                       className={`flex w-full items-center gap-2 px-3 py-2 text-sm text-left hover:bg-neutral-50 rounded-md ${navigation.assignmentId === assignment.id ? 'bg-neutral-50' : ''}`}
                         >
@@ -751,6 +916,8 @@ export default function AdminAssignmentsManagement() {
             </Popover>
         </div>
       </div>
+      
+
 
       {/* Content Area */}
       {!navigation.assignmentId ? (
@@ -843,12 +1010,23 @@ export default function AdminAssignmentsManagement() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             {/* Assignment Name */}
             <div className="flex items-center gap-3 rounded-xl border p-3 bg-white">
-              <div className="h-10 w-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
+              <div className="h-10 w-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center flex-shrink-0">
                 <FileText className="h-5 w-5" />
               </div>
-              <div>
+              <div className="min-w-0 flex-1">
                 <p className="text-xs text-neutral-500">Assignment Name</p>
-                  <div className="text-sm font-medium truncate max-w-[220px]">{data.assignmentData?.title || "N/A"}</div>
+                <TooltipProvider>
+                  <Tooltip delayDuration={100}>
+                    <TooltipTrigger asChild>
+                      <div className="text-sm font-medium truncate cursor-pointer">
+                        {data.assignmentData?.title || "N/A"}
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{data.assignmentData?.title || "N/A"}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
             </div>
             {/* Total Students */}
@@ -887,7 +1065,47 @@ export default function AdminAssignmentsManagement() {
       {/* Table (no outer card) */}
       <div className="space-y-3">
         <div className="pb-2">
-          <h2 className="text-base font-medium">Assignment submission status</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-base font-medium">Assignment submission status</h2>
+            {(() => {
+              // Get the most common submission type from submitted assignments
+              const submittedRows = data.rows.filter(row => row.status === 'submitted');
+              if (submittedRows.length === 0) return null;
+              
+              const submissionTypes = submittedRows.map(row => row.submission_type);
+              const typeCounts = submissionTypes.reduce((acc, type) => {
+                acc[type] = (acc[type] || 0) + 1;
+                return acc;
+              }, {} as Record<string, number>);
+              
+              const mostCommonType = Object.entries(typeCounts)
+                .sort(([,a], [,b]) => b - a)[0]?.[0];
+              
+              // Format the submission type for display
+              if (!mostCommonType) return null;
+              
+              let displayText = '';
+              switch (mostCommonType.toLowerCase()) {
+                case 'google link':
+                  displayText = 'Google Doc';
+                  break;
+                case 'file upload':
+                  displayText = 'File Upload';
+                  break;
+                case 'text':
+                  displayText = 'Text Input';
+                  break;
+                default:
+                  displayText = mostCommonType.charAt(0).toUpperCase() + mostCommonType.slice(1);
+              }
+              
+              return (
+                <div className="text-xs text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
+                  Submission style: {displayText}
+                </div>
+              );
+            })()}
+          </div>
         </div>
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-2">
@@ -994,11 +1212,94 @@ export default function AdminAssignmentsManagement() {
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
+
+        {/* Submission Image Dialog */}
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+            <DialogHeader>
+              <DialogTitle>
+                {selectedSubmission ? `${selectedSubmission.name}'s Submission` : 'Submission Image'}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col space-y-4">
+              {selectedSubmission && (
+                <>
+                  <div className="flex items-center justify-between p-3 bg-gray-100 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-full bg-statColors-1 text-white flex items-center justify-center text-sm font-medium">
+                        {selectedSubmission.name?.charAt(0)?.toUpperCase() || 'S'}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">{selectedSubmission.name}</p>
+                        <p className="text-xs text-gray-600">{selectedSubmission.email}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-gray-500">Submitted</p>
+                      <p className="text-xs font-medium text-gray-700">
+                        {selectedSubmission.submitted_at ? new Date(selectedSubmission.submitted_at).toLocaleDateString() : 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex-1 min-h-0 flex items-center justify-center bg-gray-100 rounded-lg overflow-hidden">
+                    {(() => {
+                      const urlKey = `${selectedSubmission.student_id}-${selectedSubmission.file_upload_link}`;
+                      const signedUrl = signedUrls[urlKey];
+                      const isLoading = loadingUrls[urlKey];
+                      
+                      if (isLoading) {
+                        return (
+                          <div className="flex items-center justify-center p-8">
+                            <div className="animate-spin h-8 w-8 border-2 border-statColors-1 border-t-transparent rounded-full" />
+                            <span className="ml-3 text-gray-600">Loading image...</span>
+                          </div>
+                        );
+                      }
+                      
+                      if (!signedUrl) {
+                        return (
+                          <div className="flex items-center justify-center p-8 text-gray-500">
+                            <div className="text-center">
+                              <FileText className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                              <p>No image available</p>
+                            </div>
+                          </div>
+                        );
+                      }
+                      
+                      return (
+                        <img
+                          src={signedUrl}
+                          alt={`${selectedSubmission.name || 'Student'}'s submission`}
+                          className="max-w-full max-h-full object-contain"
+                          onError={(e) => {
+                            console.log('Image failed to load in dialog:', signedUrl);
+                            const target = e.currentTarget as HTMLImageElement;
+                            target.style.display = 'none';
+                            const errorDiv = target.nextElementSibling as HTMLDivElement;
+                            if (errorDiv) {
+                              errorDiv.style.display = 'flex';
+                            }
+                          }}
+                        />
+                      );
+                    })()}
+                    <div className="hidden w-full h-full items-center justify-center text-gray-500">
+                      <div className="text-center">
+                        <FileText className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                        <p>Failed to load image</p>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
         </>
       )}
     </div>
   );
 }
-
-

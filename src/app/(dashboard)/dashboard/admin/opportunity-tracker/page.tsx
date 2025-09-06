@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Badge } from "../../../../../../zenith/src/components/ui/badge";
 import { Button } from "../../../../../../zenith/src/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../../../../../../zenith/src/components/ui/card";
@@ -11,13 +12,19 @@ import { Textarea } from "../../../../../../zenith/src/components/ui/textarea";
 import { format } from "date-fns";
 import { ToggleGroup, ToggleGroupItem } from "../../../../../../zenith/src/components/ui/toggle-group";
 import { useUserData } from '@/hooks/useUserData';
-import { changeOpportunityStatus } from '@/actions/changeOpportunityStatus';
-import { sendOpportunityEmail } from '@/actions/sendOpportunityEmail';
-import { deferOpportunityTo } from '@/actions/deferOpportunityTo';
-import { changeOpportunityReferStatus } from '@/actions/changeOpportunityReferStatus';
-import { markOpportunityReferralCompleted } from '@/actions/markOpportunityReferralCompleted';
-import { acceptOpportunityReferral } from '@/actions/acceptOpportunityReferral';
-import { denyOpportunityReferral } from '@/actions/denyOpportunityReferral';
+import { changeOpportunityStatus } from '@/actions/opportunities/changeOpportunityStatus';
+import { deferOpportunityTo } from '@/actions/opportunities/deferOpportunityTo';
+import { changeOpportunityReferStatus } from '@/actions/opportunities/changeOpportunityReferStatus';
+import { markOpportunityReferralCompleted } from '@/actions/opportunities/markOpportunityReferralCompleted';
+import { acceptOpportunityReferral } from '@/actions/opportunities/acceptOpportunityReferral';
+import { denyOpportunityReferral } from '@/actions/opportunities/denyOpportunityReferral';
+import { showToastPromise, showToastSuccess, showToastError } from "@/components/toasts";
+import { 
+  sendOpportunityBeingReviewedEmailServer,
+  sendOpportunityAcceptedEmailServer,
+  sendOpportunityDeniedEmailServer
+} from "@/actions/opportunities/sendOpportunityEmail";
+import { sendOpportunityEmail } from "@/actions/emails/sendOpportunityEmail";
 import MDEditor from '@uiw/react-md-editor';
 import MarkdownIt from 'markdown-it';
 
@@ -39,6 +46,7 @@ type Opportunity = {
   referred?: boolean;
   markdown_pitch?: string;
   reason?: string | null;
+  accepted_at?: string | null;
   referral_info?: {
     referred_by: string | null;
     referred_to: string | null;
@@ -64,9 +72,11 @@ type Referral = {
   has_completed?: boolean;
   opportunityReason?: string | null;
   opportunityStatus?: string | null;
+  accepted_at?: string | null;
 };
 
 export default function OpportunityTracker() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'requests' | 'pending' | 'done' | 'referrals'>('requests');
   const [referralSubTab, setReferralSubTab] = useState<'sent' | 'received'>('sent');
   const [doneSubTab, setDoneSubTab] = useState<'accepted' | 'denied'>('accepted');
@@ -128,36 +138,36 @@ export default function OpportunityTracker() {
   const getStatusColor = (status: 'pending' | 'in_review' | 'accepted' | 'denied' | 'completed') => {
     switch (status) {
       case 'pending':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100 hover:text-blue-800 hover:border-blue-200';
       case 'in_review':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-100 hover:text-yellow-800 hover:border-yellow-200';
       case 'accepted':
-        return 'bg-green-100 text-green-800 border-green-200';
+        return 'bg-green-100 text-green-800 border-green-200 hover:bg-green-100 hover:text-green-800 hover:border-green-200';
       case 'denied':
-        return 'bg-red-100 text-red-800 border-red-200';
+        return 'bg-red-100 text-red-800 border-red-200 hover:bg-red-100 hover:text-red-800 hover:border-red-200';
       case 'completed':
-        return 'bg-green-100 text-green-800 border-green-200';
+        return 'bg-green-100 text-green-800 border-green-200 hover:bg-green-100 hover:text-green-800 hover:border-green-200';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-100 hover:text-gray-800 hover:border-gray-200';
     }
   };
 
   const getReferralStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-100 hover:text-yellow-800 hover:border-yellow-200';
       case 'accepted':
-        return 'bg-green-100 text-green-800 border-green-200';
+        return 'bg-green-100 text-green-800 border-green-200 hover:bg-green-100 hover:text-green-800 hover:border-green-200';
       case 'denied':
-        return 'bg-red-100 text-red-800 border-red-200';
+        return 'bg-red-100 text-red-800 border-red-200 hover:bg-red-100 hover:text-red-800 hover:border-red-200';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-100 hover:text-gray-800 hover:border-gray-200';
     }
   };
 
   // Generate consistent colors for AI categories
   const getAICategoryColor = (category: string | undefined) => {
-    if (!category) return 'bg-gray-100 text-gray-800 border-gray-200';
+    if (!category) return 'bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-100 hover:text-gray-800 hover:border-gray-200';
     
     // Create a hash from the category string to get consistent colors
     let hash = 0;
@@ -167,18 +177,18 @@ export default function OpportunityTracker() {
       hash = hash & hash; // Convert to 32-bit integer
     }
     
-    // Use the hash to select from ai_category_colors
+    // Use the hash to select from ai_category_colors with hover states
     const aiCategoryColors = [
-      'bg-ai_category_colors-1 text-white',
-      'bg-ai_category_colors-2 text-white',
-      'bg-ai_category_colors-3 text-white',
-      'bg-ai_category_colors-4 text-white',
-      'bg-ai_category_colors-5 text-white',
-      'bg-ai_category_colors-6 text-white',
-      'bg-ai_category_colors-7 text-white',
-      'bg-ai_category_colors-8 text-white',
-      'bg-ai_category_colors-9 text-white',
-      'bg-ai_category_colors-10 text-white',
+      'bg-ai_category_colors-1 text-white hover:bg-ai_category_colors-1 hover:text-white',
+      'bg-ai_category_colors-2 text-white hover:bg-ai_category_colors-2 hover:text-white',
+      'bg-ai_category_colors-3 text-white hover:bg-ai_category_colors-3 hover:text-white',
+      'bg-ai_category_colors-4 text-white hover:bg-ai_category_colors-4 hover:text-white',
+      'bg-ai_category_colors-5 text-white hover:bg-ai_category_colors-5 hover:text-white',
+      'bg-ai_category_colors-6 text-white hover:bg-ai_category_colors-6 hover:text-white',
+      'bg-ai_category_colors-7 text-white hover:bg-ai_category_colors-7 hover:text-white',
+      'bg-ai_category_colors-8 text-white hover:bg-ai_category_colors-8 hover:text-white',
+      'bg-ai_category_colors-9 text-white hover:bg-ai_category_colors-9 hover:text-white',
+      'bg-ai_category_colors-10 text-white hover:bg-ai_category_colors-10 hover:text-white',
     ];
     
     const index = Math.abs(hash) % aiCategoryColors.length;
@@ -186,12 +196,12 @@ export default function OpportunityTracker() {
   };
 
   const getGradeColor = (grade: string | undefined) => {
-    if (!grade) return "bg-gray-200 text-gray-700";
-    if (grade === "Enrichment Year") return "bg-yearcolors-ey text-black";
-    if (grade === "Senior 4") return "bg-yearcolors-s4 text-black";
-    if (grade === "Senior 5") return "bg-yearcolors-s5 text-black";
-    if (grade === "Senior 6") return "bg-yearcolors-s6 text-black";
-    return "bg-gray-200 text-gray-700";
+    if (!grade) return "bg-gray-200 text-gray-700 hover:bg-gray-200 hover:text-gray-700";
+    if (grade === "Enrichment Year") return "bg-yearcolors-ey text-black hover:bg-yearcolors-ey hover:text-black";
+    if (grade === "Senior 4") return "bg-yearcolors-s4 text-black hover:bg-yearcolors-s4 hover:text-black";
+    if (grade === "Senior 5") return "bg-yearcolors-s5 text-black hover:bg-yearcolors-s5 hover:text-black";
+    if (grade === "Senior 6") return "bg-yearcolors-s6 text-black hover:bg-yearcolors-s6 hover:text-black";
+    return "bg-gray-200 text-gray-700 hover:bg-gray-200 hover:text-gray-700";
   };
 
   const filteredOpportunities = opportunities
@@ -214,9 +224,29 @@ export default function OpportunityTracker() {
       return false;
     })
     .sort((a, b) => {
-      const dateA = new Date(a.created_at || 0);
-      const dateB = new Date(b.created_at || 0);
-      return dateA.getTime() - dateB.getTime();
+      if (activeTab === 'done') {
+        // For accepted/denied opportunities, sort by accepted_at (most recent first)
+        const aAcceptedAt = a.accepted_at ? new Date(a.accepted_at) : null;
+        const bAcceptedAt = b.accepted_at ? new Date(b.accepted_at) : null;
+        
+        // Handle null cases - put nulls at the end
+        if (aAcceptedAt && !bAcceptedAt) return -1; // a has date, b doesn't
+        if (!aAcceptedAt && bAcceptedAt) return 1;  // b has date, a doesn't
+        if (!aAcceptedAt && !bAcceptedAt) {
+          // Both are null, fall back to created_at (newest first)
+          const dateA = new Date(a.created_at || 0);
+          const dateB = new Date(b.created_at || 0);
+          return dateB.getTime() - dateA.getTime();
+        }
+        
+        // Both have accepted_at dates, sort by most recent first
+        return bAcceptedAt!.getTime() - aAcceptedAt!.getTime();
+      } else {
+        // For other tabs, sort by created_at (oldest first)
+        const dateA = new Date(a.created_at || 0);
+        const dateB = new Date(b.created_at || 0);
+        return dateA.getTime() - dateB.getTime();
+      }
     });
 
   const filteredReferrals = referrals
@@ -235,27 +265,39 @@ export default function OpportunityTracker() {
     .sort((a, b) => {
       const aCompleted = a.has_completed;
       const bCompleted = b.has_completed;
+      const aStatus = a.status;
+      const bStatus = b.status;
       
       console.log('🔍 Sorting referrals:', {
         aId: a.id,
         aType: a.type,
         aCompleted: aCompleted,
+        aStatus: aStatus,
         bId: b.id,
         bType: b.type,
-        bCompleted: bCompleted
+        bCompleted: bCompleted,
+        bStatus: bStatus
       });
       
+      // First priority: Pending referrals come first
+      if (aStatus === 'pending' && bStatus !== 'pending') return -1;
+      if (aStatus !== 'pending' && bStatus === 'pending') return 1;
+      
+      // Second priority: Within same status, sort by completion
       if (a.type === 'sent' && b.type === 'sent') {
-        if (aCompleted && !bCompleted) return -1;
-        if (!aCompleted && bCompleted) return 1;
+        if (aCompleted && !bCompleted) return 1; // Move completed to bottom
+        if (!aCompleted && bCompleted) return -1;
       } else if (a.type === 'received' && b.type === 'received') {
         if (aCompleted && !bCompleted) return 1; // Move completed to bottom
         if (!aCompleted && bCompleted) return -1;
       }
       
+      // Third priority: Sort by date (most recent first for all referrals)
       const dateA = new Date(a.submittedAt || a.referredAt || 0);
       const dateB = new Date(b.submittedAt || b.referredAt || 0);
-      return dateA.getTime() - dateB.getTime();
+      
+      // Always show most recent first
+      return dateB.getTime() - dateA.getTime();
     });
 
   const getTabCount = (tab: 'requests' | 'pending' | 'done' | 'referrals') => {
@@ -312,6 +354,7 @@ export default function OpportunityTracker() {
 
   const handleView = async (opportunity: Opportunity) => {
     setLoadingView(opportunity.id);
+    
     try {
       // Show spinner for 1 second
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -324,6 +367,19 @@ export default function OpportunityTracker() {
         const result = await changeOpportunityStatus(opportunity.id, 'in_review');
         
         if (result.success) {
+          // Send email notification to student
+          try {
+            await sendOpportunityBeingReviewedEmailServer(
+              opportunity.student_email,
+              opportunity.title,
+              opportunity.student_name
+            );
+            console.log('Opportunity review email sent successfully');
+          } catch (emailError) {
+            console.error('Failed to send opportunity review email:', emailError);
+            // Don't fail the whole operation if email fails
+          }
+          
           // Update local state
           setOpportunities(prevOpps => 
             prevOpps.map(opp => 
@@ -336,6 +392,8 @@ export default function OpportunityTracker() {
         } else {
           console.error('Failed to update opportunity status:', result.message);
         }
+      } else {
+        console.log('Opportunity viewed (non-pending):', opportunity.id);
       }
       
     } catch (error) {
@@ -372,59 +430,95 @@ export default function OpportunityTracker() {
     setEmailSent(false);
   };
 
-  const handleAccept = async (opportunity: Opportunity) => {
+    const handleAccept = async (opportunity: Opportunity) => {
     setAcceptingOpportunity(true);
-    try {
-      console.log('handleAccept called for opportunity:', opportunity.id);
-      console.log('Email type:', emailType);
-      console.log('Personal email content length:', personalEmail?.length);
-      
-      // Send email notification
-      if (emailType === 'personal' && personalEmail) {
-        console.log('Sending personal email...');
-        const emailResult = await sendOpportunityEmail(
-          opportunity.student_email,
-          `${opportunity.title} Opportunity Has Been Found Valid`,
-          personalEmail,
-          opportunity.title,
-          opportunity.student_name
-        );
+    
+    const promise = (async () => {
+      try {
+        console.log('handleAccept called for opportunity:', opportunity.id);
+        console.log('Email type:', emailType);
+        console.log('Personal email content length:', personalEmail?.length);
         
-        if (emailResult.success) {
-          console.log('Email sent successfully');
-          setEmailSent(true);
-          setPersonalEmail(''); // Clear the email content
+        // Send email notification
+        if (emailType === 'personal' && personalEmail) {
+          console.log('Sending personal email...');
+          try {
+            await sendOpportunityEmail(
+              opportunity.student_email,
+              `${opportunity.title} Opportunity Has Been Found Valid`,
+              personalEmail,
+              opportunity.title,
+              opportunity.student_name,
+              'accepted'
+            );
+            console.log('Personal accept email sent successfully');
+            setEmailSent(true);
+            setPersonalEmail(''); // Clear the email content
+          } catch (error) {
+            console.error('Error sending personal accept email:', error);
+            // Still mark as sent to not block the UI
+            setEmailSent(true);
+          }
+        } else if (emailType === 'template') {
+          // For template email, send using new server action
+          try {
+            await sendOpportunityAcceptedEmailServer(
+              opportunity.student_email,
+              opportunity.title,
+              opportunity.student_name
+            );
+            console.log('Template accept email sent successfully');
+            setEmailSent(true);
+          } catch (error) {
+            console.error('Error sending template accept email:', error);
+            // Still mark as sent to not block the UI
+            setEmailSent(true);
+          }
         } else {
-          console.error('Failed to send email notification:', emailResult.message);
+          console.log('Skipping email send - type:', emailType, 'content length:', personalEmail?.length);
         }
-      } else {
-        console.log('Skipping email send - type:', emailType, 'content length:', personalEmail?.length);
-      }
-      
-      console.log('Updating opportunity status to accepted...');
-      const result = await changeOpportunityStatus(opportunity.id, 'accepted');
-      
-      if (result.success) {
-        console.log('Opportunity status updated successfully');
-        setOpportunities(prevOpps => 
-          prevOpps.map(opp => 
-            opp.id === opportunity.id 
-              ? { ...opp, status: 'accepted' }
-              : opp
-          )
-        );
-        console.log('Opportunity accepted:', opportunity.id);
         
-        // Show the add to opportunities question
-        setShowAddToOpportunities(true);
-      } else {
-        console.error('Failed to accept opportunity:', result.message);
+        console.log('Updating opportunity status to accepted...');
+        const result = await changeOpportunityStatus(opportunity.id, 'accepted');
+        
+        if (result.success) {
+          console.log('Opportunity status updated successfully');
+          setOpportunities(prevOpps => 
+            prevOpps.map(opp => 
+              opp.id === opportunity.id 
+                ? { ...opp, status: 'accepted', accepted_at: new Date().toISOString() }
+                : opp
+            )
+          );
+          console.log('Opportunity accepted:', opportunity.id);
+          
+          // Show the add to opportunities question immediately
+          setShowAddToOpportunities(true);
+          
+          return { success: true };
+        } else {
+          throw new Error(result.message || 'Failed to accept opportunity');
+        }
+      } catch (error) {
+        console.error('Error accepting opportunity:', error);
+        throw error;
       }
-    } catch (error) {
-      console.error('Error accepting opportunity:', error);
-    } finally {
+    })();
+
+    showToastPromise({
+      promise,
+      loadingText: "Accepting opportunity and sending email...",
+      successText: "You’ve successfully marked this opportunity as valid.",
+      errorText: "Failed to accept opportunity. Please try again.",
+      successHeaderText: "Opportunity Accepted Successfully!",
+      errorHeaderText: "Acceptance Failed",
+      direction: 'right'
+    });
+    
+    // Keep the spinner active until the promise resolves
+    promise.finally(() => {
       setAcceptingOpportunity(false);
-    }
+    });
   };
 
   const handleDenyClick = (opportunity: Opportunity) => {
@@ -439,69 +533,98 @@ export default function OpportunityTracker() {
 
   const handleDeny = async (opportunity: Opportunity) => {
     setDenyingOpportunity(true);
-    try {
-      console.log('Denying opportunity:', opportunity.id, 'with reason:', denyReason);
-      
-      const result = await (changeOpportunityStatus as any)(opportunity.id, 'denied', denyReason);
-      
-      if (result.success) {
-        // Update local state to move opportunity to denied section
-        setOpportunities(prevOpps => 
-          prevOpps.map(opp => 
-            opp.id === opportunity.id 
-              ? { ...opp, status: 'denied', reason: denyReason }
-              : opp
-          )
-        );
+    
+    const promise = (async () => {
+      try {
+        console.log('Denying opportunity:', opportunity.id, 'with reason:', denyReason);
         
-        // Send email notification
-        if (denyEmailType === 'personal' && denyPersonalEmail.trim()) {
-          setSendingDenyEmail(true);
-          try {
-            const emailResponse = await sendOpportunityEmail(
-              opportunity.student_email,
-              `${opportunity.title} Opportunity Has Been Denied`,
-              denyPersonalEmail,
-              opportunity.title,
-              opportunity.student_name
-            );
-            console.log('Deny email response:', emailResponse);
-            if (emailResponse.success) {
+        const result = await (changeOpportunityStatus as any)(opportunity.id, 'denied', denyReason);
+        
+        if (result.success) {
+          // Update local state to move opportunity to denied section
+          setOpportunities(prevOpps => 
+            prevOpps.map(opp => 
+              opp.id === opportunity.id 
+                ? { ...opp, status: 'denied', reason: denyReason, accepted_at: new Date().toISOString() }
+                : opp
+            )
+          );
+          
+          // Send email notification
+          if (denyEmailType === 'personal' && denyPersonalEmail.trim()) {
+            setSendingDenyEmail(true);
+            try {
+              await sendOpportunityEmail(
+                opportunity.student_email,
+                `${opportunity.title} Opportunity Update`,
+                denyPersonalEmail,
+                opportunity.title,
+                opportunity.student_name,
+                'denied'
+              );
+              console.log('Personal deny email sent successfully');
               setDenyEmailSent(true);
               setDenyPersonalEmail('');
+            } catch (error) {
+              console.error('Error sending personal deny email:', error);
+              // Still mark as sent to not block the UI
+              setDenyEmailSent(true);
+            } finally {
+              setSendingDenyEmail(false);
             }
-          } catch (error) {
-            console.error('Error sending deny email:', error);
-          } finally {
-            setSendingDenyEmail(false);
+          } else if (denyEmailType === 'template') {
+            // For template email, send using new server action
+            try {
+              await sendOpportunityDeniedEmailServer(
+                opportunity.student_email,
+                opportunity.title,
+                denyReason,
+                opportunity.student_name
+              );
+              console.log('Template deny email sent successfully');
+              setDenyEmailSent(true);
+            } catch (error) {
+              console.error('Error sending template deny email:', error);
+              // Still mark as sent to not block the UI
+              setDenyEmailSent(true);
+            }
           }
-        } else if (denyEmailType === 'template') {
-          // For template email, we can add a success message
-          setDenyEmailSent(true);
-        }
 
-        // Don't close modal immediately, show success message first
-        if (denyEmailType === 'template' || denyEmailSent) {
-          setTimeout(() => {
-            setShowDenyModal(false);
-            setSelectedOpportunityForDeny(null);
-            setDenyReason('');
-            setDenyEmailType('template');
-            setDenyPersonalEmail('');
-            setDenyEmailSent(false);
-            setSendingDenyEmail(false);
-          }, 2000);
+          // Close modal immediately after successful denial
+          setShowDenyModal(false);
+          setSelectedOpportunityForDeny(null);
+          setDenyReason('');
+          setDenyEmailType('template');
+          setDenyPersonalEmail('');
+          setDenyEmailSent(false);
+          setSendingDenyEmail(false);
+          
+          console.log('Opportunity denied:', opportunity.id);
+          
+          return { success: true };
+        } else {
+          throw new Error(result.message || 'Failed to deny opportunity');
         }
-        
-        console.log('Opportunity denied:', opportunity.id);
-      } else {
-        console.error('Failed to deny opportunity:', result.message);
+      } catch (error) {
+        console.error('Error denying opportunity:', error);
+        throw error;
       }
-    } catch (error) {
-      console.error('Error denying opportunity:', error);
-    } finally {
+    })();
+    
+    showToastPromise({
+      promise,
+      loadingText: "Denying opportunity and sending email...",
+      successText: "You’ve marked this opportunity as invalid.",
+      errorText: "Failed to deny opportunity. Please try again.",
+      successHeaderText: "Opportunity Denied!",
+      errorHeaderText: "Denial Failed",
+      direction: 'right'
+    });
+    
+    // Keep the spinner active until the promise resolves
+    promise.finally(() => {
       setDenyingOpportunity(false);
-    }
+    });
   };
 
   const handleReferPop = (opportunity: Opportunity) => {
@@ -513,43 +636,79 @@ export default function OpportunityTracker() {
     if (!selectedOpportunity) return;
     
     setLoadingRefer(selectedOpportunity.id);
-    try {
-      console.log('Referring opportunity:', selectedOpportunity.id, 'to member:', memberId);
-      
-      const response = await deferOpportunityTo(selectedOpportunity.id, adminId, memberId);
-      const referResponse = await changeOpportunityReferStatus(selectedOpportunity.id);
-      
-      if(response.success && referResponse.success){
-        setShowReferModal(false);
-        setSelectedMemberId(null);
-        // Reload the page after successful referral
-        window.location.reload();
-      }else{
-        console.error('Error deferring opportunity:', response.message);
-        console.error('Error changing refer status:', referResponse.message);
+    
+    // Create a promise for the referral process
+    const referralPromise = new Promise(async (resolve, reject) => {
+      try {
+        console.log('Referring opportunity:', selectedOpportunity.id, 'to member:', memberId);
+        
+        const response = await deferOpportunityTo(selectedOpportunity.id, adminId, memberId);
+        const referResponse = await changeOpportunityReferStatus(selectedOpportunity.id);
+        
+        if(response.success && referResponse.success){
+          setShowReferModal(false);
+          setSelectedMemberId(null);
+          
+          // Small delay before reload to show success message
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+          
+          resolve('Success');
+        } else {
+          console.error('Error deferring opportunity:', response.message);
+          console.error('Error changing refer status:', referResponse.message);
+          reject(new Error('Failed to refer opportunity'));
+        }
+      } catch (error) {
+        console.error('Error in handleRefer:', error);
+        reject(error);
+      } finally {
+        setLoadingRefer(null);
       }
-    } catch (error) {
-      console.error('Error in handleRefer:', error);
-    } finally {
-      setLoadingRefer(null);
-    }
+    });
+    
+    // Show promise toast for referral process
+    showToastPromise({
+      promise: referralPromise,
+      loadingText: 'Referring opportunity...',
+      successText: 'Opportunity referred successfully!',
+      errorText: 'Failed to refer opportunity',
+      direction: 'right'
+    });
   };
 
   const handleReferView = async (referral: Referral) => {
     setLoadingView(referral.id);
-    try {
-      const opportunityLink = referral.opportunityLink;
-      
-      if (opportunityLink) {
-        window.open(opportunityLink, '_blank', 'noopener,noreferrer');
-      } else {
-        console.error('No opportunity link found');
+    
+    // Create a promise for the view process
+    const viewPromise = new Promise((resolve, reject) => {
+      try {
+        const opportunityLink = referral.opportunityLink;
+        
+        if (opportunityLink) {
+          window.open(opportunityLink, '_blank', 'noopener,noreferrer');
+          resolve('Success');
+        } else {
+          console.error('No opportunity link found');
+          reject(new Error('No opportunity link found'));
+        }
+      } catch (error) {
+        console.error('Error viewing opportunity:', error);
+        reject(error);
+      } finally {
+        setLoadingView(null);
       }
-    } catch (error) {
-      console.error('Error viewing opportunity:', error);
-    } finally {
-      setLoadingView(null);
-    }
+    });
+    
+    // Show promise toast for referral view process
+    showToastPromise({
+      promise: viewPromise,
+      loadingText: 'Opening opportunity...',
+      successText: 'Opportunity opened successfully!',
+      errorText: 'Failed to open opportunity',
+      direction: 'right'
+    });
   };
 
   const handleMarkReferralDone = async (referral_id: string) => {
@@ -622,7 +781,7 @@ export default function OpportunityTracker() {
         setReferrals(prevReferrals => {
           const updatedReferrals = prevReferrals.map(referral => 
             referral.id === selectedReferralForAction.id 
-              ? { ...referral, status: actionType === 'accept' ? 'accepted' : 'denied' }
+              ? { ...referral, status: actionType === 'accept' ? 'accepted' : 'denied', accepted_at: new Date().toISOString() }
               : referral
           );
           console.log('🔍 Updated referrals state:', updatedReferrals);
@@ -633,41 +792,62 @@ export default function OpportunityTracker() {
         if (referralEmailType === 'personal' && referralPersonalEmail.trim()) {
           setSendingReferralEmail(true);
           try {
-            const emailResponse = await sendOpportunityEmail(
+            const emailSubject = actionType === 'accept' 
+              ? `${selectedReferralForAction.opportunityTitle} Opportunity Has Been Found Valid`
+              : `${selectedReferralForAction.opportunityTitle} Opportunity Update`;
+            
+            await sendOpportunityEmail(
               selectedReferralForAction.studentEmail || '',
-              '', // subject will be generated by the function
+              emailSubject,
               referralPersonalEmail,
               selectedReferralForAction.opportunityTitle,
-              selectedReferralForAction.studentName,
-              actionType === 'accept' ? 'accepted' : 'denied'
+              selectedReferralForAction.studentName || '',
+              actionType
             );
-            console.log('🔍 Email response:', emailResponse);
-            if (emailResponse.success) {
-              setReferralEmailSent(true);
-              setReferralPersonalEmail('');
-            }
+            console.log('Personal referral email sent successfully');
+            setReferralEmailSent(true);
+            setReferralPersonalEmail('');
           } catch (error) {
-            console.error('❌ Error sending email:', error);
+            console.error('❌ Error sending personal referral email:', error);
+            // Still mark as sent to not block the UI
+            setReferralEmailSent(true);
           } finally {
             setSendingReferralEmail(false);
           }
         } else if (referralEmailType === 'template') {
-          // For template email, we can add a success message
-          setReferralEmailSent(true);
+          // For template email, send using new server action
+          try {
+            if (actionType === 'accept') {
+              await sendOpportunityAcceptedEmailServer(
+                selectedReferralForAction.studentEmail || '',
+                selectedReferralForAction.opportunityTitle,
+                selectedReferralForAction.studentName || ''
+              );
+            } else {
+              await sendOpportunityDeniedEmailServer(
+                selectedReferralForAction.studentEmail || '',
+                selectedReferralForAction.opportunityTitle,
+                reason,
+                selectedReferralForAction.studentName || ''
+              );
+            }
+            console.log('Template referral email sent successfully');
+            setReferralEmailSent(true);
+          } catch (error) {
+            console.error('Error sending template referral email:', error);
+            // Still mark as sent to not block the UI
+            setReferralEmailSent(true);
+          }
         }
 
-        // Don't close modal immediately, show success message first
-        if (referralEmailType === 'template' || referralEmailSent) {
-          setTimeout(() => {
-            setShowAcceptDenyModal(false);
-            setSelectedReferralForAction(null);
-            setReason('');
-            setReferralEmailType('template');
-            setReferralPersonalEmail('');
-            setReferralEmailSent(false);
-            setSendingReferralEmail(false);
-          }, 2000);
-        }
+        // Close modal immediately after successful action
+        setShowAcceptDenyModal(false);
+        setSelectedReferralForAction(null);
+        setReason('');
+        setReferralEmailType('template');
+        setReferralPersonalEmail('');
+        setReferralEmailSent(false);
+        setSendingReferralEmail(false);
       } else {
         console.error('❌ Accept/deny action failed');
       }
@@ -999,10 +1179,6 @@ export default function OpportunityTracker() {
                           <span>Submitted: {getRelativeTime(referral.submittedAt)}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <ExternalLink className="h-4 w-4 text-dashboard-muted-foreground" />
-                          <span>Opportunity Link</span>
-                        </div>
-                        <div className="flex items-center gap-2">
                           <Send className="h-4 w-4 text-dashboard-muted-foreground" />
                           <span>Referred: {format(new Date(referral.referredAt), 'MMM dd, yyyy')}</span>
                         </div>
@@ -1135,7 +1311,7 @@ export default function OpportunityTracker() {
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <div className={`grid grid-cols-2 gap-4 text-sm ${
+                      <div className={`grid ${activeTab === 'done' ? 'grid-cols-3' : 'grid-cols-2'} gap-4 text-sm ${
                         isAlreadyReviewed ? 'line-through' : ''
                       }`}>
                         <div className="flex items-center gap-2">
@@ -1146,6 +1322,18 @@ export default function OpportunityTracker() {
                           <Clock className="h-4 w-4 text-dashboard-muted-foreground" />
                           <span>Deadline: {opportunity.deadline ? format(new Date(opportunity.deadline), 'MMM dd, yyyy') : 'Not specified'}</span>
                         </div>
+                        {activeTab === 'done' && (
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="h-4 w-4 text-dashboard-muted-foreground" />
+                            <span>
+                              {doneSubTab === 'accepted' ? 'Accepted' : 'Denied'}: {
+                                opportunity.accepted_at 
+                                  ? getRelativeTime(opportunity.accepted_at)
+                                  : 'Date not recorded'
+                              }
+                            </span>
+                          </div>
+                        )}
                       </div>
                       
                       {/* Referral Information */}
@@ -1368,7 +1556,7 @@ export default function OpportunityTracker() {
                         <MDEditor 
                           value={personalEmail} 
                           onChange={(value) => setPersonalEmail(value || "")}
-                          preview="edit"
+                          preview="live"
                           height={200}
                           textareaProps={{
                             placeholder: "Write your personal email message here...",
@@ -1409,50 +1597,6 @@ export default function OpportunityTracker() {
                   </Button>
                 </DialogFooter>
               </>
-            ) : emailSent && !showAddToOpportunities ? (
-              <>
-                <div className="text-center py-4">
-                  <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Email Sent Successfully!</h3>
-                  <p className="text-gray-600 mb-6">
-                    The personal email has been sent to the student.
-                  </p>
-                  <p className="text-gray-600 mb-6">
-                    Do you want to add this to the new opportunities page?
-                  </p>
-                </div>
-                <DialogFooter className="gap-2">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => {
-                      setShowAcceptModal(false);
-                      setSelectedOpportunityForAccept(null);
-                      setEmailType('template');
-                      setPersonalEmail('');
-                      setShowAddToOpportunities(false);
-                      setEmailSent(false);
-                    }}
-                    className="px-6"
-                  >
-                    No, Close
-                  </Button>
-                  <Button 
-                    onClick={() => {
-                      // TODO: Add logic to add to new opportunities page
-                      console.log('Adding to new opportunities page:', selectedOpportunityForAccept?.id);
-                      setShowAcceptModal(false);
-                      setSelectedOpportunityForAccept(null);
-                      setEmailType('template');
-                      setPersonalEmail('');
-                      setShowAddToOpportunities(false);
-                      setEmailSent(false);
-                    }}
-                    className="bg-green-600 text-white hover:bg-green-700 px-6 text-sm shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,128,0,0.4)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_4px_rgba(0,128,0,0.1)] transition duration-200"
-                  >
-                    Add Resource
-                  </Button>
-                </DialogFooter>
-              </>
             ) : (
               <>
                 <div className="text-center py-4">
@@ -1486,7 +1630,8 @@ export default function OpportunityTracker() {
                       setEmailType('template');
                       setPersonalEmail('');
                       setShowAddToOpportunities(false);
-                      setEmailSent(false);
+                      setEmailSent(false);  
+                      router.push('/dashboard/admin/content-management');
                     }}
                     className="bg-green-600 text-white hover:bg-green-700 px-6 text-sm shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,128,0,0.4)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_4px_rgba(0,128,0,0.1)] transition duration-200"
                   >
@@ -1677,7 +1822,7 @@ export default function OpportunityTracker() {
                         <MDEditor
                           value={referralPersonalEmail}
                           onChange={(value) => setReferralPersonalEmail(value || "")}
-                          preview="edit"
+                          preview="live"
                           height={200}
                           textareaProps={{
                             placeholder: "Write your personal email message here...",
@@ -1726,20 +1871,7 @@ export default function OpportunityTracker() {
                   </Button>
                 </DialogFooter>
               </>
-            ) : (
-              <div className="text-center py-6">
-                <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  {actionType === 'accept' ? 'Opportunity Accepted!' : 'Opportunity Denied!'}
-                </h3>
-                <p className="text-gray-600 mb-4">
-                  {referralEmailType === 'personal' ? 'Email sent successfully!' : 'Notification sent successfully!'}
-                </p>
-                <p className="text-sm text-gray-500">
-                  The referral has been {actionType === 'accept' ? 'accepted' : 'denied'} and moved to the bottom of the list.
-                </p>
-              </div>
-            )}
+            ) : null}
           </DialogContent>
         </Dialog>
 
@@ -1825,7 +1957,7 @@ export default function OpportunityTracker() {
                         <MDEditor
                           value={denyPersonalEmail}
                           onChange={(value) => setDenyPersonalEmail(value || "")}
-                          preview="edit"
+                          preview="live"
                           height={200}
                           textareaProps={{
                             placeholder: "Write your personal email message here...",
@@ -1870,20 +2002,7 @@ export default function OpportunityTracker() {
                   </Button>
                 </DialogFooter>
               </>
-            ) : (
-              <div className="text-center py-6">
-                <XCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Opportunity Denied!
-                </h3>
-                <p className="text-gray-600 mb-4">
-                  {denyEmailType === 'personal' ? 'Email sent successfully!' : 'Notification sent successfully!'}
-                </p>
-                <p className="text-sm text-gray-500">
-                  The opportunity has been denied and moved to the Done section.
-                </p>
-              </div>
-            )}
+            ) : null}
           </DialogContent>
         </Dialog>
       </div>

@@ -1,6 +1,8 @@
+
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
+import markdownToHtml from "@/utils/markdownToHtml";
 
 type Notification = {
   id: number;
@@ -9,6 +11,7 @@ type Notification = {
 
 export default function StickyNotificationBanner() {
   const [notification, setNotification] = useState<Notification | null>(null);
+  const [parsedContent, setParsedContent] = useState<string>("");
   const [isDismissed, setIsDismissed] = useState(false);
   const [isScrolledHidden, setIsScrolledHidden] = useState(false);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -42,6 +45,26 @@ export default function StickyNotificationBanner() {
     };
     fetchNotification();
   }, []);
+
+  // Parse markdown content when notification changes
+  useEffect(() => {
+    const parseMarkdown = async () => {
+      if (notification?.message) {
+        try {
+          const html = await markdownToHtml(notification.message);
+          setParsedContent(html);
+        } catch (error) {
+          console.error("Error parsing markdown:", error);
+          // Fallback to plain text
+          setParsedContent(notification.message);
+        }
+      } else {
+        setParsedContent("");
+      }
+    };
+
+    parseMarkdown();
+  }, [notification?.message]);
 
   useEffect(() => {
     updateBannerHeightVar();
@@ -102,7 +125,7 @@ export default function StickyNotificationBanner() {
   return (
     <div
       ref={wrapperRef}
-      className="w-full fixed top-0 left-0 z-[1000]"
+      className="w-full fixed top-0 left-0 z-50"
       aria-hidden={!isOpen}
     >
       <div
@@ -116,7 +139,10 @@ export default function StickyNotificationBanner() {
       >
         <div ref={contentRef} className="bg-orange-400 text-white py-2">
           <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-4">
-            <p className="text-sm">{notification.message}</p>
+            <div 
+              className="text-sm prose prose-invert prose-sm max-w-none [&>*]:my-0 [&>p]:inline [&>strong]:font-semibold [&>em]:italic [&>a]:text-white [&>a]:underline [&>a:hover]:text-orange-100"
+              dangerouslySetInnerHTML={{ __html: parsedContent }}
+            />
             <button
               className="inline-flex items-center justify-center h-8 w-8 rounded-md hover:bg-white/20 transition"
               onClick={() => setIsDismissed(true)}
@@ -130,4 +156,3 @@ export default function StickyNotificationBanner() {
     </div>
   );
 }
-

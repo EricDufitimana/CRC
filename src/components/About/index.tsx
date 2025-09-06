@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
-import AnimateOnScroll from "../animation/animateOnScroll";
+import { OptimizedScrollAnimation } from "../animation/OptimizedScrollAnimation";
+import { OptimizedAnimatedText } from "../animation/OptimizedAnimatedText";
 
 const About = () => {
   return (
@@ -11,21 +12,35 @@ const About = () => {
       <div className="container">
         <div className="wow fadeInUp " data-wow-delay=".2s">
           <div className="-mx-4 flex flex-wrap items-center">
-            <div className="w-full px-4 lg:w-1/2">
-            <AnimateOnScroll direction='left' fadeIn>
-
+            <div className="w-full px-4 py-8 lg:w-1/2">
+            <OptimizedScrollAnimation direction='left'>
               <div className="mb-12 max-w-[540px] lg:mb-0">
-                <h2 className="mb-5 text-3xl font-bold leading-tight text-dark dark:text-white sm:text-[40px] sm:leading-[1.2]">
+                <OptimizedAnimatedText 
+                  animation="none"
+                  as="h2" 
+                  className="mb-5 text-3xl font-bold leading-tight text-dark dark:text-white sm:text-[40px] sm:leading-[1.2]"
+                  delay={0}
+                >
                   What is CRC?
-                </h2>
-                <p className="mb-10 text-base leading-relaxed text-body-color dark:text-dark-6">
-                  The Career Resources Center (CRC) operates as a part of the Liquidnet Family High School at The Agahozo-Shalom Youth Village. The mission of the CRC Department is to supply students with the skills, knowledge, and resources they need to succeed after graduating from ASYV.  As the the job and education markets in Rwanda become increasingly competitive, the CRC plays a crucial role in empowering ASYV students and alumni to build successful careers.  
-
-                  <br /> <br />
+                </OptimizedAnimatedText>
+                <OptimizedAnimatedText 
+                  animation="slide-up-smooth"
+                  as="p" 
+                  className="mb-10 text-base leading-relaxed text-body-color dark:text-dark-6"
+                  delay={200}
+                >
+                  The Career Resources Center (CRC) operates as a part of the Liquidnet Family High School at The Agahozo-Shalom Youth Village. The mission of the CRC Department is to supply students with the skills, knowledge, and resources they need to succeed after graduating from ASYV. As the job and education markets in Rwanda become increasingly competitive, the CRC plays a crucial role in empowering ASYV students and alumni to build successful careers.
+                </OptimizedAnimatedText>
+                <OptimizedAnimatedText 
+                  animation="slide-up-smooth"
+                  as="p" 
+                  className="mb-10 text-base leading-relaxed text-body-color dark:text-dark-6"
+                  delay={300}
+                >
                   Understanding that each student has unique educational and professional goals, we prepare students for three pathways post-graduation: further education, direct employment, and entrepreneurship. The CRC organizes professional development and work readiness workshops, builds partnerships with businesses across Rwanda, assists students and alumni with job/internship applications, supports students and alumni with university and scholarship applications, and hosts career mentorship events.
-                </p>
+                </OptimizedAnimatedText>
               </div>
-            </AnimateOnScroll>
+            </OptimizedScrollAnimation>
 
             </div>
             
@@ -34,7 +49,7 @@ const About = () => {
             
               <div className="-mx-2 flex flex-wrap sm:-mx-4 lg:-mx-2 xl:-mx-4">
                 <div className="w-full px-2 sm:w-1/2 sm:px-4 lg:px-2 xl:px-4">
-                <AnimateOnScroll direction="up" fadeIn>
+                <OptimizedScrollAnimation direction="up">
                   <div
                     className={`relative mb-4 sm:mb-8 sm:h-[400px] md:h-[540px] lg:h-[400px] xl:h-[500px] `}
                   >
@@ -42,32 +57,48 @@ const About = () => {
                       src="/images/auth/illustration.png"
                       alt="about image"
                       fill
+                      sizes="(max-width: 768px) 100vw, 50vw"
+                      quality={80}
+                      loading="lazy"
                       className="h-full w-full object-cover object-center rounded-sm"
                     />
                   </div>
-                </AnimateOnScroll>
+                </OptimizedScrollAnimation>
                 </div>
 
                 <div className="w-full px-2 sm:w-1/2 sm:px-4 lg:px-2 xl:px-4">
-                <AnimateOnScroll direction="left" fadeIn delay={0.5}>
+                <OptimizedScrollAnimation direction="left" delay={500}>
                   <div className="relative mb-4 sm:mb-8 sm:h-[220px] md:h-[346px] lg:mb-4 lg:h-[225px] xl:mb-8 xl:h-[310px]">
                     <Image
                       src="/images/about/about-image-02.jpg"
                       alt="about image"
                       fill
+                      sizes="(max-width: 768px) 100vw, 50vw"
+                      quality={80}
+                      loading="lazy"
                       className="h-full w-full object-cover object-center rounded-sm"
                     />
                   </div>
-                </AnimateOnScroll>
-                <AnimateOnScroll direction="down" delay={0.3}>
+                </OptimizedScrollAnimation>
+                <OptimizedScrollAnimation direction="down" delay={300}>
                   <div className="relative z-10 mb-4 flex items-center justify-center rounded-sm overflow-hidden bg-secondary px-6 py-12 sm:mb-8 sm:h-[160px] sm:p-5 lg:mb-4 xl:mb-8">
                     <div>
-                      <span className="block text-5xl font-extrabold text-white">
+                      <OptimizedAnimatedText 
+                        animation="fade-up"
+                        as="span" 
+                        className="block text-5xl font-extrabold text-white"
+                        delay={100}
+                      >
                         10+
-                      </span>
-                      <span className="block text-base font-semibold text-white">
+                      </OptimizedAnimatedText>
+                      <OptimizedAnimatedText 
+                        animation="fade-up"
+                        as="span" 
+                        className="block text-base font-semibold text-white"
+                        delay={200}
+                      >
                         Years of experience
-                      </span>
+                      </OptimizedAnimatedText>
 
                     </div>
                     <div>
@@ -181,7 +212,7 @@ const About = () => {
                       </span>
                     </div>
                   </div>
-                  </AnimateOnScroll>
+                  </OptimizedScrollAnimation>
 
                 </div>
               </div>

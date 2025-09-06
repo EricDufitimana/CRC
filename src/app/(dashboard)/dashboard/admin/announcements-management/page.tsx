@@ -1,18 +1,22 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import '@uiw/react-md-editor/markdown-editor.css';
 import { Search, Filter, Plus, Edit, Trash2, Bell, X, Loader2, Calendar, Clock } from "lucide-react";
 import { Button } from "../../../../../../zenith/src/components/ui/button";
 import { Input } from "../../../../../../zenith/src/components/ui/input";
 import { Badge } from "../../../../../../zenith/src/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../../../../zenith/src/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../../../../../../zenith/src/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "../../../../../../zenith/src/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "../../../../../../zenith/src/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../../../zenith/src/components/ui/select";
 import { Label } from "../../../../../../zenith/src/components/ui/label";
 import { Textarea } from "../../../../../../zenith/src/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../../../../../../zenith/src/components/ui/alert-dialog";
 import { ChevronDown } from "lucide-react";
+import { showToastSuccess, showToastError, showToastPromise } from "@/components/toasts";
+import MDEditor from '@uiw/react-md-editor';
+import MarkdownIt from 'markdown-it';
 
 // Types
 interface Announcement {
@@ -25,6 +29,125 @@ interface Announcement {
 }
 
 export default function AnnouncementsManagement() {
+  // Initialize MarkdownIt instance with link handling
+  const md = new MarkdownIt({
+    linkify: true,
+    breaks: true
+  });
+  
+  // Configure link rendering to open external links in new tab
+  const defaultRender = md.renderer.rules.link_open || function(tokens, idx, options, env, self) {
+    return self.renderToken(tokens, idx, options);
+  };
+  
+  md.renderer.rules.link_open = function (tokens, idx, options, env, self) {
+    const token = tokens[idx];
+    const hrefIndex = token.attrIndex('href');
+    
+    if (hrefIndex >= 0 && token.attrs) {
+      const href = token.attrs[hrefIndex][1];
+      
+      if (href) {
+        // Check if it's an external link (starts with http:// or https://)
+        if (href.startsWith('http://') || href.startsWith('https://')) {
+          // Add target="_blank" and rel="noopener noreferrer" for external links
+          token.attrPush(['target', '_blank']);
+          token.attrPush(['rel', 'noopener noreferrer']);
+        }
+        // For relative links (internal navigation), ensure they work properly
+        else if (href.startsWith('/')) {
+          // Internal links - no target="_blank" needed
+          // They will navigate within your app
+        }
+        // For anchor links (#section), no special handling needed
+        else if (href.startsWith('#')) {
+          // Anchor links - no target="_blank" needed
+        }
+        // For other relative links, ensure they work properly
+        else {
+          // Other relative links - no target="_blank" needed
+        }
+      }
+    }
+    
+    return defaultRender(tokens, idx, options, env, self);
+  };
+  
+  // Custom CSS for markdown content
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      .announcement-markdown {
+        background: transparent !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      .announcement-markdown h1,
+      .announcement-markdown h2,
+      .announcement-markdown h3,
+      .announcement-markdown h4,
+      .announcement-markdown h5,
+      .announcement-markdown h6 {
+        margin: 0.5em 0 0.25em 0 !important;
+        font-size: inherit !important;
+        font-weight: 600 !important;
+      }
+      .announcement-markdown p {
+        margin: 0.25em 0 !important;
+      }
+      .announcement-markdown ul,
+      .announcement-markdown ol {
+        margin: 0.25em 0 !important;
+        padding-left: 1.5em !important;
+      }
+      .announcement-markdown li {
+        margin: 0.1em 0 !important;
+      }
+      .announcement-markdown strong {
+        font-weight: 600 !important;
+      }
+      .announcement-markdown em {
+        font-style: italic !important;
+      }
+      .announcement-markdown code {
+        background: rgba(0,0,0,0.1) !important;
+        padding: 0.1em 0.3em !important;
+        border-radius: 0.2em !important;
+        font-size: 0.9em !important;
+      }
+      .announcement-markdown a {
+        color: #3b82f6 !important;
+        text-decoration: underline !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
+        border-radius: 2px !important;
+        padding: 1px 2px !important;
+      }
+      .announcement-markdown a:hover {
+        color: #1d4ed8 !important;
+        text-decoration: underline !important;
+        background-color: rgba(59, 130, 246, 0.1) !important;
+        text-decoration-thickness: 2px !important;
+      }
+      .announcement-markdown a:focus {
+        outline: 2px solid #3b82f6 !important;
+        outline-offset: 2px !important;
+      }
+      .announcement-markdown blockquote {
+        border-left: 3px solid #e5e7eb !important;
+        padding-left: 1em !important;
+        margin: 0.5em 0 !important;
+        font-style: italic !important;
+        color: #6b7280 !important;
+      }
+    `;
+    document.head.appendChild(style);
+    
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+
   // Format page labels for better display
   const formatPageLabel = (page: string) => {
     if (page === 'english_language_learning') return 'English Learning';
@@ -37,13 +160,61 @@ export default function AnnouncementsManagement() {
     if (page === 'ey_workshops') return 'EY Workshops';
     if (page === 'senior_5_group_a_b_workshops') return 'Senior 5 Group A&B Workshops';
     if (page === 'senior_5_customer_care') return 'Senior 5 Customer Care';
-    if (page === 'senior_6_group_a_b_workshops') return 'Senior 6 Group A&B Workshops';
     if (page === 'senior_6_group_c_workshops') return 'Senior 6 Group C Workshops';
     if (page === 'senior_6_group_d') return 'Senior 6 Group D';
     if (page === 'job_readiness_course') return 'Job Readiness Course';
     if (page === 'student_dashboard') return 'Student Dashboard';
     if (page === 'admin_dashboard') return 'Admin Dashboard';
+    if (page ==='crp') return 'CRP';
     return page.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  };
+
+  // Get page-specific colors for badges using custom tailwind colors
+  const getPageColor = (page: string) => {
+    switch (page) {
+      case 'home':
+        return 'bg-statColors-1/40 text-complementary border-none';
+      case 'new_opportunities':
+        return 'bg-statColors-2/40 text-complementary border-none';
+      case 'recurring_opportunities':
+        return 'bg-statColors-3/40 text-complementary border-none';
+      case 'templates':
+        return 'bg-statColors-4/40 text-complementary border-none';
+      case 'crp':
+        return 'bg-statColors-5/40 text-complementary border-none';
+      case 'internships':
+        return 'bg-statColors-6/40 text-complementary border-none';
+      case 'english_language_learning':
+        return 'bg-statColors-7/40 text-complementary border-none';
+      case 'approved_opportunities':
+        return 'bg-statColors-8/40 text-complementary border-none';
+      case 'previous_events':
+        return 'bg-yearcolors-s4 text-complementary border-yearcolors-s4';
+      case 'upcoming_events':
+        return 'bg-yearcolors-ey text-complementary border-yearcolors-ey';
+      case 's4_workshops':
+        return 'bg-yearcolors-s4 text-complementary border-yearcolors-s4';
+      case 'ey_workshops':
+        return 'bg-yearcolors-ey text-complementary border-yearcolors-ey';
+      case 'senior_5_group_a_b_workshops':
+        return 'bg-yearcolors-s5 text-complementary border-yearcolors-s5';
+      case 'senior_5_customer_care':
+        return 'bg-yearcolors-s5 text-complementary border-yearcolors-s5';
+      case 'senior_6_group_a_b_workshops':
+        return 'bg-yearcolors-s6 text-complementary border-yearcolors-s6';
+      case 'senior_6_group_c_workshops':
+        return 'bg-yearcolors-s6 text-complementary border-yearcolors-s6';
+      case 'senior_6_group_d':
+        return 'bg-yearcolors-s6 text-complementary border-yearcolors-s6';
+      case 'job_readiness_course':
+        return 'bg-gradecolors-50 text-complementary border-gradecolors-50';
+      case 'student_dashboard':
+        return 'bg-primary/40 text-complementary border-none';
+      case 'admin_dashboard':
+        return 'bg-secondary/40 text-complementary border-none';
+      default:
+        return 'bg-muted text-muted-foreground border-border';
+    }
   };
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -55,6 +226,7 @@ export default function AnnouncementsManagement() {
   const [loading, setLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
@@ -210,60 +382,108 @@ export default function AnnouncementsManagement() {
     if (editingAnnouncement) {
       // Update existing announcement
       setIsUpdating(true);
-      try {
-        const response = await fetch('/api/announcements/update', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            id: editingAnnouncement.id,
-            message: formData.message,
-            page: formData.page,
-            end_time: formData.end_time || null,
-            is_active: formData.is_active,
-          }),
-        });
-
+      
+      const updatePromise = fetch('/api/announcements/update', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: editingAnnouncement.id,
+          message: formData.message,
+          page: formData.page,
+          end_time: formData.end_time && formData.end_time.trim() !== '' ? formData.end_time : null,
+          is_active: formData.is_active,
+        }),
+      }).then(async (response) => {
         if (!response.ok) {
           throw new Error('Failed to update announcement');
         }
-
-        const { announcement: updatedAnnouncement } = await response.json();
         
-        // Update the local state with the updated announcement
-        setAnnouncements(prev => 
-          prev.map(announcement => 
-            announcement.id === editingAnnouncement.id 
-              ? updatedAnnouncement
-              : announcement
-          )
-        );
-        
+        // Close the dialog
         setIsEditDialogOpen(false);
         setEditingAnnouncement(null);
+        
+        // Reload the page to show the updated announcement
+        window.location.reload();
+        
+        return response.json();
+      });
+
+      showToastPromise({
+        promise: updatePromise,
+        loadingText: 'Updating announcement...',
+        successText: 'Your announcement has been saved with the latest changes',
+        errorText: 'Failed to update announcement. Please try again.',
+        successHeaderText: 'Announcement Updated Successfully',
+        errorHeaderText: 'Error Updating Announcement',
+        direction: 'right'
+      });
+      
+      try {
+        await updatePromise;
       } catch (error) {
         console.error('Error updating announcement:', error);
-        // You could add error state handling here
-        alert('Failed to update announcement. Please try again.');
       } finally {
         setIsUpdating(false);
       }
     } else {
+      // Check if trying to create a home page announcement when one already exists
+      if (formData.page === 'home') {
+        const existingHomeAnnouncement = announcements.find(announcement => 
+          announcement.page === 'home'
+        );
+        
+        if (existingHomeAnnouncement) {
+          showToastError({
+            headerText: 'Home Page Announcement Exists',
+            paragraphText: 'Only one announcement can exist for the home page. Please edit the existing one or choose a different page.',
+            direction: 'right'
+          });
+          return; // Stop the function execution
+        }
+      }
+      
       // Create new announcement
       setIsCreating(true);
-      try {
-        // Simulate API delay for demo purposes
-        await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const createPromise = fetch('/api/announcements/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: formData.message,
+          page: formData.page,
+          end_time: formData.end_time && formData.end_time.trim() !== '' ? formData.end_time : null,
+          is_active: formData.is_active,
+        }),
+      }).then(async (response) => {
+        if (!response.ok) {
+          throw new Error('Failed to create announcement');
+        }
         
-        const newAnnouncement: Announcement = {
-          id: Date.now().toString(),
-          ...formData,
-          end_time: formData.end_time || null,
-          created_at: new Date().toISOString()
-        };
-        setAnnouncements(prev => [newAnnouncement, ...prev]);
+        // Close the dialog
         setIsCreateDialogOpen(false);
+        
+        // Reload the page to show the new announcement
+        window.location.reload();
+        
+        return response.json();
+      });
+
+      showToastPromise({
+        promise: createPromise,
+        loadingText: 'Creating announcement...',
+        successText: 'Your announcement is now visible to everyone.',
+        errorText: 'Failed to create announcement. Please try again.',
+        successHeaderText: 'Announcement Created Successfully',
+        errorHeaderText: 'Error Creating Announcement',
+        direction: 'right'
+      });
+      
+      try {
+        await createPromise;
       } finally {
         setIsCreating(false);
       }
@@ -292,14 +512,60 @@ export default function AnnouncementsManagement() {
 
   // Handle delete
   const handleDelete = (announcement: Announcement) => {
+    console.log('🗑️ handleDelete called for announcement:', announcement);
     setDeletingAnnouncement(announcement);
+    console.log('✅ deletingAnnouncement set to:', announcement);
   };
 
   // Confirm delete
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (deletingAnnouncement) {
-      setAnnouncements(prev => prev.filter(n => n.id !== deletingAnnouncement.id));
-      setDeletingAnnouncement(null);
+      setIsDeleting(true);
+      
+      const deletePromise = fetch('/api/announcements/delete', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: deletingAnnouncement.id,
+        }),
+      }).then(async (response) => {
+        if (!response.ok) {
+          throw new Error('Failed to delete announcement');
+        }
+        
+        // Remove from local state
+        setAnnouncements(prev => prev.filter(n => n.id !== deletingAnnouncement.id));
+        setDeletingAnnouncement(null);
+        
+        // Refresh announcements from database to ensure consistency
+        const refreshResponse = await fetch('/api/announcements/fetch');
+        if (refreshResponse.ok) {
+          const refreshData = await refreshResponse.json();
+          setAnnouncements(refreshData);
+        }
+        
+        return response.json();
+      });
+
+      showToastPromise({
+        promise: deletePromise,
+        loadingText: 'Deleting announcement...',
+        successText: 'Your announcement has been removed from the system.',
+        errorText: 'Failed to delete announcement. Please try again.',
+        successHeaderText: 'Announcement Deleted Successfully',
+        errorHeaderText: 'Error Deleting Announcement',
+        direction: 'right'
+      });
+      
+      try {
+        await deletePromise;
+      } catch (error) {
+        console.error('Error deleting announcement:', error);
+      } finally {
+        setIsDeleting(false);
+      }
     }
   };
 
@@ -326,6 +592,13 @@ export default function AnnouncementsManagement() {
       is_active: true
     });
   };
+
+  const handleCloseDeleteDialog = () => {
+    setDeletingAnnouncement(null);
+    setIsDeleting(false);
+  };
+
+
 
   return (
     <div className="p-8">
@@ -362,7 +635,7 @@ export default function AnnouncementsManagement() {
             
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-black hover:bg-gray-800 text-white shadow-lg whitespace-nowrap">
+                <Button className="bg-orange-500 hover:bg-orange-600 text-white shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition duration-200 whitespace-nowrap">
                   <Plus className="h-4 w-4 mr-2" />
                   Add Announcement
                 </Button>
@@ -375,18 +648,25 @@ export default function AnnouncementsManagement() {
                   <div className="space-y-4">
                    
                     <div>
-                      <Label htmlFor="message">Message</Label>
-                      <Textarea 
-                        id="message" 
-                        value={formData.message}
-                        onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
-                        placeholder="Enter announcement message" 
-                        required
-                        rows={4}
-                      />
+                      <Label htmlFor="message">Message <span className="text-red-500">*</span></Label>
+                      <div data-color-mode="light">
+                        <MDEditor 
+                          value={formData.message} 
+                          onChange={(value) => setFormData(prev => ({ ...prev, message: value || "" }))}
+                          preview="live"
+                          height={200}
+                          textareaProps={{
+                            placeholder: "Enter announcement message (supports markdown)...",
+                            required: true
+                          }}
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Supports markdown formatting (bold, italic, lists, links, etc.)
+                      </p>
                     </div>
                     <div>
-                      <Label htmlFor="page">Target Page</Label>
+                      <Label htmlFor="page">Target Page <span className="text-red-500">*</span></Label>
                       <Select value={formData.page} onValueChange={(value) => setFormData(prev => ({ ...prev, page: value }))}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a page" />
@@ -411,6 +691,8 @@ export default function AnnouncementsManagement() {
                       />
                       <p className="text-xs text-gray-500 mt-1">Leave empty if the announcement should remain active indefinitely</p>
                     </div>
+                    
+                  
                  
                     <div className="flex justify-end gap-2">
                       <Button 
@@ -422,8 +704,8 @@ export default function AnnouncementsManagement() {
                       </Button>
                       <Button 
                         type="submit" 
-                        disabled={isCreating}
-                        className="bg-black hover:bg-gray-800 text-white shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition duration-200"
+                        disabled={isCreating || !formData.message.trim() || !formData.page}
+                        className="bg-orange-500 hover:bg-orange-600 text-white shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {isCreating ? (
                           <div className="flex items-center justify-center">
@@ -454,7 +736,7 @@ export default function AnnouncementsManagement() {
                   <ChevronDown className="ml-2 h-4 w-4" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-80 p-4">
+              <PopoverContent className="w-96 p-4">
                 <div className="space-y-3">
                   <h4 className="font-semibold">Select Pages</h4>
                   
@@ -482,18 +764,22 @@ export default function AnnouncementsManagement() {
                     </div>
                   )}
                   
-                  <div className="grid grid-cols-2 gap-2">
-                    {availablePages.map(page => (
-                      <Button
-                        key={page}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePageToggle(page)}
-                        className={`justify-start cursor-pointer ${filters.page.includes(page) ? 'bg-black text-white border-black hover:bg-black hover:text-white' : 'hover:bg-transparent'}`}
-                      >
-                        {page.charAt(0).toUpperCase() + page.slice(1).replace('-', ' ')}
-                      </Button>
-                    ))}
+                  <div className="max-h-64 overflow-y-auto pr-2">
+                    <div className="grid grid-cols-2 gap-3">
+                      {availablePages.map(page => (
+                        <Button
+                          key={page}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePageToggle(page)}
+                          className={`justify-start cursor-pointer h-auto py-4 px-4 text-left min-h-[60px] transition-none ${filters.page.includes(page) ? 'bg-black text-white border-black hover:bg-black hover:text-white' : 'hover:bg-transparent'}`}
+                        >
+                          <span className="whitespace-normal text-sm leading-relaxed">
+                            {formatPageLabel(page)}
+                          </span>
+                        </Button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </PopoverContent>
@@ -546,7 +832,7 @@ export default function AnnouncementsManagement() {
                         variant="outline"
                         size="sm"
                         onClick={() => handleStatusToggle(status)}
-                        className={`justify-start cursor-pointer ${filters.status.includes(status) ? 'bg-black text-white border-black hover:bg-black hover:text-white' : 'hover:bg-transparent'}`}
+                        className={`justify-start cursor-pointer ${filters.status.includes(status) ? 'bg-orange-500 text-white border-orange-500 hover:bg-orange-600 hover:text-white' : 'hover:bg-transparent'}`}
                       >
                         {status.charAt(0).toUpperCase() + status.slice(1)}
                       </Button>
@@ -602,25 +888,33 @@ export default function AnnouncementsManagement() {
                     <TableRow key={announcement.id}>
                       <TableCell className="bg-white/80">
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                          <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
                             <Bell className="h-4 w-4" />
                           </div>
                           <div className="text-sm text-gray-700 max-w-xs">
-                            {announcement.message}
+                            <div 
+                              className="announcement-markdown"
+                              dangerouslySetInnerHTML={{ 
+                                __html: md.render(announcement.message) 
+                              }}
+                            />
                           </div>
                         </div>
                       </TableCell>
                       <TableCell className="bg-white/80">
-                        <Badge variant="outline">
+                        <Badge 
+                          variant="outline" 
+                          className={getPageColor(announcement.page)}
+                        >
                           {formatPageLabel(announcement.page)}
                         </Badge>
                       </TableCell>
                       <TableCell className="bg-white/80">
                         <Badge 
-                          className={status === "active" 
+                          className={`${status === "active" 
                             ? "bg-blue-100 text-blue-600 border-blue-600" 
                             : "bg-red-100 text-red-600 border-red-600"
-                          }
+                          } hover:no-underline hover:bg-opacity-100 hover:scale-100 transition-none`}
                         >
                           {status.charAt(0).toUpperCase() + status.slice(1)}
                         </Badge>
@@ -642,8 +936,8 @@ export default function AnnouncementsManagement() {
                             <Edit className="h-3 w-3" />
                             Edit
                           </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
+                          <Dialog>
+                            <DialogTrigger asChild>
                               <Button 
                                 variant="outline" 
                                 size="sm" 
@@ -653,22 +947,38 @@ export default function AnnouncementsManagement() {
                                 <Trash2 className="h-3 w-3" />
                                 Delete
                               </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Announcement</AlertDialogTitle>
-                                <AlertDialogDescription>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Delete Announcement</DialogTitle>
+                                <p className="text-sm text-gray-600">
                                   Are you sure you want to delete this announcement? This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                                </p>
+                              </DialogHeader>
+                              <div className="flex justify-end gap-2 pt-4">
+                                <Button 
+                                  variant="outline" 
+                                  disabled={isDeleting}
+                                >
+                                  Cancel
+                                </Button>
+                                <Button 
+                                  onClick={confirmDelete} 
+                                  disabled={isDeleting}
+                                  className="bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  {isDeleting ? (
+                                    <div className="flex items-center gap-2">
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                      Deleting...
+                                    </div>
+                                  ) : (
+                                    'Delete'
+                                  )}
+                                </Button>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -732,10 +1042,9 @@ export default function AnnouncementsManagement() {
                   return (
                     <Button
                       key={pageNum}
-                      variant={currentPage === pageNum ? "default" : "outline"}
                       size="sm"
                       onClick={() => setCurrentPage(pageNum)}
-                      className="h-8 w-8 p-0"
+                      className={`h-8 w-8 p-0 ${currentPage === pageNum ? 'bg-black text-white border-black hover:bg-black hover:text-white' : ''}`}
                     >
                       {pageNum}
                     </Button>
@@ -773,14 +1082,21 @@ export default function AnnouncementsManagement() {
             <div className="space-y-4">
               <div>
                 <Label htmlFor="edit-message">Message</Label>
-                <Textarea 
-                  id="edit-message" 
-                  value={formData.message}
-                  onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
-                  placeholder="Enter announcement message" 
-                  required
-                  rows={4}
-                />
+                <div data-color-mode="light">
+                  <MDEditor 
+                    value={formData.message} 
+                    onChange={(value) => setFormData(prev => ({ ...prev, message: value || "" }))}
+                    preview="live"
+                    height={200}
+                    textareaProps={{
+                      placeholder: "Enter announcement message (supports markdown)...",
+                      required: true
+                    }}
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Supports markdown formatting (bold, italic, lists, links, etc.)
+                </p>
               </div>
               <div>
                 <Label htmlFor="edit-page">Target Page</Label>
@@ -831,7 +1147,7 @@ export default function AnnouncementsManagement() {
                 <Button 
                   type="submit"
                   disabled={isUpdating}
-                  className="bg-black hover:bg-gray-800 text-white shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition duration-200"
+                  className="bg-orange-500 hover:bg-orange-600 text-white shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition duration-200"
                 >
                   {isUpdating ? (
                     <div className="flex items-center justify-center">

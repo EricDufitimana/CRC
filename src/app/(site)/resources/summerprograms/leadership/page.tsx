@@ -5,7 +5,7 @@ import { getAllPosts } from "@/utils/markdown";
 import { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import Layout from "@/components/other/Layout";
+import Layout from "@/components/other/ResourceLayout";
 import { layout } from "@/types/layout";
 import HeaderLayout from "@/components/other/headerLayout";
 import { Fragment } from "react";

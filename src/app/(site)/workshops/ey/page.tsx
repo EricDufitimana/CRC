@@ -1,17 +1,54 @@
-// app/workshops/page.tsx
 "use client";
-import Image from "next/image";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { useState } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
-import PdfViewer from "@/components/PdfViewer/PdfViewer";
+import { useState, useEffect } from "react";
 import WorkshopsNotificationBanner from "@/components/Banner/WorkshopsNotificationBanner";
+import WorkshopCard from "@/components/workshops/WorkshopCard";
+import { Card, CardContent } from "@/components/ui/card";
 
 
-export default function WorkshopsPage() {
+interface Workshop {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  presentation_url?: string;
+  assignments?: Array<{
+    id: string;
+    title: string;
+    description: string;
+    submission_idate: string;
+    submission_style: string;
+  }>;
+  crc_classes?: Array<{
+    id: string;
+    name: string;
+  }>;
+}
+
+export default function EYWorkshopsPage() {
   const [expandedCards, setExpandedCards] = useState<number[]>([]);
+  const [workshops, setWorkshops] = useState<Workshop[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchWorkshops = async () => {
+      try {
+        const response = await fetch('/api/workshops/by-group?group=ey');
+        const data = await response.json();
+        
+        if (data.success) {
+          setWorkshops(data.data);
+        } else {
+          console.error('Failed to fetch workshops:', data.error);
+        }
+      } catch (error) {
+        console.error('Error fetching workshops:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchWorkshops();
+  }, []);
 
   const toggleCard = (index: number) => {
     setExpandedCards(prev => 
@@ -20,28 +57,15 @@ export default function WorkshopsPage() {
         : [...prev, index]
     );
   };
-  const workshops = [
-    {
-      date: "September 18th",
-      title: "Intro to the CRC",
-      desc: "During this workshop, students were given a thorough introduction to the CRC department and new CRC fellows. Students also discussed what to expect from the CRC, the various resources offered, and what to expect from the CRC workshops during Term 1.",
-      presentationUrl: "/pdfs/intro-to-crc.pdf",
-      imageUrl: "/images/banners/image.svg",
-    },
-    {
-      date: "September 25th",
-      title: "Note Taking Habits",
-      desc: "During this workshop, students were taught four different note taking methods and discussed their usage, advantages, and disadvantages. Using one of the methods discussed, take notes on a 4 minute video titled Exploring Afrobeats Dance: Essence, Origins, and Uniqueness",
-      presentationUrl: "/pdfs/note-taking.pdf",
-      imageUrl: "/images/banners/image.svg",
-      assignment: {
-        text: "Take notes on 'Exploring Afrobeats Dance'",
-        dueDate: "Due: Oct 2nd, 2024",
-        link: "/assignments/afrobeats-notes.pdf"
-      }
-    },
-    // add more...
-  ];
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      month: 'long', 
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
 
   return (
     <main className="max-w-5xl mx-auto px-4 py-8 space-y-6 pt-[150px]">
@@ -49,88 +73,52 @@ export default function WorkshopsPage() {
       <h1 className="text-3xl font-bold text-center">CRC Workshops Recap</h1>
       <p className="text-muted-foreground text-center">A timeline of workshops, presentations, and assignments for Enrichment Year students.</p>
 
-      <div className="space-y-4">
-        {workshops.map((w, i) => {
-          const isExpanded = expandedCards.includes(i);
-          
-          return (
-            <Card key={i} className="overflow-hidden">
-              <CardContent className="p-4">
-                {/* Header - Always visible */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Badge className="bg-green-200 text-green-800 hover:bg-green-200 hover:text-green-800">
-                      {w.date}
-                    </Badge>
-                    <h2 className="font-semibold">{w.title}</h2>
-                  </div>
-                  
-                  <button
-                    onClick={() => toggleCard(i)}
-                    className="p-2 hover:bg-gray-100 rounded-md transition-colors"
-                    aria-label={isExpanded ? "Collapse details" : "Expand details"}
-                  >
-                    {isExpanded ? (
-                      <ChevronUp className="h-5 w-5 text-gray-600" />
-                    ) : (
-                      <ChevronDown className="h-5 w-5 text-gray-600" />
-                    )}
-                  </button>
-                </div>
-
-                {/* Expandable content */}
-                <div className={`transition-all duration-300 ease-in-out ${
-                  isExpanded ? 'max-h-[1000px] opacity-100 mt-4' : 'max-h-0 opacity-0 overflow-hidden'
-                }`}>
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    {/* Left side - Description and Assignment */}
-                    <div className="flex-1 relative h-[300px]">
-                      <p className="text-sm text-muted-foreground">{w.desc}</p>
-
-                      {w.assignment && (
-                        <div className="absolute bottom-[48px] left-0 right-0 space-y-2">
-                          <h3 className="text-sm font-medium">📌 Assignment</h3>
-                          <Card className="p-3 shadow-none">
-                            <div className="flex flex-col gap-2">
-                              <p className="text-muted-foreground text-sm">{w.assignment.text}</p>
-                              <Badge className="w-fit bg-dark text-white hover:bg-dark hover:text-white">
-                                {w.assignment.dueDate}
-                              </Badge>
-                              <Button className="bg-white text-dark border border-dark hover:bg-dark hover:text-white">
-                                Submit
-                              </Button>
-                            </div>
-                          </Card>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Right side - Image */}
-                    {w.imageUrl && w.presentationUrl && (
-                      <div className="sm:w-[250px] flex-shrink-0">
-                        <a 
-                          href={w.presentationUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="block"
-                        >
-                          <Image
-                            src={w.imageUrl}
-                            alt={`Presentation for ${w.title}`}
-                            width={250}
-                            height={300}
-                            className="rounded-md hover:opacity-90 transition"
-                          />
-                        </a>
+      {loading ? (
+        <div className="space-y-4">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <Card key={index} className="overflow-hidden">
+              <CardContent className="p-0">
+                <div className="p-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-4">
+                        <div className="h-6 bg-gray-200 rounded w-32 animate-pulse"></div>
+                        <div className="h-6 bg-gray-200 rounded w-48 animate-pulse"></div>
                       </div>
-                    )}
+                    </div>
+                    <div className="h-8 w-16 bg-gray-200 rounded animate-pulse ml-4"></div>
                   </div>
                 </div>
               </CardContent>
             </Card>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-4">
+        {workshops.map((workshop, i) => (
+          <WorkshopCard
+            key={workshop.id}
+            workshop={workshop}
+            index={i}
+            expandedCards={expandedCards}
+            onToggleCard={toggleCard}
+            formatDate={formatDate}
+          />
+        ))}
+        </div>
+      )}
+
+      {!loading && workshops.length === 0 && (
+        <div className="text-center py-12">
+          <div className="text-gray-400 mb-4">
+            <svg className="mx-auto h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No Workshops Found</h3>
+          <p className="text-gray-500">There are currently no workshops available for Enrichment Year students.</p>
+        </div>
+      )}
     </main>
   );
 }

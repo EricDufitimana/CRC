@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useActionState } from "react";
+import { useEffect, useState, useActionState, startTransition } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../../../../zenith/src/components/ui/card";
@@ -10,10 +10,11 @@ import { Input } from "../../../../../../zenith/src/components/ui/input";
 import { Skeleton } from "../../../../../../zenith/src/components/ui/skeleton";
 import { FileUpload } from "../../../../../../zenith/src/components/ui/file-upload";
 import { ArrowLeft, ClipboardCheck, Upload, AlertCircle, Search, Check, Loader2, FileText, X } from "lucide-react";
-import { useSupabase } from "@/hooks/useSupabase";
-import { submitAssignmentHandler } from "@/actions/submitAssignmentHandler";
+import { useUserData } from "@/hooks/useUserData";
+import { submitAssignmentHandler } from "@/actions/assignments/submitAssignmentHandler";
 import { Alert, AlertDescription, AlertTitle } from "../../../../../../zenith/src/components/ui/alert";
 import imageCompression from "browser-image-compression";
+import { showToastPromise } from "@/components/toasts";
 
 type AssignmentRow = {
   id: string;
@@ -39,17 +40,29 @@ export default function StudentAssignmentsPage() {
   const [googleLinks, setGoogleLinks] = useState<Record<string, string>>({});
   const [files, setFiles] = useState<Record<string, File | null>>({});
   const [fileToUpload, setFileToUpload] = useState<File | null>(null);
-  const { getUserId } = useSupabase();
-  const [studentId, setStudentId] = useState<number | null>(null);
+  const { userId, studentId, isLoading: userDataLoading } = useUserData();
   const [refreshKey, setRefreshKey] = useState(0);
   const [openFormFor, setOpenFormFor] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 10;
+  
+  // Loading states for form submissions - now handled by useActionState
+  
+  // Toast promise wrapper for useActionState integration
+  const [toastPromise, setToastPromise] = useState<{
+    resolve: (value: any) => void;
+    reject: (error: Error) => void;
+  } | null>(null);
 
   // Handle assignment submission with useActionState
   const handleAssignmentSubmission = async (prevState: any, formData: FormData) => {
+    console.log('🔍 handleAssignmentSubmission: Starting submission process...');
+    console.log('🔍 handleAssignmentSubmission: prevState:', prevState);
+    console.log('🔍 handleAssignmentSubmission: formData entries:', Array.from(formData.entries()));
+    
     if (!studentId) {
+      console.error('❌ handleAssignmentSubmission: Student ID not found');
       return { success: false, message: 'Student ID not found.' };
     }
     
@@ -57,17 +70,23 @@ export default function StudentAssignmentsPage() {
     const assignmentId = formData.get('assignment_id') as string;
     const submissionStyle = formData.get('submission_style') as string;
     
-    console.log('📋 Form data received:', {
+    console.log('🔍 handleAssignmentSubmission: Extracted form data:', {
       assignmentId,
       submissionStyle,
-      studentId
+      studentId,
+      hasGoogleLink: !!formData.get('google_doc_link'),
+      hasFile: !!formData.get('file')
     });
     
     // Validate assignment selection
     const assignment = rows.find(a => a.id === assignmentId);
     if (!assignment) {
+      console.error('❌ handleAssignmentSubmission: Assignment not found in rows:', assignmentId);
+      console.log('🔍 handleAssignmentSubmission: Available assignments:', rows.map(a => ({ id: a.id, title: a.title })));
       return { success: false, message: 'Assignment not found.' };
     }
+    
+    console.log('🔍 handleAssignmentSubmission: Found assignment:', assignment);
     
     // Add student_id to form data
     formData.append('student_id', String(studentId));
@@ -101,52 +120,121 @@ export default function StudentAssignmentsPage() {
     }
   };
 
+  // Remove the manual form submission handler since we're using useActionState action
+
   const [assignmentState, assignmentFormAction, isAssignmentPending] = useActionState(handleAssignmentSubmission, {
     success: false,
     message: ''
   });
 
-  // Handle successful submission
-  useEffect(() => {
-    if (assignmentState.success) {
-      // Close any open form and refresh rows
-      setOpenFormFor(null);
-      setRefreshKey((k) => k + 1);
-      setFileToUpload(null);
-      console.log('🎉 Assignment submitted successfully!');
-    }
-  }, [assignmentState.success]);
+  // Create a promise that resolves/rejects based on action state
+  const createAssignmentPromise = () => {
+    return new Promise((resolve, reject) => {
+      setToastPromise({ resolve, reject });
+    });
+  };
 
+  // Form submit handler for toast integration
+  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    
+    const assignmentId = e.currentTarget.getAttribute('data-assignment-id') || '';
+    console.log('🚀 handleFormSubmit: Form submission started for assignment:', assignmentId);
+    
+    // Create the promise for the toast
+    const assignmentPromise = createAssignmentPromise();
+    
+    // Show your existing toast structure
+    showToastPromise({
+      promise: assignmentPromise,
+      loadingText: 'Submitting assignment...',
+      successText: 'Your assignment is in. Keep up the good work!',
+      errorText: 'Failed to submit assignment. Please try again.',
+      successHeaderText: 'Assignment Submitted Successfully',
+      errorHeaderText: 'Assignment Submission Failed',
+      direction: 'right'
+    });
+    
+    // Handle the promise resolution for form reset
+    assignmentPromise.then(() => {
+      console.log('✅ handleFormSubmit: Promise resolved, resetting form...');
+      // Reset form state on success
+      setOpenFormFor(null);
+      setGoogleLinks((s) => ({ ...s, [assignmentId]: '' }));
+      setFiles((s) => ({ ...s, [assignmentId]: null }));
+      setFileToUpload(null);
+      setRefreshKey((k) => k + 1);
+    }).catch(() => {
+      console.log('❌ handleFormSubmit: Promise rejected, assignment submission failed');
+      // Error handling if needed
+    });
+    
+    // Submit the form using useActionState with startTransition
+    const formData = new FormData(e.currentTarget);
+    console.log('🔍 handleFormSubmit: Calling assignmentFormAction with formData:', Array.from(formData.entries()));
+    
+    // Fix: Wrap in startTransition for better React state management
+    startTransition(() => {
+      assignmentFormAction(formData);
+    });
+  };
+
+  // Resolve/reject promise based on action state
   useEffect(() => {
-    let canceled = false;
-    const fetchStudentId = async () => {
-      try {
-        setError(null);
-        setLoading(true);
-        const uid = await getUserId();
-        if (!uid) throw new Error("User not found");
-        const resp = await fetch(`/api/studentId?userId=${uid}`);
-        const js = await resp.json();
-        if (!resp.ok || !js.studentId) throw new Error(js?.error || "Student ID missing");
-        if (!canceled) setStudentId(js.studentId);
-      } catch (e: any) {
-        if (!canceled) {
-          setError(e?.message || "Failed to load");
-          setLoading(false);
-        }
+    if (!isAssignmentPending && toastPromise) {
+      console.log('🔍 Toast promise effect: Resolving promise based on state:', assignmentState);
+      if (assignmentState.success) {
+        // Resolve the promise (triggers success toast)
+        console.log('✅ Toast promise effect: Resolving promise with success');
+        toastPromise.resolve(assignmentState);
+      } else if (assignmentState.message && !assignmentState.success) {
+        // Reject the promise (triggers error toast)
+        console.log('❌ Toast promise effect: Rejecting promise with error:', assignmentState.message);
+        toastPromise.reject(new Error(assignmentState.message));
       }
-    };
-    fetchStudentId();
-    return () => {
-      canceled = true;
-    };
-  }, [refreshKey]);
+      
+      // Clear the promise
+      setToastPromise(null);
+    }
+  }, [assignmentState, isAssignmentPending, toastPromise]);
+
+  // Remove the old assignment state effect since we're now using the toast promise system
+
+  // Track when submission is in progress
+  useEffect(() => {
+    if (isAssignmentPending) {
+      console.log('🔍 Assignment submission in progress...');
+      // The loading state is now shown in the UI via isAssignmentPending
+      // Success/error toasts will be shown by the assignmentState effect
+    }
+  }, [isAssignmentPending]);
+
+  // Update loading state based on user data loading
+  useEffect(() => {
+    console.log('🔍 Loading state effect:', { userDataLoading, studentId, loading });
+    if (userDataLoading) {
+      console.log('🔍 Setting loading to true (user data loading)');
+      setLoading(true);
+      setError(null); // Clear any previous errors while loading
+    } else if (studentId) {
+      console.log('🔍 User data loaded, studentId found:', studentId);
+      // Keep loading true while fetching assignments
+      // setLoading(false) will be called after assignments are fetched
+    } else if (!userDataLoading && !studentId && !loading) {
+      console.log('🔍 No student ID found, showing error');
+      // Only show error if we're not loading and have no student ID
+      setError("Student ID not found. Please try refreshing the page.");
+      setLoading(false);
+    }
+  }, [userDataLoading, studentId, loading]);
 
   useEffect(() => {
     if (!studentId) return;
     let canceled = false;
     const fetchAssignments = async () => {
       try {
+        setError(null);
+        setLoading(true); // Ensure loading is true when starting to fetch assignments
         const listResp = await fetch(`/api/assignments/for-student?studentId=${studentId}`);
         if (!listResp.ok) throw new Error("Failed to fetch assignments");
         const list = (await listResp.json()) as AssignmentRow[];
@@ -197,9 +285,9 @@ export default function StudentAssignmentsPage() {
   const getRowStatus = (a: AssignmentRow) => {
     const now = Date.now();
     const dueMs = a.due_date ? new Date(a.due_date).getTime() : null;
-    if (a.status === "submitted") return { label: "CLOSED", color: "bg-neutral-200 text-neutral-700" };
-    if (dueMs !== null && dueMs < now) return { label: "OVERDUE", color: "bg-red-100 text-red-700" };
-    return { label: "ACTIVE", color: "bg-emerald-100 text-emerald-700" };
+    if (a.status === "submitted") return { label: "CLOSED", color: "bg-neutral-200 text-neutral-700 hover:bg-neutral-200" };
+    if (dueMs !== null && dueMs < now) return { label: "OVERDUE", color: "bg-red-100 text-red-700 hover:bg-red-100" };
+    return { label: "ACTIVE", color: "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" };
   };
 
   async function compressImage(file: File) {
@@ -224,30 +312,33 @@ export default function StudentAssignmentsPage() {
 
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Link href="/dashboard/student/aspen">
-          <Button variant="ghost" size="sm" className="h-8 px-2"><ArrowLeft className="h-4 w-4" /></Button>
-        </Link>
-        <h2 className="text-2xl font-semibold font-cal-sans">Assignments</h2>
-      </div>
+    <div className="space-y-6 h-full flex flex-col overflow-hidden ">
+              {/* Header */}
+        <div className="flex items-center gap-3 flex-shrink-0 group">
+          <Link href="/dashboard/student">
+            <Button variant="ghost" size="sm" className="h-8 px-2 hover:scale-110 hover:translate-x-[-2px] transition-all duration-200"><ArrowLeft className="h-4 w-4" /></Button>
+          </Link>
+          <h2 className="text-2xl font-semibold font-cal-sans">Assignments</h2>
+        </div>
 
-      <Card className="border-0 shadow-sm ring-1 ring-black/5">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between gap-3">
-            <CardTitle className="text-base">All assignments</CardTitle>
-            <div className="relative w-72">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
-              <Input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search by title or workshop..."
-                className="pl-8 h-9 rounded-xl"
-              />
+      {/* Main Content */}
+      <div className="flex-1 overflow-hidden min-h-0 ">
+        <Card className="border-0 shadow-sm ring-1 ring-black/5 m-0.5 h-[calc(100%-6px)] flex flex-col overflow-hidden min-h-0">
+          <CardHeader className="pb-3 flex-shrink-0">
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle className="text-base">All assignments</CardTitle>
+              <div className="relative w-72">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+                <Input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search by title or workshop..."
+                  className="pl-8 h-9 rounded-xl"
+                />
+              </div>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent>
+          </CardHeader>
+          <CardContent className="flex-1 overflow-auto min-h-0">
           {error && (
             <Alert variant="destructive" className="mb-4">
               <AlertCircle className="h-4 w-4" />
@@ -258,7 +349,7 @@ export default function StudentAssignmentsPage() {
               </AlertDescription>
             </Alert>
           )}
-          {loading ? (
+          {loading || userDataLoading || !studentId ? (
             <div className="space-y-4">
               {Array.from({ length: 5}).map((_, i) => (
                 <div key={`row-skel-${i}`} className="rounded-xl border border-neutral-100 p-0 overflow-hidden bg-white">
@@ -287,10 +378,16 @@ export default function StudentAssignmentsPage() {
                 </div>
               ))}
             </div>
+          ) : !studentId && !userDataLoading ? (
+            <div className="h-[40vh] w-full flex flex-col items-center justify-center py-8 text-center">
+              <AlertCircle className="h-16 w-16 text-neutral-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-neutral-900 mb-2">Student ID Not Found</h3>
+              <p className="text-neutral-500 mb-4">Unable to load assignments without a valid student ID.</p>
+              <Button onClick={() => window.location.reload()} variant="outline">Refresh Page</Button>
+            </div>
           ) : rows.length === 0 ? (
             <div className="h-[40vh] w-full flex flex-col items-center justify-center py-8 text-center">
               <Image src="/images/dashboard/empty-assignments.png" alt="No assignments" width={260} height={260} className="opacity-95" />
-              <p className="mt-4 text-sm text-neutral-500">No assignments yet.</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -327,7 +424,7 @@ export default function StudentAssignmentsPage() {
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
                               <p className="text-sm font-medium truncate">{a.title}</p>
-                              <Badge className={`${a.status === 'submitted' ? 'bg-green-200 border border-green-600 hover:bg-green-200  text-green-600' : 'bg-red-200 border border-red-600 text-red-600'} text-[10px]`}>{a.status === 'submitted' ? 'Submitted' : 'Not submitted'}</Badge>
+                              <Badge className={`${a.status === 'submitted' ? 'bg-green-200 border border-green-600 hover:bg-green-200  text-green-600' : 'bg-red-200 border border-red-600 text-red-600 hover:bg-red-200'} text-[10px]`}>{a.status === 'submitted' ? 'Submitted' : 'Not submitted'}</Badge>
                             </div>
                             <p className="text-xs text-neutral-500 truncate">
                               {a.workshop?.title ? a.workshop.title : 'Workshop'} • {a.submission_style === 'google_link' ? 'Google link' : 'File upload'}
@@ -343,6 +440,7 @@ export default function StudentAssignmentsPage() {
                             {!isOpen && a.status !== 'submitted' ? (
                               <Button
                                 onClick={() => setOpenFormFor(a.id)}
+                                disabled={isAssignmentPending}
                                 className={`relative overflow-hidden text-white shadow-md rounded-xl shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition duration-200 bg-orange-500 hover:bg-orange-500/70`}
                               >
                                 <span className="pointer-events-none absolute inset-0 animate-pulse bg-white/10" />
@@ -352,18 +450,21 @@ export default function StudentAssignmentsPage() {
                           </div>
                         </div>
 
-                        {/* Expandable submission form */}
+                      {/* Expandable submission form */}
                         {isOpen && (
                           <div className="mt-4 rounded-lg border border-neutral-100 p-3 bg-neutral-50">
+                           
                             {a.submission_style === 'google_link' ? (
-                              <form action={assignmentFormAction} className="space-y-2">
+                              <form onSubmit={handleFormSubmit} data-assignment-id={a.id} className="space-y-2">
                                 <input type="hidden" name="assignment_id" value={a.id} />
                                 <input type="hidden" name="submission_style" value="google_link" />
+                                <input type="hidden" name="student_id" value={studentId || ''} />
                               <div className="flex items-center gap-2">
                                 <Input
                                   placeholder="Paste Google Doc link"
                                   value={googleLinks[a.id] || ''}
                                   onChange={(e) => setGoogleLinks((s) => ({ ...s, [a.id]: e.target.value }))}
+                                  disabled={isAssignmentPending}
                                   className="w-80"
                                 />
                                   <Button 
@@ -374,34 +475,49 @@ export default function StudentAssignmentsPage() {
                                   >
                                     {isAssignmentPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Submit'}
                                 </Button>
-                                  <Button type="button" variant="ghost" size="sm" onClick={() => setOpenFormFor(null)}>Cancel</Button>
+                                  <Button type="button" variant="ghost" size="sm" disabled={isAssignmentPending} onClick={() => setOpenFormFor(null)}>Cancel</Button>
                               </div>
-                                {assignmentState && assignmentState.message && !assignmentState.success && (
-                                  <p className="text-xs text-red-500">{assignmentState.message}</p>
-                                )}
                               </form>
                             ) : (
-                              <form action={assignmentFormAction} className="space-y-3">
+                              <form onSubmit={handleFormSubmit} data-assignment-id={a.id} className="space-y-3">
                                 <input type="hidden" name="assignment_id" value={a.id} />
                                 <input type="hidden" name="submission_style" value="file_upload" />
+                                <input type="hidden" name="student_id" value={studentId || ''} />
                                 <div className="flex items-center gap-2">
                                   <FileUpload
                                     multiple={false}
                                     accept="image/svg+xml,image/png,image/jpeg,image/gif,image/webp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
                                     maxFiles={1}
                                     value={files[a.id] ? [files[a.id]!] : []}
+                                    disabled={isAssignmentPending}
                                     onChange={async (fileList) => {
                                       const selectedFile = fileList?.[0] || null;
-                                      console.log('📁 File selected for assignment:', a.title, selectedFile ? {
+                                      console.log('📁 FileUpload onChange: Selected file for assignment:', a.title, selectedFile ? {
                                         name: selectedFile.name,
                                         size: selectedFile.size,
                                         type: selectedFile.type
                                       } : 'No file');
-                                      const compressedImage = await compressImage(selectedFile);
-                                      setFiles((s) => ({ ...s, [a.id]: compressedImage }));
-                                      setFileToUpload(compressedImage);
+                                      
+                                      if (selectedFile) {
+                                        console.log('🔍 FileUpload: Starting image compression...');
+                                        const compressedImage = await compressImage(selectedFile);
+                                        console.log('🔍 FileUpload: Compression result:', compressedImage ? {
+                                          name: compressedImage.name,
+                                          size: compressedImage.size,
+                                          type: compressedImage.type
+                                        } : 'Compression failed');
+                                        
+                                        setFiles((s) => ({ ...s, [a.id]: compressedImage }));
+                                        setFileToUpload(compressedImage);
+                                        console.log('✅ FileUpload: File state updated for assignment:', a.id);
+                                      } else {
+                                        console.log('🔍 FileUpload: No file selected, clearing state');
+                                        setFiles((s) => ({ ...s, [a.id]: null }));
+                                        setFileToUpload(null);
+                                      }
                                     }}
                                     onRemove={() => {
+                                      console.log('🗑️ FileUpload onRemove: Removing file for assignment:', a.id);
                                       setFiles((s) => ({ ...s, [a.id]: null }));
                                       setFileToUpload(null);
                                     }}
@@ -423,11 +539,8 @@ export default function StudentAssignmentsPage() {
                                   <Upload className="h-4 w-4 mr-1" />
                                     {isAssignmentPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : 'Upload File'}
                                 </Button>
-                                  <Button type="button" variant="ghost" size="sm" onClick={() => setOpenFormFor(null)}>Cancel</Button>
+                                  <Button type="button" variant="ghost" size="sm" disabled={isAssignmentPending} onClick={() => setOpenFormFor(null)}>Cancel</Button>
                               </div>
-                                {assignmentState && assignmentState.message && !assignmentState.success && (
-                                  <p className="text-xs text-red-500">{assignmentState.message}</p>
-                                )}
                               </form>
                             )}
                           </div>
@@ -472,6 +585,7 @@ export default function StudentAssignmentsPage() {
         </CardContent>
       </Card>
     </div>
+  </div>
   );
 }
 

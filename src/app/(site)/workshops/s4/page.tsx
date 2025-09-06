@@ -1,15 +1,27 @@
 "use client";
-import Image from "next/image";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
-import { client } from "@/sanity/lib/client";
-import { getS4Workshops } from "@/sanity/lib/queries";
-import { Workshop } from "@/types/workshop";
-import PdfViewer from "@/components/PdfViewer/PdfViewer";
 import WorkshopsNotificationBanner from "@/components/Banner/WorkshopsNotificationBanner";
+import WorkshopCard from "@/components/workshops/WorkshopCard";
+import { Card, CardContent } from "@/components/ui/card";
+
+interface Workshop {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  presentation_url?: string;
+  assignments?: Array<{
+    id: string;
+    title: string;
+    description: string;
+    submission_idate: string;
+    submission_style: string;
+  }>;
+  crc_classes?: Array<{
+    id: string;
+    name: string;
+  }>;
+}
 
 export default function S4WorkshopsPage() {
   const [expandedCards, setExpandedCards] = useState<number[]>([]);
@@ -19,11 +31,16 @@ export default function S4WorkshopsPage() {
   useEffect(() => {
     const fetchWorkshops = async () => {
       try {
-        const data = await client.fetch(getS4Workshops);
-        console.log("Fetched workshops:", data);
-        setWorkshops(data);
+        const response = await fetch('/api/workshops/by-group?group=senior_4');
+        const data = await response.json();
+        
+        if (data.success) {
+          setWorkshops(data.data);
+        } else {
+          console.error('Failed to fetch workshops:', data.error);
+        }
       } catch (error) {
-        console.error("Error fetching workshops:", error);
+        console.error('Error fetching workshops:', error);
       } finally {
         setLoading(false);
       }
@@ -49,93 +66,58 @@ export default function S4WorkshopsPage() {
     });
   };
 
-  if (loading) {
-    return (
-      <main className="max-w-5xl mx-auto px-4 py-8 space-y-6 pt-[150px]">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold">Loading Workshops...</h1>
-        </div>
-      </main>
-    );
-  }
-
   return (
     <main className="max-w-5xl mx-auto px-4 py-8 space-y-6 pt-[150px]">
+      <WorkshopsNotificationBanner page="s4_workshops" theme="green" />
       <h1 className="text-3xl font-bold text-center">CRC Workshops Recap</h1>
       <p className="text-muted-foreground text-center">A timeline of workshops, presentations, and assignments for Senior 4 students.</p>
 
-      <WorkshopsNotificationBanner page="s4_workshops" theme="green" />
-      <div className="space-y-4">
-        {workshops.map((workshop, i) => {
-          const isExpanded = expandedCards.includes(i);
-          
-          return (
-            <Card key={workshop._id} className="overflow-hidden">
-              <CardContent className="p-4">
-                {/* Header - Always visible */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Badge className="bg-green-200 text-green-800 hover:bg-green-200 hover:text-green-800">
-                      {formatDate(workshop.workshop_date)}
-                    </Badge>
-                    <h2 className="font-semibold">{workshop.title}</h2>
-                  </div>
-                  
-                  <button
-                    onClick={() => toggleCard(i)}
-                    className="p-2 hover:bg-gray-100 rounded-md transition-colors"
-                    aria-label={isExpanded ? "Collapse details" : "Expand details"}
-                  >
-                    {isExpanded ? (
-                      <ChevronUp className="h-5 w-5 text-gray-600" />
-                    ) : (
-                      <ChevronDown className="h-5 w-5 text-gray-600" />
-                    )}
-                  </button>
-                </div>
-
-                {/* Expandable content */}
-                <div className={`transition-all duration-300 ease-in-out ${
-                  isExpanded ? 'max-h-[1000px] opacity-100 mt-4' : 'max-h-0 opacity-0 overflow-hidden'
-                }`}>
-                  <div className="flex flex-col sm:flex-row justify-between">
-                    {/* Left side - Description and Assignment */}
-                    <div className="flex-1 relative h-[300px] max-w-xl"> <p className="text-sm text-muted-foreground">{workshop.description}</p>
-
-                      {workshop.assignment && (
-                        <div className="absolute bottom-[48px] left-0 right-0 space-y-2">
-                          <h3 className="text-sm font-medium">📌 Assignment</h3>
-                          <Card className="p-3 shadow-none">
-                            <div className="flex flex-col gap-2">
-                              <p className="text-muted-foreground text-sm">{workshop.assignment.assignment_description}</p>
-                              <Badge className="w-fit bg-dark text-white hover:bg-dark hover:text-white">
-                                Due: {formatDate(workshop.assignment.assignment_submission_deadline)}
-                              </Badge>
-                              <Button className="bg-white text-dark border border-dark hover:bg-dark hover:text-white">
-                                Submit
-                              </Button>
-                            </div>
-                          </Card>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Right side - Image */}
-                    {workshop.presentation_pdf_url && (
-                      <div className="sm:w-[250px] flex-shrink-0">
-                        <div className="mb-2 text-xs text-gray-500">
-                          PDF URL: {workshop.presentation_pdf_url}
-                        </div>
-                        <PdfViewer pdfUrl={workshop.presentation_pdf_url} />
+      {loading ? (
+        <div className="space-y-4">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <Card key={index} className="overflow-hidden">
+              <CardContent className="p-0">
+                <div className="p-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-4">
+                        <div className="h-6 bg-gray-200 rounded w-32 animate-pulse"></div>
+                        <div className="h-6 bg-gray-200 rounded w-48 animate-pulse"></div>
                       </div>
-                    )}
+                    </div>
+                    <div className="h-8 w-16 bg-gray-200 rounded animate-pulse ml-4"></div>
                   </div>
                 </div>
               </CardContent>
             </Card>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-4">
+        {workshops.map((workshop, i) => (
+          <WorkshopCard
+            key={workshop.id}
+            workshop={workshop}
+            index={i}
+            expandedCards={expandedCards}
+            onToggleCard={toggleCard}
+            formatDate={formatDate}
+          />
+        ))}
+        </div>
+      )}
+
+      {!loading && workshops.length === 0 && (
+        <div className="text-center py-12">
+          <div className="text-gray-400 mb-4">
+            <svg className="mx-auto h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No Workshops Found</h3>
+          <p className="text-gray-500">There are currently no workshops available for Senior 4 students.</p>
+        </div>
+      )}
     </main>
   );
 }

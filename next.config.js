@@ -28,6 +28,7 @@ const nextConfig = {
       ...config.resolve.alias,
       'react-dom/server': 'react-dom/server.browser',
       'unist-util-visit-parents/do-not-use-color': 'unist-util-visit-parents',
+      canvas: false,
     };
     
     // Handle the problematic import with a more comprehensive rule
@@ -101,7 +102,31 @@ const nextConfig = {
         ]
       }
     ]
-  }
+  },
+
+  // Performance optimizations
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
+  
+  // Bundle analyzer and optimization
+  productionBrowserSourceMaps: false,
+  
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '50mb'
+    },
+    optimizeCss: true,
+    scrollRestoration: true,
+  },
+  
+  // Compression and caching
+  compress: true,
+  poweredByHeader: false,
+
+
+  output: 'standalone', 
+
 }
 
 module.exports = nextConfig

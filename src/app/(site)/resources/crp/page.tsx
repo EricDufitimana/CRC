@@ -5,7 +5,7 @@ import { getAllPosts } from "@/utils/markdown";
 import { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import Layout from "@/components/other/Layout";
+import Layout from "@/components/other/ResourceLayout";
 import { layout } from "@/types/layout";
 import HeaderLayout from "@/components/other/headerLayout";
 import ResourcesNotificationBanner from "@/components/Banner/ResourcesNotificationBanner";
@@ -20,11 +20,37 @@ export const metadata: Metadata = {
 export default function Home() {
   const posts = getAllPosts(["title", "date", "excerpt", "coverImage", "slug"]);
 
+  const resources = [
+    {
+      title: "CRP Guidebook",
+      link: "https://docs.google.com/document/d/1TkCtKqsWCSyutDm1jGru89bTNenK72IUlYMJmj-qisI/edit?usp=sharing"
+    },
+    {
+      title: "CRC Recommended Universities",
+      link: "https://docs.google.com/document/d/1UriRG2TZXKDYmGKtmvKrGovdh_IjFg6eh1jOSeMAkaE/edit?usp=sharing"
+    },
+    {
+      title: "College Essay Guy",
+      link: "https://www.collegeessayguy.com/#mailmunch-pop-656620"
+    },
+    {
+      title: "College Application Course Guide",
+      link: "https://docs.google.com/document/d/1JkD4tFNx1CoRfjuKzFLwjfUgur2YyrBRrx6E4AUc5wE/edit?usp=sharing"
+    },
+    {
+      title: "Sample Personal Statements",
+      link: "https://www.collegeessayguy.com/blog/personal-statement-examples"
+    },
+    {
+      title: "The Why Us Essay Guide",
+      link: "https://docs.google.com/document/d/1bHhK9NdjJUEIhN-VKSnizJBeXBSb6cE4DSR4c0-7KYs/edit?usp=sharing"
+    }
+  ]
+
   return (
     <main>
       <ScrollUp />
-      <HeaderLayout image="/images/banners/image.svg" bottomPaddingClass="pb-6" />
-      <div className="space-y-4">
+      <div className="space-y-4 pt-[100px]">
         <ResourcesNotificationBanner page="crp" />
         <div className="pt-12 mx-auto w-[89%]">
         <div className="mb-12  lg:mb-0">
@@ -56,7 +82,7 @@ export default function Home() {
                     <span className="flex-shrink-0 w-2 h-2 mt-1 mr-3 rounded-full bg-primary flex items-center justify-center">
                       <span className="w-2 h-2 rounded-full bg-primary"></span>
                     </span>
-                    <span className="text-base text-body-color transition-all duration-300 hover:translate-x-1 hover:text-primary">
+                    <span className="text-base text-body-color transition-all duration-300 ">
                       {item}
                     </span>
                   </li>
@@ -65,21 +91,14 @@ export default function Home() {
         </div>
         <div className="space-y-3 pb-12">
         <h3 className="text-lg font-medium text-dark dark:text-white mb-4">Resources</h3>
-        {[
-          "CRP Guidebook",
-          "CRC Recommended Universities",
-          "College Essay Guy",
-          "College Application Course Guide",
-          "Sample Personal Statements",
-          "The Why Us Essay Guide"
-        ].map((resource) => (
+        {resources.map((resource, key) => (
           <Link
-            key={resource}
-            href="#"
+            key={key}
+            href={resource.link}
             className="group flex items-center text-body-color dark:text-gray-300 hover:text-primary transition-colors duration-200"
           >
             <span className="w-4 h-px bg-gray-400 dark:bg-gray-600 mr-2 group-hover:bg-primary group-hover:w-6 transition-all duration-300"></span>
-            {resource}
+            {resource.title}
           </Link>
         ))}
         </div>

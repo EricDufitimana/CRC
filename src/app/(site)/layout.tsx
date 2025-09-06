@@ -4,6 +4,7 @@ import Header from "@/components/Header";
 import ScrollToTop from "@/components/ScrollToTop";
 import StickyNotificationBanner from "@/components/Banner/StickyNotificationBanner";
 import { usePathname } from "next/navigation";
+import Head from "./head";
 
 import { ThemeProvider } from "next-themes";
 import "../../styles/index.css"
@@ -22,12 +23,21 @@ export default function RootLayout({
   const pathname = usePathname();
 
   useEffect(() => {
-    const timer = setTimeout(() => setFirstLoad(false), 1000)
+    // Reduce preloader time for better perceived performance
+    const timer = setTimeout(() => setFirstLoad(false), 300)
     return () => clearTimeout(timer)
   },[])
+
+  // Reset banner height when not on home page
+  useEffect(() => {
+    if (pathname !== "/") {
+      document.documentElement.style.setProperty("--banner-height", "0px");
+    }
+  }, [pathname])
   
   if (firstLoad) return (
   <html suppressHydrationWarning={true} className="!scroll-smooth" lang="en">
+    <Head />
     <body suppressHydrationWarning={true}>
       <PreLoader />
     </body>
@@ -36,7 +46,7 @@ export default function RootLayout({
 
   return (
     <html suppressHydrationWarning={true} className="!scroll-smooth" lang="en">
-      <head />
+      <Head />
       <body suppressHydrationWarning={true}>
             <ThemeProvider
               attribute="class"

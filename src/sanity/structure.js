@@ -15,17 +15,7 @@ export const structureBuilder = (S) =>
             .apiVersion(apiVersion)
             .defaultOrdering([{ field: '_createdAt', direction: 'desc' }])
         ),
-      S.listItem()
-        .title('Workshops')
-        .schemaType('workshops')
-        .child(
-          S.documentList()
-            .title('Workshops')
-            .schemaType('workshops')
-            .filter('_type == "workshops"')
-            .apiVersion(apiVersion)
-            .defaultOrdering([{ field: '_createdAt', direction: 'desc' }])
-        ),
+  
       S.listItem()
         .title('Events')
         .schemaType('events')

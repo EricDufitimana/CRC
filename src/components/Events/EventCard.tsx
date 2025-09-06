@@ -33,13 +33,7 @@ type SanityEvent = {
   event_organizer?: {
     name: string;
     role: string;
-    image?: {
-      asset: {
-        _id: string;
-        url: string;
-        metadata: any;
-      };
-    };
+    image?: string;
   };
   image?: {
     asset: {
@@ -95,7 +89,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onViewDetails }) =>
   };
 
   return (
-    <Card className="group transition-all duration-300 border-0 shadow-lg flex flex-col h-full">
+    <Card className="group transition-all duration-300 border border-neutral-200 flex flex-col h-full">
       
       {/* Event Image */}
       <div className="p-4">
@@ -111,7 +105,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onViewDetails }) =>
         </div>
       </div>
       
-      <CardHeader className="pb-3 flex-1">
+      <CardHeader className="pb-2 flex-1">
         {/* Event Title */}
         <CardTitle className="text-xl font-bold text-gray-900 transition-colors line-clamp-2">
           {event.title}
@@ -120,12 +114,12 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onViewDetails }) =>
       
       <div className="px-6 pb-4 mt-auto">
         {/* Date & Venue */}
-        <div className="flex items-center gap-2 text-gray-500 text-sm mb-3">
-          <Calendar className="h-4 w-4" />
-          <span>{eventDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-          <span>•</span>
-          <MapPin className="h-4 w-4" />
-          <span>{event.location}</span>
+        <div className="flex items-center gap-2 text-gray-500 text-sm mb-2">
+          <Calendar className="h-4 w-4 flex-shrink-0" />
+          <span className="flex-shrink-0">{eventDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+          <span className="flex-shrink-0">•</span>
+          <MapPin className="h-4 w-4 flex-shrink-0" />
+          <span className="truncate" title={event.location}>{event.location}</span>
         </div>
         
         <Button 
@@ -134,7 +128,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onViewDetails }) =>
           onClick={handleViewDetails}
         >
           View Details
-          <ArrowRight className="ml-2 h-4 w-4 text-dark" />
+          <ArrowRight className="ml-2 h-4 w-4 text-dark hover:text-white" />
         </Button>
       </div>
       

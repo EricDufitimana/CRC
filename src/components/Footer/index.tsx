@@ -1,6 +1,67 @@
 import Image from "next/image";
 import Link from "next/link";
 
+
+const quickLinks = [
+  {
+    label: "Home",
+    link: "/",
+  },
+  {
+    label: "Career Resources",
+    link: "/resources",
+  },
+  {
+    label: "Events & Workshops",
+    link: "/events/upcoming-events",
+  },
+  {
+    label: "Book a meeting",
+    link: "/login",
+  }
+]
+
+const resources = [
+  {
+    label: "Templates",
+    link: "/resources/templates",
+  },
+  {
+    label: "Summer Programs",
+    link: "/resources/summerprograms",
+  },
+  {
+    label: "Internship Opportunities",
+    link: "/resources/internships",
+  },
+  {
+    label: "CRP",
+    link: "/resources/crp",
+  }
+]
+
+const workshops = [
+  {
+    label: "Enrichment Year",
+    link: "/workshops/ey",
+  },
+  {
+    label: "Senior 4",
+    link: "/workshops/s4",
+  },
+  {
+    label: "Senior 5",
+    link: "/workshops/s5",
+  },
+  {
+    label: "Senior 6",
+    link: "/workshops/s6",
+  },
+]
+
+
+  
+
 const Footer = () => {
   return (
     <footer className="relative overflow-hidden pt-20 lg:pt-[100px]">
@@ -121,13 +182,13 @@ const Footer = () => {
                 Quick Links
               </h4>
               <ul className="space-y-3">
-                {['Home', 'Career Resources', 'Events & Workshops', 'Book a meeting'].map((item) => (
-                  <li key={item}>
+                {quickLinks.map((item) => (
+                  <li key={item.label}>
                     <Link
-                      href="#"
-                      className="inline-block text-base text-white opacity-80 transition-all hover:opacity-100 hover:text-[#518C66] hover:pl-1"
+                      href={item.link}
+                      className="inline-block text-base text-white opacity-80 transition-all hover:opacity-100 hover:text-[#518C66] "
                     >
-                      {item}
+                      {item.label}
                     </Link>
                   </li>
                 ))}
@@ -141,13 +202,13 @@ const Footer = () => {
                 Resources
               </h4>
               <ul className="space-y-3">
-                {['Templates', 'Summer Programs', 'Internship Opportunities', 'CRP'].map((item) => (
-                  <li key={item}>
+                {resources.map((item) => (
+                  <li key={item.label}>
                     <Link
-                      href="#"
-                      className="inline-block text-base text-white opacity-80 transition-all hover:opacity-100 hover:text-[#518C66] hover:pl-1"
+                      href={item.link}
+                      className="inline-block text-base text-white opacity-80 transition-all hover:opacity-100 hover:text-[#518C66] "
                     >
-                      {item}
+                      {item.label}
                     </Link>
                   </li>
                 ))}
@@ -161,13 +222,13 @@ const Footer = () => {
                 Workshops
               </h4>
               <ul className="space-y-3">
-                {['Enrichment Year', 'Senior 4', 'Senior 5', 'Senior 6'].map((item) => (
-                  <li key={item}>
+                {workshops.map((item) => (
+                  <li key={item.label}>
                     <Link
-                      href="#"
-                      className="inline-block text-base text-white opacity-80 transition-all hover:opacity-100 hover:text-[#518C66] hover:pl-1"
+                      href={item.link}
+                      className="inline-block text-base text-white opacity-80 transition-all hover:opacity-100 hover:text-[#518C66] "
                     >
-                      {item}
+                      {item.label}
                     </Link>
                   </li>
                 ))}

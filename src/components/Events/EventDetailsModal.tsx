@@ -130,7 +130,7 @@ export function EventDetailsModal({ event, isOpen, onClose }: EventDetailsModalP
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto p-0 bg-white z-[9999]">
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden p-0 bg-white z-[9999]">
         <DialogTitle className="sr-only">Event Details</DialogTitle>
         <div className="grid lg:grid-cols-3 gap-0">
                     {/* Left Panel - Image Display */}
@@ -143,7 +143,7 @@ export function EventDetailsModal({ event, isOpen, onClose }: EventDetailsModalP
                     src={galleryImages[0]}
                     alt={`${event.title} - Main Image`}
                     fill
-                    className="object-cover object-center rounded-lg"
+                    className="object-contain object-center rounded-lg"
                     priority
                     sizes="(max-width: 768px) 100vw, 50vw"
                     onError={(e) => {
@@ -233,13 +233,13 @@ export function EventDetailsModal({ event, isOpen, onClose }: EventDetailsModalP
               </div>
 
               {/* Main Content */}
-              <div className="flex-1 space-y-6">
+              <div className="flex-1 space-y-6 overflow-hidden">
                 {/* Description */}
-                <div>
+                <div className="overflow-hidden">
                   <h3 className="text-lg font-semibold text-gray-900 mb-3">
                     About This Event
                   </h3>
-                  <p className="text-base text-gray-700 leading-relaxed">
+                  <p className="text-base text-gray-700 leading-relaxed overflow-hidden">
                     {event.description}
                   </p>
                 </div>

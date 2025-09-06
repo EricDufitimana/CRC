@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
+import { createClient } from '@supabase/supabase-js'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function updateSession(request: NextRequest) {
@@ -48,8 +49,9 @@ export async function updateSession(request: NextRequest) {
   });
 
   // Check if user is trying to access protected routes
-  const isProtectedRoute = request.nextUrl.pathname.startsWith('/dashboard/admin') || 
-                          request.nextUrl.pathname.startsWith('/dashboard/student');
+  const isAdminRoute = request.nextUrl.pathname.startsWith('/dashboard/admin');
+  const isStudentRoute = request.nextUrl.pathname.startsWith('/dashboard/student');
+  const isProtectedRoute = isAdminRoute || isStudentRoute;
 
   if (!user && isProtectedRoute) {
     console.log('🚫 Unauthorized access attempt:', {
@@ -58,19 +60,86 @@ export async function updateSession(request: NextRequest) {
       timestamp: new Date().toISOString()
     });
     
-    // no user, potentially respond by redirecting the user to the login page
+    // no user, redirect to login page
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
   if (user && isProtectedRoute) {
-    console.log('✅ Authorized access:', {
-      pathname: request.nextUrl.pathname,
-      userId: user.id,
-      userEmail: user.email,
-      timestamp: new Date().toISOString()
-    });
+    // Create admin client for database queries
+    const adminClient = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    try {
+      if (isAdminRoute) {
+        // Check if user is an admin
+        const { data: admin, error: adminError } = await adminClient
+          .from('admin')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (adminError || !admin) {
+          console.log('🚫 Admin access denied:', {
+            pathname: request.nextUrl.pathname,
+            userId: user.id,
+            error: adminError?.message || 'Admin not found',
+            timestamp: new Date().toISOString()
+          });
+          
+          // User is not an admin, redirect to unauthorized page
+          const url = request.nextUrl.clone()
+          url.pathname = '/unauthorized'
+          return NextResponse.redirect(url)
+        }
+
+        console.log('✅ Admin access granted:', {
+          pathname: request.nextUrl.pathname,
+          userId: user.id,
+          adminId: admin.id,
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      if (isStudentRoute) {
+        // Check if user is a student
+        const { data: student, error: studentError } = await adminClient
+          .from('students')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (studentError || !student) {
+          console.log('🚫 Student access denied:', {
+            pathname: request.nextUrl.pathname,
+            userId: user.id,
+            error: studentError?.message || 'Student not found',
+            timestamp: new Date().toISOString()
+          });
+          
+          // User is not a student, redirect to unauthorized page
+          const url = request.nextUrl.clone()
+          url.pathname = '/unauthorized'
+          return NextResponse.redirect(url)
+        }
+
+        console.log('✅ Student access granted:', {
+          pathname: request.nextUrl.pathname,
+          userId: user.id,
+          studentId: student.id,
+          timestamp: new Date().toISOString()
+        });
+      }
+    } catch (error) {
+      console.log('❌ Middleware authorization error:', error);
+      // On error, redirect to unauthorized page
+      const url = request.nextUrl.clone()
+      url.pathname = '/unauthorized'
+      return NextResponse.redirect(url)
+    }
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is.

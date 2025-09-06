@@ -5,17 +5,21 @@ import ErrorButton from '../Motion/Errorbutton';
 interface ToastErrorProps {
   headerText: string;
   paragraphText: string;
+  direction?: 'left' | 'right';
 }
 
-export const showToastError = ({ headerText, paragraphText }: ToastErrorProps) => {
+export const showToastError = ({ headerText, paragraphText, direction = 'left' }: ToastErrorProps) => {
+  const enterClass = direction === 'right' ? 'animate-custom-enter-right' : 'animate-custom-enter';
+  const leaveClass = direction === 'right' ? 'animate-custom-leave-right' : 'animate-custom-leave';
+
   toast.custom((t) => (
     <div
       className={`${
-        t.visible ? 'animate-custom-enter' : 'animate-custom-leave'
-      } bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-sm relative`}
+        t.visible ? enterClass : leaveClass
+      } bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-md relative`}
     >
       {/* Content */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 max-w-sm">
         <ErrorButton />
         <div>
           <h4 className="text-gray-800 font-medium text-sm">{headerText}</h4>

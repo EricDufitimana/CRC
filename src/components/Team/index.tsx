@@ -1,3 +1,5 @@
+'use client';
+
 import { TeamType } from "@/types/team";
 import SectionTitle from "../Common/SectionTitle";
 import SingleTeam from "./SingleTeam";
@@ -9,38 +11,35 @@ const teamData: TeamType[] = [
     name: "Julius Kaboyo",
     designation: "Dean Of Students",
     image: "/images/team/kaboyo.jpg",
-    facebookLink: "/#",
-    twitterLink: "/#",
-    instagramLink: "/#",
+    linkedinLink: "https://www.linkedin.com/in/julius-kaboyo/",
+    gmailLink: "ericdufitimanaasyv@gmail.com",
   },
   {
     id: 2,
     name: "Dr. Isaac Ouma",
     designation: "CRC Teacher",
     image: "/images/team/ouma.jpg",
-    facebookLink: "/#",
-    twitterLink: "/#",
-    instagramLink: "/#",
+    linkedinLink: "https://www.linkedin.com/in/isaac-alando/",
+    gmailLink: "mailto:isaac.ouma@example.com",
   },
   {
     id: 3,
     name: "Princess Adeyinka",
     designation: "CRC Fellow",
     image: "/images/team/princess.jpg",
-    facebookLink: "/#",
-    twitterLink: "/#",
-    instagramLink: "/#",
+    linkedinLink: "https://www.linkedin.com/in/princess-adeyinka/",
+    gmailLink: "mailto:princess.adeyinka@example.com",
   },
   {
     id: 4,
     name: "Graham Dilworth",
     designation: "CRC Fellow",
     image: "/images/team/graham.jpg",
-    facebookLink: "/#",
-    twitterLink: "/#",
-    instagramLink: "/#",
+    linkedinLink: "https://www.linkedin.com/in/graham-dilworth/",
+    gmailLink: "mailto:graham.dilworth@example.com",
   },
 ];
+
 
 const Team = () => {
   return (

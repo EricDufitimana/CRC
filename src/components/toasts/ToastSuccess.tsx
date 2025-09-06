@@ -5,21 +5,25 @@ import SuccessButton from '../Motion/SuccessButton';
 interface ToastSuccessProps {
   headerText: string;
   paragraphText: string;
+  direction?: 'left' | 'right';
 }
 
-export const showToastSuccess = ({ headerText, paragraphText }: ToastSuccessProps) => {
+export const showToastSuccess = ({ headerText, paragraphText, direction = 'left' }: ToastSuccessProps) => {
+  const enterClass = direction === 'right' ? 'animate-custom-enter-right' : 'animate-custom-enter';
+  const leaveClass = direction === 'right' ? 'animate-custom-leave-right' : 'animate-custom-leave';
+
   toast.custom((t) => (
     <div
       className={`${
-        t.visible ? 'animate-custom-enter' : 'animate-custom-leave'
+        t.visible ? enterClass : leaveClass
       } bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-sm relative`}
     >
       {/* Content */}
       <div className="flex items-center gap-3">
         <SuccessButton />
         <div>
-          <h4 className="text-gray-800 font-medium text-sm">{headerText}</h4>
-          <p className="text-gray-500 text-xs">{paragraphText}</p>
+          <h4 className="text-gray-800 font-medium text-xs">{headerText}</h4>
+          <p className="text-gray-500 text-xs leading-tight">{paragraphText}</p>
         </div>
       </div>
     </div>

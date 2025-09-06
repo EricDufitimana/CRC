@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useEffect, useState, useActionState } from "react";
+import { useMemo, useEffect, useState, useActionState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../../../zenith/src/components/ui/card";
 import { Button } from "../../../../../zenith/src/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "../../../../../zenith/src/components/ui/avatar";
@@ -8,7 +8,7 @@ import { Badge } from "../../../../../zenith/src/components/ui/badge";
 import { Progress } from "../../../../../zenith/src/components/ui/progress";
 import Link from "next/link";
 import Image from "next/image";
-import { Calendar, FileText, Briefcase, CheckCircle, ClipboardCheck, Bell, ArrowRight, Users, Loader2 } from "lucide-react";
+import { Calendar, FileText, Briefcase, CheckCircle, ClipboardCheck, Bell, ArrowRight, Users, Loader2, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../../../zenith/src/components/ui/dialog";
 import { Input } from "../../../../../zenith/src/components/ui/input";
 import { Textarea } from "../../../../../zenith/src/components/ui/textarea";
@@ -18,30 +18,72 @@ import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, Command
 import { FileUpload } from "../../../../../zenith/src/components/ui/file-upload";
 import { Skeleton } from "../../../../../zenith/src/components/ui/skeleton";
 import { getCalApi } from "@calcom/embed-react";
-import { submitEssayHandler } from "@/actions/submitEssayHandler";
-import { submitOpportunityHandler } from "@/actions/submitOpportunityHandler";
-import { submitAssignmentHandler } from "@/actions/submitAssignmentHandler";
-import { useSupabase } from "@/hooks/useSupabase";
-// removed direct supabase import for workshops; using API route instead
+import { submitEssayHandler } from "@/actions/essays/submitEssayHandler";
+import { submitOpportunityHandler } from "@/actions/opportunities/submitOpportunityHandler";
+import { submitAssignmentHandler } from "@/actions/assignments/submitAssignmentHandler";
+import { useUserData } from "@/hooks/useUserData";
+import { showToastPromise } from "@/components/toasts";
+import MarkdownIt from 'markdown-it';
+import useFollowEyes from "@/components/other/useFollowEyes";
 
-const expensesWeekly = [
-  { name: "Mon", income: 2200, spend: 900 },
-  { name: "Tue", income: 1800, spend: 1200 },
-  { name: "Wed", income: 2100, spend: 1100 },
-  { name: "Thu", income: 1900, spend: 1400 },
-  { name: "Fri", income: 2300, spend: 1600 },
-  { name: "Sat", income: 1500, spend: 800 },
-  { name: "Sun", income: 1700, spend: 1000 },
-];
+import {useSpring, animated} from "@react-spring/web";
+import AnimateOnScroll from "@/components/animation/animateOnScroll";
+import { AnimatedNumber } from "@/components/animation/AnimatedNumber";
+
+function Number({ n }: { n: number }) {
+  return (
+    <AnimatedNumber
+      value={n}
+      duration={1.8}
+      delay={0.3}
+      ease="back.out(1.7)"
+      triggerStart="top 90%"
+      className="inline-block"
+    />
+  );
+}
 
 export default function AspenDashboard() {
-  // Quick actions state (ported from Cypress dashboard)
   const [submitEssayOpen, setSubmitEssayOpen] = useState(false);
   const [submitOpportunityOpen, setSubmitOpportunityOpen] = useState(false);
   const [requestSessionOpen, setRequestSessionOpen] = useState(false);
   const [submitAssignmentOpen, setSubmitAssignmentOpen] = useState(false);
+  
+  // Initialize the follow eyes effect
+  useFollowEyes();
+  
+  // Refs for eye following effect
+  const anchorRef = useRef<HTMLDivElement | null>(null);
+  const eyesRef = useRef<(HTMLImageElement | null)[]>([]);
+  
+  // Eye following effect
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!anchorRef.current || eyesRef.current.length === 0) return;
+
+      const rekt = anchorRef.current.getBoundingClientRect();
+      const anchorX = rekt.left + rekt.width / 2;
+      const anchorY = rekt.top + rekt.height / 2;
+
+      const angleDeg = angle(e.clientX, e.clientY, anchorX, anchorY);
+
+      eyesRef.current.forEach((eye) => {
+        if (eye) {
+          eye.style.transform = `rotate(${90 + angleDeg}deg)`;
+        }
+      });
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    return () => document.removeEventListener("mousemove", handleMouseMove);
+  }, []);
+  
+  // Loading states for form submissions
+  const [isEssaySubmitting, setIsEssaySubmitting] = useState(false);
+  const [isOpportunitySubmitting, setIsOpportunitySubmitting] = useState(false);
+  const [isAssignmentSubmitting, setIsAssignmentSubmitting] = useState(false);
   const [crcFellows, setCrcFellows] = useState<Array<{id: string, name: string, specialization: string}>>([]);
-  const [studentId, setStudentId] = useState<number | null>(null);
+  const { userId, studentId, adminId, isLoading: userDataLoading } = useUserData();
   const [bookingStep, setBookingStep] = useState<'select-admin' | 'select-time' | 'booking'>('select-admin');
   const [selectedAdmin, setSelectedAdmin] = useState<{id: string, name: string, specialization: string} | null>(null);
   const [selectedTime, setSelectedTime] = useState<string>("");
@@ -50,7 +92,6 @@ export default function AspenDashboard() {
     { value: "40_min", label: "40 min", description: "Standard session" },
     { value: "60_min", label: "60 min", description: "Comprehensive review" }
   ];
-  const { getUserId } = useSupabase();
 
   type Assignment = { id: string; title: string; submission_style: 'google_link' | 'file_upload'; created_at?: string | null };
   type Workshop = { 
@@ -110,6 +151,100 @@ export default function AspenDashboard() {
   const [studentNotifs, setStudentNotifs] = useState<NotificationItem[]>([]);
   const [otherNotifs, setOtherNotifs] = useState<NotificationItem[]>([]);
   const [isNotifLoading, setIsNotifLoading] = useState(true);
+  
+  // Initialize markdown-it for rendering notification messages
+  const md = new MarkdownIt({
+    html: false, // Disable HTML for security
+    linkify: true, // Auto-detect and convert URLs to links
+    typographer: true, // Enable some language-neutral replacement + quotes beautification
+  });
+  
+  const renderMarkdown = (text: string) => {
+    try {
+      return md.render(text);
+    } catch (error) {
+      console.error('Error rendering markdown:', error);
+      return text; // Fallback to plain text if markdown rendering fails
+    }
+  };
+  
+  // Add custom CSS for markdown content styling (same as admin dashboard)
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      .student-announcement-markdown {
+        background: transparent !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      .student-announcement-markdown h1,
+      .student-announcement-markdown h2,
+      .student-announcement-markdown h3,
+      .student-announcement-markdown h4,
+      .student-announcement-markdown h5,
+      .student-announcement-markdown h6 {
+        margin: 0.5em 0 0.25em 0 !important;
+        font-size: inherit !important;
+        font-weight: 600 !important;
+      }
+      .student-announcement-markdown p {
+        margin: 0.25em 0 !important;
+      }
+      .student-announcement-markdown ul,
+      .student-announcement-markdown ol {
+        margin: 0.25em 0 !important;
+        padding-left: 1.5em !important;
+      }
+      .student-announcement-markdown li {
+        margin: 0.1em 0 !important;
+      }
+      .student-announcement-markdown strong {
+        font-weight: 600 !important;
+      }
+      .student-announcement-markdown em {
+        font-style: italic !important;
+      }
+      .student-announcement-markdown code {
+        background: rgba(0,0,0,0.1) !important;
+        padding: 0.1em 0.3em !important;
+        border-radius: 0.2em !important;
+        font-size: 0.9em !important;
+      }
+      .student-announcement-markdown a {
+        color: #3b82f6 !important;
+        text-decoration: underline !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
+        border-radius: 2px !important;
+        padding: 1px 2px !important;
+      }
+      .student-announcement-markdown a:hover {
+        color: #1d4ed8 !important;
+        text-decoration: underline !important;
+        background-color: rgba(59, 130, 246, 0.1) !important;
+        text-decoration-thickness: 2px !important;
+      }
+      .student-announcement-markdown a:focus {
+        outline: 2px solid #3b82f6 !important;
+        outline-offset: 2px !important;
+      }
+      .student-announcement-markdown blockquote {
+        border-left: 3px solid #e5e7eb !important;
+        padding-left: 1em !important;
+        margin: 0.5em 0 !important;
+        font-style: italic !important;
+        color: #6b7280 !important;
+      }
+    `;
+    document.head.appendChild(style);
+    
+    return () => {
+      if (document.head.contains(style)) {
+        document.head.removeChild(style);
+      }
+    };
+  }, []);
+  
   const formatPageLabel = (page: string | null) => {
     if (page === 'student_dashboard') return 'General';
     if (page === 'english_language_learning') return 'English Learning';
@@ -212,31 +347,7 @@ export default function AspenDashboard() {
     fetchFellows();
   }, []);
 
-  // Fetch student id
-  useEffect(() => {
-    let isMounted = true;
-    
-    const getSession = async () => {
-      try {
-        const userId = await getUserId();
-        if (!userId || !isMounted) return;
-        
-        const response = await fetch(`/api/studentId?userId=${userId}`);
-        const data = await response.json();
-        if (data.studentId && isMounted) {
-          setStudentId(data.studentId);
-        }
-      } catch (e) {
-        // Silent error handling
-      }
-    };
-    
-    getSession();
-    
-    return () => {
-      isMounted = false;
-    };
-  }, []); // Empty dependency array since getUserId is a stable function from useSupabase hook
+  // Student ID is now provided by useUserData hook - no need to fetch separately
 
   // Action handlers (essay/opportunity)
   const handleEssaySubmission = async (prevState: any, formData: FormData) => {
@@ -245,6 +356,48 @@ export default function AspenDashboard() {
     }
     formData.append('student_id', String(studentId));
     return await submitEssayHandler(prevState, formData);
+  };
+
+  const handleEssayFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsEssaySubmitting(true);
+    
+    try {
+      const formData = new FormData(e.currentTarget);
+      
+      const essayPromise = submitEssayHandler(essayState, formData);
+      
+      showToastPromise({
+        promise: essayPromise,
+        loadingText: 'Submitting essay...',
+        successText: 'You can track its status on your assignments page.',
+        errorText: 'Failed to submit essay. Please try again.',
+        successHeaderText: 'Essay Submitted Successfully',
+        errorHeaderText: 'Essay Submission Failed',
+        direction: 'right'
+      });
+      
+      // Wait for actual submission to complete
+      await essayPromise;
+      // Only reset on successful submission
+      resetEssayForm();
+    } catch (error) {
+      // Handle error case
+      resetEssayForm(); // Reset on error for consistent UX
+    } finally {
+      setIsEssaySubmitting(false);
+    }
+  };
+
+  const resetEssayForm = () => {
+    setSubmitEssayOpen(false);
+    setEssayStep('select-fellow');
+    setSelectedEssayFellow(null);
+    setEssayTitle('');
+    setEssayDescription('');
+    setEssayDeadline('');
+    setEssayLink('');
+    setEssayWordCount('');
   };
   const [essayState, essayFormAction, isEssayPending] = useActionState(handleEssaySubmission, {
     success: false,
@@ -271,6 +424,47 @@ export default function AspenDashboard() {
     formData.append('student_id', String(studentId));
     return await submitOpportunityHandler(prevState, formData);
   };
+
+  const handleOpportunityFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsOpportunitySubmitting(true);
+    
+    try {
+      const formData = new FormData(e.currentTarget);
+      
+      const opportunityPromise = submitOpportunityHandler(oppState, formData);
+      
+      showToastPromise({
+        promise: opportunityPromise,
+        loadingText: 'Submitting opportunity...',
+        successText: 'You can track its status on your opportunities page.',
+        errorText: 'Failed to submit opportunity. Please try again.',
+        successHeaderText: 'Opportunity Submitted Successfully',
+        errorHeaderText: 'Opportunity Submission Failed',
+        direction: 'right'
+      });
+      
+      // Wait for actual submission to complete
+      await opportunityPromise;
+      // Only reset on successful submission
+      resetOpportunityForm();
+    } catch (error) {
+      // Handle error case
+      resetOpportunityForm(); // Reset on error for consistent UX
+    } finally {
+      setIsOpportunitySubmitting(false);
+    }
+  };
+
+  const resetOpportunityForm = () => {
+    setSubmitOpportunityOpen(false);
+    setOppStep('select-fellow');
+    setSelectedOppFellow(null);
+    setOppTitle('');
+    setOppDescription('');
+    setOppDeadline('');
+    setOppLink('');
+  };
   const [oppState, opportunityFormAction, isOpportunityPending] = useActionState(handleOpportunitySubmission, {
     success: false,
     message: ''
@@ -290,21 +484,29 @@ export default function AspenDashboard() {
       
       setIsWorkshopsLoading(true);
       try {
-        // Get the current user ID
-        const userId = await getUserId();
-        if (!userId || !isMounted) return;
+        // Get the current user ID from useUserData hook
+        console.log('🔍 StudentDashboard: Workshops useEffect - userId from useUserData:', userId);
         
-        // Get the student's CRC class ID
+        if (!userId || !isMounted) {
+          console.log('🔍 StudentDashboard: Workshops useEffect - No userId or component unmounted, returning early');
+          return;
+        }
+        
+        // Get the student's CRC class ID from the API
+        console.log('🔍 StudentDashboard: Workshops useEffect - Fetching student data for CRC class ID...');
         const studentResponse = await fetch(`/api/studentId?userId=${userId}`);
         if (!studentResponse.ok || !isMounted) throw new Error('Failed to fetch student data');
         const studentData = await studentResponse.json();
         const crcClassId = studentData.crc_class_id;
+        console.log('🔍 StudentDashboard: Workshops useEffect - Student data:', studentData, 'CRC class ID:', crcClassId);
         
         // Fetch workshops available for this student (excluding already submitted assignments)
+        console.log('🔍 StudentDashboard: Workshops useEffect - Fetching workshops with studentId:', studentId, 'and crcClassId:', crcClassId);
         const response = await fetch(`/api/workshops/fetch-available-for-student?studentId=${studentId}&crcClassId=${crcClassId || ''}`);
         if (!response.ok || !isMounted) throw new Error('Failed to fetch available workshops');
         const json = await response.json();
         const list: Workshop[] = (json?.success ? json.data : []) as Workshop[];
+        console.log('🔍 StudentDashboard: Workshops useEffect - Workshops response:', json, 'Workshops list:', list);
         // The API already filters out workshops with no assignments and already submitted assignments
         if (isMounted) setWorkshops(list);
       } catch (e) {
@@ -377,6 +579,48 @@ export default function AspenDashboard() {
       return { success: false, message: `Submission error: ${errorMessage}` };
     }
   };
+
+  const handleAssignmentFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsAssignmentSubmitting(true);
+    
+    try {
+      const formData = new FormData(e.currentTarget);
+      
+      const assignmentPromise = submitAssignmentHandler(assignmentState, formData);
+      
+      showToastPromise({
+        promise: assignmentPromise,
+        loadingText: 'Submitting assignment...',
+        successText: 'Your assignment is in. Keep up the good work!',
+        errorText: 'Failed to submit assignment. Please try again.',
+        successHeaderText: 'Assignment Submitted Successfully',
+        errorHeaderText: 'Assignment Submission Failed',
+        direction: 'right'
+    });
+      
+      // Wait for actual submission to complete
+      await assignmentPromise;
+      // Only reset on successful submission
+      resetAssignmentForm();
+    } catch (error) {
+      // Handle error case
+      resetAssignmentForm(); // Reset on error for consistent UX
+    } finally {
+      setIsAssignmentSubmitting(false);
+    }
+  };
+
+  const resetAssignmentForm = () => {
+    setSubmitAssignmentOpen(false);
+    setAssignmentStep('select-workshop');
+    setSelectedWorkshop(null);
+    setSelectedAssignment(null);
+    setAssignments([]);
+    setGoogleDocLink('');
+    setFileToUpload(null);
+  };
+
   const [assignmentState, assignmentFormAction, isAssignmentPending] = useActionState(handleAssignmentSubmission, {
     success: false,
     message: ''
@@ -519,24 +763,44 @@ export default function AspenDashboard() {
     return 'just now';
   };
 
+  console.log("studentId", studentId);
+
+  const getPagePath = (category: string) => {
+    if(category === 'english_language_learning') return '/resources/ell';
+    if(category === 'crp') return '/resources/crp';
+    if(category === 'internships') return '/resources/internships';
+    if(category === 'approved') return '/resources/approved';
+    if(category === 'templates') return '/resources/templates';
+    if(category === 'new_opportunities') return '/resources/newopportunities';
+    if(category === 'recurring_opportunities') return '/resources/recurringopportunities';
+    return '/resources'; // Default fallback
+  };
+
+  function angle(cx: number, cy: number, ex: number, ey: number) {
+    const dy = ey - cy;
+    const dx = ex - cx;
+    const rad = Math.atan2(dy, dx);
+    return (rad * 180) / Math.PI;
+  }
 
   return (
-    <div className="space-y-6 max-h-[80vh]">
+    <div className="space-y-6 h-full flex flex-col overflow-hidden">
       {/* Greeting */}
-      <h2 className="text-2xl font-semibold font-cal-sans">Dashboard</h2>
+      <h2 className="text-2xl font-semibold font-cal-sans flex-shrink-0">Dashboard</h2>
+      
       {/* Top stats */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3 flex-shrink-0">
         {!studentId ? (
           // Show loading when student ID is not yet available
           Array.from({ length: 3 }).map((_, index) => (
-            <Card key={`stat-skeleton-${index}`} className="border-0 shadow-sm ring-1 ring-black/5">
+            <Card key={`stat-skeleton-${index}`} className="border-0 shadow-sm ring-1 ring-black/5 m-0.5">
               <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <Skeleton className="h-4 w-24 mb-2" />
-                    <Skeleton className="h-8 w-16" />
+                <div className="flex flex-col items-start text-center">
+                  <div className="flex items-center w-full justify-between mb-2">
+                    <Skeleton className="h-7 w-16" />
+                    <Skeleton className="h-9 w-9 rounded-xl" />
                   </div>
-                  <Skeleton className="h-10 w-10 rounded-xl" />
+                  <Skeleton className="h-4 w-24" />
                 </div>
               </CardContent>
             </Card>
@@ -544,14 +808,14 @@ export default function AspenDashboard() {
         ) : isStatsLoading ? (
           // Loading skeletons for stats
           Array.from({ length: 3 }).map((_, index) => (
-            <Card key={`stat-skeleton-${index}`} className="border-0 shadow-sm ring-1 ring-black/5">
+            <Card key={`stat-skeleton-${index}`} className="border-0 shadow-sm ring-1 ring-black/5 m-0.5">
               <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <Skeleton className="h-4 w-24 mb-2" />
-                    <Skeleton className="h-8 w-16" />
+                <div className="flex flex-col items-start text-center">
+                  <div className="flex items-center w-full justify-between mb-2">
+                    <Skeleton className="h-7 w-16" />
+                    <Skeleton className="h-9 w-9 rounded-xl" />
                   </div>
-                  <Skeleton className="h-10 w-10 rounded-xl" />
+                  <Skeleton className="h-4 w-24" />
                 </div>
               </CardContent>
             </Card>
@@ -559,20 +823,21 @@ export default function AspenDashboard() {
         ) : (
           // Actual stats
           stats.map(({ label, value, icon: Icon }, index) => (
-            <Card key={label} className="border-0 shadow-sm ring-1 ring-black/5">
+            <Card key={label} className="border-0 shadow-sm ring-1 ring-black/5 m-0.5">
               <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-neutral-500">{label}</p>
-                    <div className="mt-2 text-2xl font-semibold">{value}</div>
+                <div className="flex flex-col items-start text-center">
+                  <div className="flex items-center w-full justify-between mb-2">
+                   
+                    <div className="text-2xl font-semibold text-neutral-900"><Number n={value} /></div>
+                    <div className={`h-9 w-9 rounded-xl grid place-items-center text-neutral-900 flex-shrink-0 ${[
+                          'bg-statColors-1',
+                          'bg-statColors-2',
+                          'bg-statColors-3'
+                          ][index]}`}>
+                      <Icon size={18} />
+                    </div>
                   </div>
-                  <div className={`h-10 w-10 rounded-xl grid place-items-center text-neutral-900 ${[
-                    'bg-statColors-1',
-                    'bg-statColors-2',
-                    'bg-statColors-3'
-                  ][index]}`}>
-                    <Icon size={18} />
-                  </div>
+                  <p className="text-sm text-neutral-500 font-medium leading-tight">{label}</p>
                 </div>
               </CardContent>
             </Card>
@@ -581,53 +846,54 @@ export default function AspenDashboard() {
       </div>
 
       {/* Main grid */}
-      <div className="grid h-full gap-6 lg:grid-cols-3 items-stretch">
-        <div className="lg:col-span-2 grid grid-rows-[auto_1fr] h-full gap-6">
+      <div className="grid flex-1 gap-6 lg:grid-cols-3 overflow-hidden min-h-0">
+        <div className="lg:col-span-2 grid grid-rows-[auto_1fr] gap-6 overflow-hidden min-h-0">
           {/* Quick Links Grid */}
-          <Card className="border-0 shadow-sm ring-1 ring-black/5">
+          <Card className="border-0 shadow-sm ring-1 ring-black/5 flex-shrink-0 m-0.5">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Quick actions</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Button variant="outline" className="w-full justify-start h-auto py-4 rounded-xl gap-3 hover:shadow-sm" onClick={() => setRequestSessionOpen(true)}>
-                    <span className="h-10 w-10 rounded-full bg-yearcolors-ey grid place-items-center">
+                    <span className="h-10 w-10 rounded-full bg-yearcolors-ey grid place-items-center flex-shrink-0">
                       <Calendar className="h-5 w-5 text-neutral-900" />
                     </span>
-                    <span className="text-sm font-medium">Request Session</span>
+                    <span className="text-sm font-medium truncate">Request Session</span>
                 </Button>
                 <Button variant="outline" className="w-full justify-start h-auto py-4 rounded-xl gap-3 hover:shadow-sm" onClick={() => setSubmitEssayOpen(true)}>
-                    <span className="h-10 w-10 rounded-full bg-yearcolors-s5 grid place-items-center">
+                    <span className="h-10 w-10 rounded-full bg-yearcolors-s5 grid place-items-center flex-shrink-0">
                       <FileText className="h-5 w-5 text-neutral-900" />
                     </span>
-                    <span className="text-sm font-medium">Submit Essay</span>
+                    <span className="text-sm font-medium truncate">Submit Essay</span>
                 </Button>
                 <Button variant="outline" className="w-full justify-start h-auto py-4 rounded-xl gap-3 hover:shadow-sm" onClick={() => setSubmitOpportunityOpen(true)}>
-                    <span className="h-10 w-10 rounded-full bg-yearcolors-s4 grid place-items-center">
+                    <span className="h-10 w-10 rounded-full bg-yearcolors-s4 grid place-items-center flex-shrink-0">
                       <Briefcase className="h-5 w-5 text-neutral-900" />
                     </span>
-                    <span className="text-sm font-medium">Submit Opportunity</span>
+                    <span className="text-sm font-medium truncate">Submit Opportunity</span>
                 </Button>
                 <Button variant="outline" className="w-full justify-start h-auto py-4 rounded-xl gap-3 hover:shadow-sm" onClick={() => setSubmitAssignmentOpen(true)}>
-                  <span className="h-10 w-10 rounded-full bg-yearcolors-s6 grid place-items-center">
+                  <span className="h-10 w-10 rounded-full bg-yearcolors-s6 grid place-items-center flex-shrink-0">
                     <ClipboardCheck className="h-5 w-5 text-neutral-900" />
                   </span>
-                  <span className="text-sm font-medium">Submit Assignment</span>
+                  <span className="text-sm font-medium truncate">Submit Assignment</span>
                 </Button>
               </div>
             </CardContent>
           </Card>
+          
           {/* New assignments */}
-          <Card className="border-0 shadow-sm ring-1 ring-black/5 h-full flex flex-col max-h-[43vh]">
-            <CardHeader className="pb-3">
+          <Card className="border-0 shadow-sm ring-1 ring-black/5 flex flex-col overflow-hidden min-h-0 m-0.5 h-[calc(100%-6px)]">
+            <CardHeader className="pb-3 flex-shrink-0">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">New assignments</CardTitle>
-                <Link href="/dashboard/student/cypress/assignments">
+                <Link href="/dashboard/student/assignments">
                   <Button variant="ghost" size="sm" className="h-7">View all</Button>
                 </Link>
               </div>
             </CardHeader>
-            <CardContent className="space-y-3 flex-1 overflow-auto">
+            <CardContent className="space-y-3 flex-1 overflow-auto min-h-0">
               {isAssignmentsLoading ? (
                 <div className="space-y-3">
                   {Array.from({ length: 3 }).map((_, i) => (
@@ -654,7 +920,7 @@ export default function AspenDashboard() {
                 </div>
               ) : (
                 latestAssignments.map((a) => (
-                  <Link key={a.id} href="/dashboard/student/cypress/assignments" className="block">
+                  <Link key={a.id} href="/dashboard/student/assignments" className="block">
                     <div className="flex items-start gap-3 rounded-xl border border-neutral-100 p-3 hover:bg-neutral-50">
                       <span className="h-8 w-8 rounded-full bg-yearcolors-ey grid place-items-center">
                         <ClipboardCheck className="h-4 w-4 text-neutral-900" />
@@ -666,7 +932,7 @@ export default function AspenDashboard() {
                           {a.created_at ? ` • ${timeAgo(a.created_at)}` : ''}
                         </p>
                       </div>
-                      <ArrowRight className="h-4 w-4 text-neutral-400" />
+                      <ArrowRight className="h-4 w-4 text-neutral-400 flex-shrink-0" />
                     </div>
                   </Link>
                 ))
@@ -676,15 +942,15 @@ export default function AspenDashboard() {
         </div>
 
         {/* Right rail */}
-        <div className="grid h-full gap-6">
+        <div className="grid gap-6 grid-rows-2 overflow-hidden min-h-0">
           {/* Notifications */}
-          <Card className="border-0 shadow-sm ring-1 ring-black/5 h-[40vh] overflow-hidden flex flex-col">
-            <CardHeader className="pb-3">
+          <Card className="border-0 shadow-sm ring-1 ring-black/5 flex flex-col overflow-hidden min-h-0 m-0.5">
+            <CardHeader className="pb-3 flex-shrink-0">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">Announcements</CardTitle>
               </div>
             </CardHeader>
-            <CardContent className="space-y-3 flex-1 overflow-auto">
+            <CardContent className="space-y-3 flex-1 overflow-auto min-h-0">
               {isNotifLoading ? (
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -746,12 +1012,15 @@ export default function AspenDashboard() {
                       studentNotifs.map((n) => (
                         <div key={n.id} className="rounded-xl border border-neutral-100 p-3 text-sm text-neutral-700 transition-colors">
                           <div className="flex items-start gap-3">
-                            <span className="h-5 w-1 rounded-full bg-statColors-7 mt-0.5" />
-                            <div className="flex-1">
+                            <span className="h-5 w-1 rounded-full bg-statColors-7 mt-0.5 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
                               <div className="mb-1">
                                 <Badge variant="secondary" className="bg-statColors-7 hover:bg-statColors-7 text-neutral-900">{formatPageLabel('student_dashboard')}</Badge>
                               </div>
-                              <div className="whitespace-pre-wrap">{n.message}</div>
+                              <div 
+                                className="student-announcement-markdown"
+                                dangerouslySetInnerHTML={{ __html: renderMarkdown(n.message) }}
+                              />
                             </div>
                           </div>
                         </div>
@@ -766,12 +1035,15 @@ export default function AspenDashboard() {
                       otherNotifs.map((n) => (
                         <div key={n.id} className="rounded-xl border border-neutral-100 p-3 text-sm text-neutral-700  transition-colors">
                           <div className="flex items-start gap-3">
-                            <span className={`h-5 w-1 rounded-full mt-0.5 ${getAccentBg(n.page)}`} />
-                            <div className="flex-1">
+                            <span className={`h-5 w-1 rounded-full mt-0.5 flex-shrink-0 ${getAccentBg(n.page)}`} />
+                            <div className="flex-1 min-w-0">
                               <div className="mb-1">
                                 <Badge variant="secondary" className={`${getAccentBg(n.page)} text-neutral-900 transition-none`}>{formatPageLabel(n.page)}</Badge>
                               </div>
-                              <div className="whitespace-pre-wrap">{n.message}</div>
+                              <div 
+                                className="student-announcement-markdown"
+                                dangerouslySetInnerHTML={{ __html: renderMarkdown(n.message) }}
+                              />
                             </div>
                           </div>
                         </div>
@@ -784,9 +1056,9 @@ export default function AspenDashboard() {
             </CardContent>
           </Card>
 
-          {/* New content added (moved below notifications) */}
-          <Card className="border-0 shadow-sm ring-1 ring-black/5 h-[32vh] overflow-hidden flex flex-col">
-            <CardHeader className="pb-3">
+          {/* New content added */}
+          <Card className="border-0 shadow-sm ring-1 ring-black/5 flex flex-col overflow-hidden min-h-0 m-0.5 h-[calc(100%-6px)]">
+            <CardHeader className="pb-3 flex-shrink-0">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">New content added</CardTitle>
                 <Link href="/resources">
@@ -794,7 +1066,7 @@ export default function AspenDashboard() {
                 </Link>
               </div>
             </CardHeader>
-            <CardContent className="space-y-3 flex-1 overflow-auto">
+            <CardContent className="space-y-3 flex-1 overflow-auto min-h-0">
               {isRecentLoading ? (
                 <div className="space-y-3">
                   {Array.from({ length: 3 }).map((_, i) => (
@@ -812,7 +1084,7 @@ export default function AspenDashboard() {
                 <div className="py-8 text-center text-sm text-neutral-500">No new content.</div>
               ) : (
                 recentResources.map((c) => (
-                  <Link key={c.id} href="/resources" className="block">
+                  <Link key={c.id} href={getPagePath(c.category || '')} className="block">
                     <div className="flex items-start gap-3 rounded-xl border border-neutral-100 p-3 hover:bg-neutral-50">
                       <span className={`h-8 w-8 rounded-full grid place-items-center ${c.category?.includes('opportunities') ? 'bg-yearcolors-s4' : 'bg-yearcolors-ey'}`}>
                         {c.category?.includes('opportunities') ? (
@@ -825,7 +1097,7 @@ export default function AspenDashboard() {
                         <p className="text-sm font-medium truncate">{c.title}</p>
                         <p className="text-xs text-neutral-500">{formatPageLabel(c.category || 'resource')} • {c.created_at ? timeAgo(c.created_at) : ''}</p>
                       </div>
-                      <ArrowRight className="h-4 w-4 text-neutral-400" />
+                      <ArrowRight className="h-4 w-4 text-neutral-400 flex-shrink-0" />
                     </div>
                   </Link>
                 ))
@@ -838,7 +1110,40 @@ export default function AspenDashboard() {
     {/* Dialogs ported from Cypress quick actions */}
     {/* Submit Assignment - Multi-step */}
     <Dialog open={submitAssignmentOpen} onOpenChange={(open) => { setSubmitAssignmentOpen(open); if (!open) { setAssignmentStep('select-workshop'); setSelectedWorkshop(null); setSelectedAssignment(null);} }}>
-      <DialogContent className="max-w-3xl    bg-white rounded-2xl shadow-2xl border-0">
+      <DialogContent className="max-w-3xl  [&>button]:!top-8 [&>button]:!hidden    bg-white rounded-2xl shadow-2xl border-0">
+        <div className="relative">
+          {/* This is your reference point for the eyes */}
+          <div ref={anchorRef} className="absolute top-0 right-0 w-4 h-4"></div>
+          
+          <Image 
+            src="/images/popup/popup-illustration-005.png" 
+            alt="Popup Illustration" 
+            width={2000}
+            height={2000}
+            className="absolute -top-20 -right-[50px] w-32 pointer-events-none z-0"
+          />
+          
+          {/* Left eye */}
+          <Image 
+            ref={(el) => { eyesRef.current[0] = el; }}
+            src="/images/popup/eye.png" 
+            alt="Popup Eye" 
+            width={30} 
+            height={30} 
+            className="absolute z-10 top-[-51px] right-[-2px]"
+          />
+          
+          {/* Right eye */}
+          <Image 
+            ref={(el) => { eyesRef.current[1] = el; }}
+            src="/images/popup/eye.png" 
+            alt="Popup Eye" 
+            width={30} 
+            height={30} 
+            className="absolute z-10 top-[-44px] right-[-28px]"
+          />
+        </div>
+ 
         <DialogHeader className="pb-6">
           <DialogTitle className="text-xl pb-4 font-bold text-gray-900 text-center">
             {assignmentStep === 'select-workshop' && 'Select workshop'}
@@ -923,7 +1228,14 @@ export default function AspenDashboard() {
                 </CommandList>
               </Command>
             </div>
-            <div className="flex justify-end p-3 ">
+            <div className="flex justify-between p-3 ">
+              <Button 
+                variant="outline" 
+                className="rounded-xl px-8 text-sm" 
+                onClick={() => setSubmitAssignmentOpen(false)}
+              >
+                Cancel
+              </Button>
               <Button onClick={() => setAssignmentStep('select-assignment')} disabled={!selectedWorkshop} className="bg-yearcolors-s6 hover:bg-yearcolors-s6/80 rounded-xl px-8 text-sm text-neutral-900 shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition duration-200">Continue</Button>
             </div>
           </div>
@@ -954,14 +1266,14 @@ export default function AspenDashboard() {
               )}
             </div>
             <div className="flex justify-between pt-2">
-              <Button variant="outline" className="rounded-xl" onClick={() => setAssignmentStep('select-workshop')}>Back</Button>
+              <Button variant="outline" className="rounded-xl px-8 text-sm" onClick={() => setAssignmentStep('select-workshop')}>Back</Button>
               <Button onClick={() => setAssignmentStep('submit')} disabled={!selectedAssignment} className="bg-yearcolors-s6 hover:bg-yearcolors-s6/80 rounded-xl px-8 text-sm text-neutral-900 shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition duration-200">Continue</Button>
             </div>
           </div>
         )}
 
         {assignmentStep === 'submit' && selectedAssignment && (
-          <form action={assignmentFormAction} className="space-y-4">
+          <form action={assignmentFormAction} onSubmit={handleAssignmentFormSubmit} className="space-y-4">
             <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-700">
               <div className="flex items-center justify-between">
                 <div className="min-w-0">
@@ -976,7 +1288,7 @@ export default function AspenDashboard() {
             {selectedAssignment.submission_style === 'google_link' ? (
               <div>
                 <Label htmlFor="assignment-google-link">Google Docs Link</Label>
-                <Input id="assignment-google-link" name="google_doc_link" type="url" placeholder="https://docs.google.com/document/..." value={googleDocLink} onChange={(e) => setGoogleDocLink(e.target.value)} required className="border border-neutral-200 transition-colors duration-200 ease-in-out rounded-xl" />
+                <Input id="assignment-google-link" name="google_doc_link" type="url" placeholder="https://docs.google.com/document/..." value={googleDocLink} onChange={(e) => setGoogleDocLink(e.target.value)} disabled={isAssignmentSubmitting} required className="border border-neutral-200 transition-colors duration-200 ease-in-out rounded-xl" />
               </div>
             ) : (
               <div>
@@ -995,21 +1307,22 @@ export default function AspenDashboard() {
                   }}
                   placeholder={<span><strong>Click to upload</strong> or drag and drop</span>}
                   helperText={<span>SVG, PNG, JPG, GIF, WebP, or PDF</span>}
-                  disabled={isAssignmentPending}
+                  disabled={isAssignmentSubmitting}
                   className="mt-2"
                 />
                
               </div>
             )}
             <div className="flex justify-between space-x-2 pt-2">
-              <Button variant="outline" className="rounded-xl" onClick={() => setAssignmentStep('select-assignment')}>Back</Button>
+              <Button variant="outline" className="rounded-xl px-8 text-sm" onClick={() => setAssignmentStep('select-assignment')} disabled={isAssignmentSubmitting}>Back</Button>
               <Button 
                 type="submit" 
-                disabled={isAssignmentPending || !studentId || (selectedAssignment.submission_style === 'google_link' ? !googleDocLink.trim() : !fileToUpload)} 
+                disabled={isAssignmentSubmitting || !studentId || (selectedAssignment.submission_style === 'google_link' ? !googleDocLink.trim() : !fileToUpload)} 
                 className="bg-yearcolors-s6 hover:bg-yearcolors-s6/80 rounded-xl px-8 text-sm text-neutral-900 shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition duration-200"
 
               >
-                {isAssignmentPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Submit Assignment'}
+                {isAssignmentSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isAssignmentSubmitting ? 'Submitting...' : 'Submit Assignment'}
               </Button>
             </div>
             {(!studentId) && (
@@ -1024,7 +1337,7 @@ export default function AspenDashboard() {
     </Dialog>
     {/* Submit Essay - Multi-step */}
     <Dialog open={submitEssayOpen} onOpenChange={(open) => { setSubmitEssayOpen(open); if (!open) { setEssayStep('select-fellow'); setSelectedEssayFellow(null);} }}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto bg-white rounded-2xl shadow-2xl border-0">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto bg-white rounded-2xl shadow-2xl border-0 [&>button]:!hidden">
         <DialogHeader className="pb-6">
           <DialogTitle className="text-xl pb-4 font-bold text-gray-900 text-center">
             {essayStep === 'select-fellow' && 'Choose your CRC Fellow'}
@@ -1074,13 +1387,22 @@ export default function AspenDashboard() {
               )}
             </div>
             <div className="flex justify-end pt-2">
-              <Button
-                onClick={() => setEssayStep('details')}
-                disabled={!selectedEssayFellow}
-                className="bg-statColors-1 hover:bg-statColors-1/80 rounded-xl px-8 text-sm shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,128,0,0.4)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_4px_rgba(0,128,0,0.1)] transition duration-200"
-              >
-                Continue
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  className="rounded-xl" 
+                  onClick={() => setSubmitEssayOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => setEssayStep('details')}
+                  disabled={!selectedEssayFellow}
+                  className="bg-statColors-1 hover:bg-statColors-1/80 rounded-xl px-8 text-sm shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,128,0,0.4)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_4px_rgba(0,128,0,0.1)] transition duration-200"
+                >
+                  Continue
+                </Button>
+              </div>
             </div>
           </div>
         )}
@@ -1093,7 +1415,18 @@ export default function AspenDashboard() {
             </div>
             <div>
               <Label htmlFor="essay-description">Description</Label>
-              <Textarea id="essay-description" value={essayDescription} onChange={(e) => setEssayDescription(e.target.value)} placeholder="Brief description" rows={3} className="border border-neutral-200  transition-colors duration-200 ease-in-out rounded-xl" />
+              <Textarea 
+                id="essay-description" 
+                value={essayDescription} 
+                onChange={(e) => setEssayDescription(e.target.value)} 
+                placeholder="Brief description" 
+                rows={3} 
+                maxLength={200}
+                className="border border-neutral-200 transition-colors duration-200 ease-in-out rounded-xl" 
+              />
+              <div className="text-xs text-neutral-500 mt-1">
+                {200 - essayDescription.length} characters left
+              </div>
             </div>
             <div>
               <Label htmlFor="essay-word-count">Word Count (Optional)</Label>
@@ -1112,27 +1445,27 @@ export default function AspenDashboard() {
         )}
 
         {essayStep === 'final' && (
-          <form action={essayFormAction} className="space-y-4">
+          <form action={essayFormAction} onSubmit={handleEssayFormSubmit} className="space-y-4">
             <input type="hidden" name="admin_id" value={selectedEssayFellow?.id || ''} />
             <input type="hidden" name="title" value={essayTitle} />
             <input type="hidden" name="description" value={essayDescription} />
             <div>
               <Label htmlFor="essay-deadline">Deadline (Optional)</Label>
-              <Input id="essay-deadline" name="deadline" type="date" value={essayDeadline} onChange={(e) => setEssayDeadline(e.target.value)} className="border border-neutral-200  transition-colors duration-200 ease-in-out rounded-xl" />
+              <Input id="essay-deadline" name="deadline" type="date" value={essayDeadline} onChange={(e) => setEssayDeadline(e.target.value)} disabled={isEssaySubmitting} className="border border-neutral-200  transition-colors duration-200 ease-in-out rounded-xl" />
             </div>
             <div>
               <Label htmlFor="google-docs-link">Google Docs Link</Label>
-              <Input id="google-docs-link" name="googleDocsLink" type="url" placeholder="https://docs.google.com/document/d/..." value={essayLink} onChange={(e) => setEssayLink(e.target.value)} required className="border border-neutral-200  transition-colors duration-200 ease-in-out rounded-xl" />
+              <Input id="google-docs-link" name="googleDocsLink" type="url" placeholder="https://docs.google.com/document/d/..." value={essayLink} onChange={(e) => setEssayLink(e.target.value)} disabled={isEssaySubmitting} required className="border border-neutral-200  transition-colors duration-200 ease-in-out rounded-xl" />
             </div>
             <div className="flex justify-between space-x-2 pt-2">
-              <Button variant="outline" className="rounded-xl" onClick={() => setEssayStep('details')}>Back</Button>
+              <Button variant="outline" className="rounded-xl" onClick={() => setEssayStep('details')} disabled={isEssaySubmitting}>Back</Button>
               <Button
                 type="submit"
                 className="bg-statColors-1 hover:bg-statColors-1/80 rounded-xl px-8 text-sm shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,128,0,0.4)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_4px_rgba(0,128,0,0.1)] transition duration-200"
-                disabled={isEssayPending}
+                disabled={isEssaySubmitting}
               >
-                {isEssayPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isEssayPending ? '' : 'Submit Essay'}
+                {isEssaySubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isEssaySubmitting ? 'Submitting...' : 'Submit Essay'}
               </Button>
             </div>
           </form>
@@ -1142,7 +1475,40 @@ export default function AspenDashboard() {
 
     {/* Submit Opportunity */}
     <Dialog open={submitOpportunityOpen} onOpenChange={(open) => { setSubmitOpportunityOpen(open); if (!open) { setOppStep('select-fellow'); setSelectedOppFellow(null);} }}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto bg-white rounded-2xl shadow-2xl border-0">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-visible bg-white rounded-2xl shadow-2xl border-0 [&>button]:!hidden">
+        <div className="relative">
+          {/* This is your reference point for the eyes */}
+          <div ref={anchorRef} className="absolute top-[-60px] left-[-60px]w-4 h-4">  </div>
+          
+          <Image 
+            src="/images/popup/popup-illustration-007.png" 
+            alt="Popup Illustration" 
+            width={2000}
+            height={2000}
+            className="absolute  w-32 pointer-events-none z-0 top-[-87px] left-[-98px]"
+          />
+          
+          {/* Left eye */}
+          <Image 
+            ref={(el) => { eyesRef.current[0] = el; }}
+            src="/images/popup/eye.png" 
+            alt="Popup Eye" 
+            width={30} 
+            height={30} 
+            className="absolute z-10 top-[-48px] left-[-76px]"
+          />
+          
+          {/* Right eye */}
+          <Image 
+            ref={(el) => { eyesRef.current[1] = el; }}
+            src="/images/popup/eye.png" 
+            alt="Popup Eye" 
+            width={30} 
+            height={30} 
+            className="absolute z-10 top-[-48px] left-[-47px]"
+          />
+        </div>
+      
         <DialogHeader className="pb-6">
           <DialogTitle className="text-xl pb-4 font-bold text-gray-900 text-center">
             {oppStep === 'select-fellow' && 'Choose CRC Fellow'}
@@ -1166,82 +1532,107 @@ export default function AspenDashboard() {
             </div>
           </div>
         </DialogHeader>
-
-        {oppStep === 'select-fellow' && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {crcFellows.length === 0 ? (
-                <div className="col-span-full text-center py-12">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-300 mx-auto mb-3"></div>
-                  <p className="text-gray-500 text-sm">Loading fellows...</p>
-                </div>
-              ) : (
-                 crcFellows.map((fellow) => (
-                  <div key={fellow.id} onClick={() => setSelectedOppFellow(fellow)} className={`p-4 border rounded-xl cursor-pointer transition-all duration-200 ${selectedOppFellow?.id === fellow.id ? 'border-orange-400/80 bg-primary/10 shadow-sm' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm bg-white'}`}>
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-slate-300 shadow-sm">
-                        <Users className="h-6 w-6 text-white" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-gray-900 text-sm mb-1 truncate">{fellow.name}</h3>
-                        <p className="text-sm text-gray-500">{fellow.specialization}</p>
+        <div className='relative'>
+         
+          
+          {oppStep === 'select-fellow' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {crcFellows.length === 0 ? (
+                  <div className="col-span-full text-center py-12">
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto mb-3 text-gray-500" />
+                    <p className="text-gray-500 text-sm">Loading fellows...</p>
+                  </div>
+                ) : (
+                  crcFellows.map((fellow) => (
+                    <div key={fellow.id} onClick={() => setSelectedOppFellow(fellow)} className={`p-4 border rounded-xl cursor-pointer transition-all duration-200 ${selectedOppFellow?.id === fellow.id ? 'border-orange-400/80 bg-primary/10 shadow-sm' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm bg-white'}`}>
+                      <div className="flex items-center space-x-4">
+                        <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-slate-300 shadow-sm">
+                          <Users className="h-6 w-6 text-white" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-gray-900 text-sm mb-1 truncate">{fellow.name}</h3>
+                          <p className="text-sm text-gray-500">{fellow.specialization}</p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  ))
+                )}
+              </div>
+              <div className="flex justify-between pt-2">
+                <Button 
+                  variant="outline" 
+                  className="rounded-xl px-8 text-sm" 
+                  onClick={() => setSubmitOpportunityOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button onClick={() => setOppStep('details')} disabled={!selectedOppFellow} className="bg-primary hover:bg-primary/90 rounded-xl px-8 text-sm text-white shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(242,152,73,0.35)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_4px_rgba(242,152,73,0.15)] transition duration-200">Continue</Button>
+              </div>
+            </div>
+          )}
+
+          {oppStep === 'details' && (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="opportunity-title">Title</Label>
+                <Input id="opportunity-title" value={oppTitle} onChange={(e) => setOppTitle(e.target.value)} placeholder="Enter opportunity title" disabled={isOpportunitySubmitting} required className="border border-neutral-200  transtion duration-200 ease-in-out rounded-xl" />
+              </div>
+              <div>
+                <Label htmlFor="opportunity-description">Description (optional)</Label>
+                <Textarea 
+                  id="opportunity-description" 
+                  value={oppDescription} 
+                  onChange={(e) => setOppDescription(e.target.value)} 
+                  placeholder="Brief description" 
+                  disabled={isOpportunitySubmitting} 
+                  rows={3} 
+                  maxLength={200}
+                  className="border border-neutral-200 transition-colors duration-200 ease-in-out rounded-xl" 
+                />
+                <div className="text-xs text-neutral-500 mt-1">
+                  {200 - oppDescription.length} characters left
+                </div>
+              </div>
+              <div className="flex justify-between pt-2">
+                <Button variant="outline" className="rounded-xl px-8 text-sm" onClick={() => setOppStep('select-fellow')} disabled={isOpportunitySubmitting}>Back</Button>
+                <Button onClick={() => setOppStep('final')} disabled={!oppTitle || isOpportunitySubmitting} className="bg-primary hover:bg-primary/90 rounded-xl px-8 text-sm text-white disabled:opacity-60 disabled:cursor-not-allowed shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(242,152,73,0.35)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_4px_rgba(242,152,73,0.15)] transition duration-200">Continue</Button>
+              </div>
+            </div>
+          )}
+
+          {oppStep === 'final' && (
+            <form action={opportunityFormAction} onSubmit={handleOpportunityFormSubmit} className="space-y-4">
+              <input type="hidden" name="student_id" value={studentId != null ? String(studentId) : ''} />
+              <input type="hidden" name="admin_id" value={selectedOppFellow?.id || ''} />
+              <input type="hidden" name="title" value={oppTitle} />
+              <input type="hidden" name="description" value={oppDescription} />
+              <div>
+                <Label htmlFor="opportunity-deadline">Deadline (optional)</Label>
+                <Input id="opportunity-deadline" name="deadline" type="date" value={oppDeadline} onChange={(e) => setOppDeadline(e.target.value)} disabled={isOpportunitySubmitting} className="border border-neutral-200 transition-colors duration-200 ease-in-out rounded-xl" />
+              </div>
+              <div>
+                <Label htmlFor="opportunity-link">Link</Label>
+                <Input id="opportunity-link" name="link" type="url" placeholder="https://example.com/opportunity" required value={oppLink} onChange={(e) => setOppLink(e.target.value)} disabled={isOpportunitySubmitting} className="border border-neutral-200 transition-colors duration-200 ease-in-out rounded-xl" />
+              </div>
+              <div className="flex justify-between space-x-2 pt-4">
+                <Button variant="outline" className="rounded-xl px-8 text-sm" onClick={() => setOppStep('details')} disabled={isOpportunitySubmitting}>Back</Button>
+                <Button className="bg-primary hover:bg-primary/90 rounded-xl px-8 text-sm text-white shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(242,152,73,0.35)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_4px_rgba(242,152,73,0.15)] transition duration-200 disabled:opacity-60 disabled:cursor-not-allowed" disabled={isOpportunitySubmitting || !studentId || !selectedOppFellow || !oppTitle.trim() || !oppLink.trim()} type="submit">
+                  {isOpportunitySubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isOpportunitySubmitting ? 'Submitting...' : 'Submit Opportunity'}
+                </Button>
+              </div>
+              {(!studentId) && (
+                <p className="text-xs text-red-500 pt-1">Your session is missing a student ID. Please wait a moment and try again.</p>
               )}
-            </div>
-            <div className="flex justify-end pt-2">
-              <Button onClick={() => setOppStep('details')} disabled={!selectedOppFellow} className="bg-primary hover:bg-primary/90 rounded-xl px-8 text-sm text-white shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(242,152,73,0.35)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_4px_rgba(242,152,73,0.15)] transition duration-200">Continue</Button>
-            </div>
-          </div>
-        )}
+              {oppState && oppState.message && !oppState.success && (
+                <p className="text-xs text-red-500 pt-1">{oppState.message}</p>
+              )}
+            </form>
+          )}
 
-        {oppStep === 'details' && (
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="opportunity-title">Title</Label>
-              <Input id="opportunity-title" value={oppTitle} onChange={(e) => setOppTitle(e.target.value)} placeholder="Enter opportunity title" required className="border border-neutral-200  transtion duration-200 ease-in-out rounded-xl" />
-            </div>
-            <div>
-              <Label htmlFor="opportunity-description">Description (optional)</Label>
-              <Textarea id="opportunity-description" value={oppDescription} onChange={(e) => setOppDescription(e.target.value)} placeholder="Brief description" rows={3} className="border border-neutral-200  transition-colors duration-200 ease-in-out rounded-xl" />
-            </div>
-            <div className="flex justify-between pt-2">
-              <Button variant="outline" className="rounded-xl" onClick={() => setOppStep('select-fellow')}>Back</Button>
-              <Button onClick={() => setOppStep('final')} disabled={!oppTitle} className="bg-primary hover:bg-primary/90 rounded-xl px-8 text-sm text-white disabled:opacity-60 disabled:cursor-not-allowed shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(242,152,73,0.35)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_4px_rgba(242,152,73,0.15)] transition duration-200">Continue</Button>
-            </div>
-          </div>
-        )}
-
-        {oppStep === 'final' && (
-          <form action={opportunityFormAction} className="space-y-4">
-            <input type="hidden" name="student_id" value={studentId != null ? String(studentId) : ''} />
-            <input type="hidden" name="admin_id" value={selectedOppFellow?.id || ''} />
-            <input type="hidden" name="title" value={oppTitle} />
-            <input type="hidden" name="description" value={oppDescription} />
-            <div>
-              <Label htmlFor="opportunity-deadline">Deadline (optional)</Label>
-              <Input id="opportunity-deadline" name="deadline" type="date" value={oppDeadline} onChange={(e) => setOppDeadline(e.target.value)} className="border border-neutral-200 transition-colors duration-200 ease-in-out rounded-xl" />
-            </div>
-            <div>
-              <Label htmlFor="opportunity-link">Link</Label>
-              <Input id="opportunity-link" name="link" type="url" placeholder="https://example.com/opportunity" required value={oppLink} onChange={(e) => setOppLink(e.target.value)} className="border border-neutral-200 transition-colors duration-200 ease-in-out rounded-xl" />
-            </div>
-            <div className="flex justify-between space-x-2 pt-4">
-              <Button variant="outline" className="rounded-xl" onClick={() => setOppStep('details')}>Back</Button>
-              <Button className="bg-primary hover:bg-primary/90 rounded-xl px-8 text-sm text-white shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(242,152,73,0.35)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_4px_rgba(242,152,73,0.15)] transition duration-200 disabled:opacity-60 disabled:cursor-not-allowed" disabled={isOpportunityPending || !studentId || !selectedOppFellow || !oppTitle.trim() || !oppLink.trim()} type="submit">
-                {isOpportunityPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Submit Opportunity'}
-              </Button>
-            </div>
-            {(!studentId) && (
-              <p className="text-xs text-red-500 pt-1">Your session is missing a student ID. Please wait a moment and try again.</p>
-            )}
-            {oppState && oppState.message && !oppState.success && (
-              <p className="text-xs text-red-500 pt-1">{oppState.message}</p>
-            )}
-          </form>
-        )}
+        </div>
+        
       </DialogContent>
     </Dialog>
 
@@ -1250,7 +1641,7 @@ export default function AspenDashboard() {
       setRequestSessionOpen(open);
       if (!open) { setBookingStep('select-admin'); setSelectedAdmin(null); setSelectedTime(""); }
     }}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto bg-white rounded-2xl shadow-2xl border-0">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto bg-white rounded-2xl shadow-2xl border-0 [&>button]:!hidden">
         <DialogHeader className="pb-6">
           <DialogTitle className="text-xl pb-4 font-bold text-gray-900 text-center">
             {bookingStep === 'select-admin' && 'Choose your CRC Fellow'}
@@ -1258,18 +1649,18 @@ export default function AspenDashboard() {
             {bookingStep === 'booking' && 'Confirm your booking'}
           </DialogTitle>
           <div className="flex items-center justify-center space-x-6 mt-4">
-            <div className={`flex items-center ${bookingStep === 'select-admin' ? 'text-blue-600' : 'text-gray-400'}`}>
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${bookingStep === 'select-admin' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'}`}>1</div>
+            <div className={`flex items-center ${bookingStep === 'select-admin' ? 'text-statColors-2' : 'text-gray-400'}`}>
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${bookingStep === 'select-admin' ? 'bg-statColors-2 text-white' : 'bg-gray-200 text-gray-500'}`}>1</div>
               <span className="ml-2 text-sm font-medium">Fellow</span>
             </div>
-            <div className={`w-6 h-px ${bookingStep === 'select-time' ? 'bg-blue-600' : 'bg-gray-200'}`}></div>
-            <div className={`flex items-center ${bookingStep === 'select-time' ? 'text-blue-600' : 'text-gray-400'}`}>
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${bookingStep === 'select-time' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'}`}>2</div>
+            <div className={`w-6 h-px ${bookingStep === 'select-time' ? 'bg-statColors-2' : 'bg-gray-200'}`}></div>
+            <div className={`flex items-center ${bookingStep === 'select-time' ? 'text-statColors-2' : 'text-gray-400'}`}>
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${bookingStep === 'select-time' ? 'bg-statColors-2 text-white' : 'bg-gray-200 text-gray-500'}`}>2</div>
               <span className="ml-2 text-sm font-medium">Time</span>
             </div>
             <div className={`w-6 h-px bg-gray-200`}></div>
-            <div className={`flex items-center ${bookingStep === 'booking' ? 'text-blue-600' : 'text-gray-400'}`}>
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${bookingStep === 'booking' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'}`}>3</div>
+            <div className={`flex items-center ${bookingStep === 'booking' ? 'text-statColors-2' : 'text-gray-400'}`}>
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${bookingStep === 'booking' ? 'bg-statColors-2 text-white' : 'bg-gray-200 text-gray-500'}`}>3</div>
               <span className="ml-2 text-sm font-medium">Book</span>
             </div>
           </div>
@@ -1285,7 +1676,7 @@ export default function AspenDashboard() {
                 </div>
               ) : (
                 crcFellows.map((fellow) => (
-                  <div key={fellow.id} onClick={() => setSelectedAdmin(fellow)} className={`p-4 border rounded-xl cursor-pointer transition-all duration-200 ${selectedAdmin?.id === fellow.id ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm bg-white'}`}>
+                  <div key={fellow.id} onClick={() => setSelectedAdmin(fellow)} className={`p-4 border rounded-xl cursor-pointer transition-all duration-200 ${selectedAdmin?.id === fellow.id ? 'border-statColors-2 bg-statColors-2/10 shadow-sm' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm bg-white'}`}>
                     <div className="flex items-center space-x-4">
                       <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-slate-300 shadow-sm">
                         <Users className="h-6 w-6 text-white" />
@@ -1299,8 +1690,15 @@ export default function AspenDashboard() {
                 ))
               )}
             </div>
-            <div className="flex justify-end pt-4">
-              <Button onClick={() => setBookingStep('select-time')} disabled={!selectedAdmin} className="bg-blue-600 hover:bg-blue-700 rounded-xl px-8 text-sm text-white shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(37,99,235,0.35)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_4px_rgba(37,99,235,0.15)] transition duration-200">Continue</Button>
+            <div className="flex justify-between pt-4">
+              <Button 
+                variant="outline" 
+                className="rounded-xl px-8 text-sm" 
+                onClick={() => setRequestSessionOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button onClick={() => setBookingStep('select-time')} disabled={!selectedAdmin} className="bg-statColors-2 hover:bg-statColors-2/80 rounded-xl px-8 text-sm text-white shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(37,99,235,0.35)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_4px_rgba(37,99,235,0.15)] transition duration-200">Continue</Button>
             </div>
           </div>
         )}
@@ -1309,21 +1707,21 @@ export default function AspenDashboard() {
           <div className="space-y-8">
             <div className="text-center">
               <p className="text-gray-500 text-sm mb-2">With <span className="font-semibold text-gray-900">{selectedAdmin?.name}</span></p>
-              <p className="text-gray-500 text-sm">Choose your session duration</p>
+              <p className="text-gray-500 text-sm">Choose your session duration</p> 
             </div>
             <div className="grid grid-cols-3 gap-3">
               {sessionDurations.map((duration) => (
-                <div key={duration.value} onClick={() => setSelectedTime(duration.value)} className={`p-4 border rounded-xl cursor-pointer transition-all duration-200 ${selectedTime === duration.value ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm bg-white'}`}>
+                <div key={duration.value} onClick={() => setSelectedTime(duration.value)} className={`p-4 border rounded-xl cursor-pointer transition-all duration-200 ${selectedTime === duration.value ? 'border-statColors-2 bg-statColors-2/10 shadow-sm' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm bg-white'}`}>
                   <div className="text-center">
-                    <div className={`text-lg font-semibold mb-1 ${selectedTime === duration.value ? 'text-blue-600' : 'text-gray-900'}`}>{duration.label}</div>
-                    <div className={`text-xs ${selectedTime === duration.value ? 'text-blue-500' : 'text-gray-500'}`}>{duration.description}</div>
+                    <div className={`text-lg font-semibold mb-1 ${selectedTime === duration.value ? 'text-statColors-2' : 'text-gray-900'}`}>{duration.label}</div>
+                    <div className={`text-xs ${selectedTime === duration.value ? 'text-statColors-2' : 'text-gray-500'}`}>{duration.description}</div>
                   </div>
                 </div>
               ))}
             </div>
             <div className="flex justify-between pt-4">
-              <Button variant="outline" onClick={() => setBookingStep('select-admin')} className="border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl">Back</Button>
-              <Button onClick={() => setBookingStep('booking')} disabled={!selectedTime} className="bg-blue-600 hover:bg-blue-700 px-8 py-2 rounded-xl text-white font-medium shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(37,99,235,0.35)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_4px_rgba(37,99,235,0.15)] transition duration-200">Continue</Button>
+              <Button variant="outline" onClick={() => setBookingStep('select-admin')} className="border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl px-8">Back</Button>
+              <Button onClick={() => setBookingStep('booking')} disabled={!selectedTime} className="bg-statColors-2 hover:bg-statColors-2/80 px-8 py-2 rounded-xl text-white font-medium shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(37,99,235,0.35)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_4px_rgba(37,99,235,0.15)] transition duration-200">Continue</Button>
             </div>
           </div>
         )}
@@ -1332,7 +1730,7 @@ export default function AspenDashboard() {
           <div className="space-y-8">
             <div className="bg-gray-50 rounded-xl p-6">
               <div className="flex items-center space-x-4 mb-4">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-blue-600 shadow-sm">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-statColors-2 shadow-sm">
                   <Users className="h-5 w-5 text-white" />
                 </div>
                 <div>
@@ -1350,7 +1748,7 @@ export default function AspenDashboard() {
               </div>
             </div>
             <div className="text-center">
-              <Button onClick={async () => { const cal = await getCalApi({ namespace: 'quick-review' }); cal('modal', { calLink: 'dufitimana-eric/quick-review' }); }} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 px-8 rounded-xl font-semibold text-sm shadow-lg hover:shadow-xl transition-all duration-200 shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(37,99,235,0.35)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_4px_rgba(37,99,235,0.15)]">Book Your Session</Button>
+              <Button onClick={async () => { const cal = await getCalApi({ namespace: 'quick-review' }); cal('modal', { calLink: 'dufitimana-eric/quick-review' }); }} className="w-full bg-statColors-2 hover:bg-statColors-2/80 text-white py-4 px-8 rounded-xl font-semibold text-sm shadow-lg hover:shadow-xl transition-all duration-200 shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(37,99,235,0.35)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_4px_rgba(37,99,235,0.15)]">Book Your Session</Button>
               <p className="text-xs text-gray-500 mt-3">You'll be redirected to Cal.com to select your preferred time</p>
             </div>
             <div className="flex justify-center pt-4">

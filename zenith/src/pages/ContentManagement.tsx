@@ -40,21 +40,7 @@ const categories = [{
   label: "General Resources",
   icon: BookOpen
 }];
-const mockResources = [{
-  id: 1,
-  title: "Software Engineer Resume Template",
-  description: "Modern template for tech roles with ATS optimization",
-  image: "/placeholder.svg",
-  link: "https://example.com/template1",
-  expiry: "2024-12-31"
-}, {
-  id: 2,
-  title: "Interview Preparation Guide",
-  description: "Comprehensive guide covering technical and behavioral questions",
-  image: "/placeholder.svg",
-  link: "https://example.com/guide1",
-  expiry: null
-}];
+
 export default function ContentManagement() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [isDarkTheme, setIsDarkTheme] = useState(true);

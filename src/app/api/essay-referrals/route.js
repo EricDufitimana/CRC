@@ -101,6 +101,7 @@ export async function GET(request) {
         status: referral.has_completed ? 'completed' : 'pending',
         type: isSent ? 'sent' : 'received',
         has_completed: referral.has_completed,
+        completed_at: referral.completed_at,
         // Add essay details
         deadline: referral.essay_requests?.deadline || null,
         submittedAt: referral.essay_requests?.submitted_at || null,
@@ -110,9 +111,12 @@ export async function GET(request) {
 
     console.log('🔍 Successfully fetched essay referrals:', serializedReferrals.length);
     console.log('🔍 First referral has_completed value:', serializedReferrals[0]?.has_completed);
+    console.log('🔍 First referral completed_at value:', serializedReferrals[0]?.completed_at);
     console.log('🔍 Raw referral data from DB:', referrals[0]);
     console.log('🔍 Raw referral has_completed from DB:', referrals[0]?.has_completed);
     console.log('🔍 Raw referral has_completed type:', typeof referrals[0]?.has_completed);
+    console.log('🔍 Raw referral completed_at from DB:', referrals[0]?.completed_at);
+    console.log('🔍 Raw referral completed_at type:', typeof referrals[0]?.completed_at);
     return NextResponse.json(serializedReferrals);
   } catch (error) {
     console.error('❌ Error fetching essay referrals:', error);

@@ -72,7 +72,10 @@ export async function GET(request) {
         submission_style: a.submission_style,
         created_at: a.created_at,
         workshop_title: a.workshops?.title ?? null,
+        workshop_id: a.workshops?.id?.toString() ?? null,
         workshop_crc_class: a.workshops?.workshop_to_crc?.[0]?.crc_class?.name ?? null,
+        crc_class_id: a.workshops?.workshop_to_crc?.[0]?.crc_class?.id?.toString() ?? null,
+        crc_class_name: a.workshops?.workshop_to_crc?.[0]?.crc_class?.name ?? null,
         total_submitted: a._count.submissions,
         total_students: studentsCount,
       }))

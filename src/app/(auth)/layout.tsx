@@ -11,6 +11,7 @@ import Link from "next/link";
 import { Toaster, ToastBar } from "react-hot-toast";
 import "../../styles/index.css";
 import { Boxes } from "@/components/ui/background-boxes";
+import Head from "../(site)/head";
 
 
 export default function RootLayout({
@@ -26,7 +27,7 @@ export default function RootLayout({
 
   return (
     <html suppressHydrationWarning={true} className="!scroll-smooth" lang="en">
-      <head />
+      <Head />
       <body suppressHydrationWarning={true}>
         {loading ? (
           <PreLoader />
