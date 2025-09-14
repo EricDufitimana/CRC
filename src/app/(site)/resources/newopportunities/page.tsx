@@ -8,6 +8,7 @@ import { Fragment } from "react";
 import { getNewOpportunities } from "@/sanity/lib/queries";
 import { client } from "@/sanity/lib/client";
 import { Sparkles } from "lucide-react";
+import { filterExpiredResources } from "@/utils/filterExpiredResources";
 
 export const metadata: Metadata = {
   title: "CRC ",
@@ -20,10 +21,13 @@ type Opportunity = {
   title: string;
   description: string;
   url?: string;
+  opportunity_deadline?: string;
 };
 
 export default async function Home() {
   const data: Opportunity[] = await client.fetch(getNewOpportunities);
+  const filteredData = filterExpiredResources(data);
+  
   return (
     <main>
       <ScrollUp />
@@ -37,8 +41,8 @@ export default async function Home() {
         />
         <div className="flex justify-center pb-12">
           <div className="content border border-gray-700 rounded-md p-8 w-[1100px]">
-          {data && data.length > 0 ? (
-            data.map((item, index) => (
+          {filteredData && filteredData.length > 0 ? (
+            filteredData.map((item, index) => (
               <Fragment key={item._id}>
                 <Layout
                   image={item.image_address || "/images/banners/image.svg"}
@@ -46,6 +50,7 @@ export default async function Home() {
                   description={item.description}
                   altText="illustration"
                   double={false}
+                  deadline={item.opportunity_deadline}
                   links={
                     item.url
                       ? [{ text: `Apply to ${item.title}`, href: item.url }]

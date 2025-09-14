@@ -362,7 +362,7 @@ export default function AnnouncementsManagement() {
           throw new Error('Failed to fetch announcements');
         }
         const data = await response.json();
-        setAnnouncements(data);
+        setAnnouncements(data.announcements || []);
       } catch (error) {
         console.error('Error fetching announcements:', error);
         // Fallback to empty array if fetch fails
@@ -543,7 +543,7 @@ export default function AnnouncementsManagement() {
         const refreshResponse = await fetch('/api/announcements/fetch');
         if (refreshResponse.ok) {
           const refreshData = await refreshResponse.json();
-          setAnnouncements(refreshData);
+          setAnnouncements(refreshData.announcements || []);
         }
         
         return response.json();

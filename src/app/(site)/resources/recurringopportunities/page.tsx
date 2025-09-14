@@ -7,6 +7,7 @@ import { Fragment } from "react";
 import { getRecurringOpportunities } from "@/sanity/lib/queries";
 import { client } from "@/sanity/lib/client";
 import { RotateCcw } from "lucide-react";
+import { filterExpiredResources } from "@/utils/filterExpiredResources";
 
 export const metadata: Metadata = {
   title: "Recurring Opportunities - CRC",
@@ -24,6 +25,7 @@ type Opportunity = {
 
 export default async function RecurringOpportunities() {
   const data: Opportunity[] = await client.fetch(getRecurringOpportunities);
+  const filteredData = filterExpiredResources(data);
   
   return (
     <main>
@@ -41,8 +43,8 @@ export default async function RecurringOpportunities() {
         />
         <div className="flex justify-center pb-12">
           <div className="content border border-gray-700 rounded-md p-8 w-[1100px]">
-            {data && data.length > 0 ? (
-              data.map((item, index) => (
+            {filteredData && filteredData.length > 0 ? (
+              filteredData.map((item, index) => (
                 <Fragment key={item._id}>
                   <Layout
                     image={item.image_address || "/images/banners/image.svg"}
@@ -50,6 +52,7 @@ export default async function RecurringOpportunities() {
                     description={item.description}
                     altText="recurring opportunity illustration"
                     double={false}
+                    deadline={item.opportunity_deadline}
                     links={
                       item.url
                         ? [{ text: `Learn More About ${item.title}`, href: item.url }]

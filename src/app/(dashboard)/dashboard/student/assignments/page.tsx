@@ -9,6 +9,7 @@ import { Badge } from "../../../../../../zenith/src/components/ui/badge";
 import { Input } from "../../../../../../zenith/src/components/ui/input";
 import { Skeleton } from "../../../../../../zenith/src/components/ui/skeleton";
 import { FileUpload } from "../../../../../../zenith/src/components/ui/file-upload";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { ArrowLeft, ClipboardCheck, Upload, AlertCircle, Search, Check, Loader2, FileText, X } from "lucide-react";
 import { useUserData } from "@/hooks/useUserData";
 import { submitAssignmentHandler } from "@/actions/assignments/submitAssignmentHandler";
@@ -338,7 +339,8 @@ export default function StudentAssignmentsPage() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="flex-1 overflow-auto min-h-0">
+          <CardContent className="flex-1 min-h-0 p-0">
+            <ScrollArea className="h-full px-6 py-3">
           {error && (
             <Alert variant="destructive" className="mb-4">
               <AlertCircle className="h-4 w-4" />
@@ -582,6 +584,7 @@ export default function StudentAssignmentsPage() {
               }).length} onClick={() => setPage((p) => p + 1)}>Next</Button>
             </div>
           )}
+            </ScrollArea>
         </CardContent>
       </Card>
     </div>

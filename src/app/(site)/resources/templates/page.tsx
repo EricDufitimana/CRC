@@ -16,6 +16,7 @@ import { getTemplates } from "@/sanity/lib/queries";
 import GridSkeleton from "@/components/ui/GridSkeleton";
 import ResourceSkeleton from "@/components/ui/ResourceSkeleton";
 import { FileText } from "lucide-react";
+import { filterExpiredResources } from "@/utils/filterExpiredResources";
 
 export const metadata: Metadata = {
   title: "CRC ",
@@ -33,6 +34,8 @@ type Template = {
 
 export default async function Home() {
   const data:Template[] = await client.fetch(getTemplates);
+  const filteredData = filterExpiredResources(data);
+  
   return (
     <main>
       <ScrollUp />
@@ -43,8 +46,8 @@ export default async function Home() {
           <div className=" flex justify-center pb-12">
             <div className="content border border-gray-700 rounded-md p-8 w-[1100px]">
 
-            {data && data.length > 0 ? (
-              data.map((item, index) => (
+            {filteredData && filteredData.length > 0 ? (
+              filteredData.map((item, index) => (
                 <Fragment key={item._id}>
                   <Layout 
                     key={item._id}
@@ -53,6 +56,7 @@ export default async function Home() {
                     description={item.description}
                     altText="illustration"
                     double={true}
+                    deadline={item.opportunity_deadline}
                     links={
                       item.url && item.secondary_url ? [
                         {text: "Blank Template", href: item.url},

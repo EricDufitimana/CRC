@@ -38,7 +38,7 @@ export default function RootLayout({
             <div className="relative p-6 bg-white z-1 dark:bg-gray-900 sm:p-0 no-scrollbar overflow-y-scroll">
               <div className="relative flex flex-col justify-center w-full h-screen lg:flex-row dark:bg-gray-900 sm:p-0">
                   {children}
-                <div className="items-center hidden w-full h-full lg:w-1/2 lg:grid auth-background overflow-hidden p-1">
+                <div className="items-center hidden w-full h-full lg:w-1/2 lg:grid  overflow-hidden p-1">
                   <div className="relative w-full h-full overflow-hidden bg-slate-900 rounded-2xl">
                     <div className="absolute inset-0 w-full h-full bg-slate-900 z-20 [mask-image:radial-gradient(transparent,white)] pointer-events-none rounded-3xl" />
                     <Boxes />

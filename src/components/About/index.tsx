@@ -70,7 +70,7 @@ const About = () => {
                 <OptimizedScrollAnimation direction="left" delay={500}>
                   <div className="relative mb-4 sm:mb-8 sm:h-[220px] md:h-[346px] lg:mb-4 lg:h-[225px] xl:mb-8 xl:h-[310px]">
                     <Image
-                      src="/images/about/about-image-02.jpg"
+                      src="/images/about/about-image-03.jpg"
                       alt="about image"
                       fill
                       sizes="(max-width: 768px) 100vw, 50vw"

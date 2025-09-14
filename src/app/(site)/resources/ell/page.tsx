@@ -8,6 +8,7 @@ import { Fragment } from "react";
 import { getEnglishLanguageLearning } from "@/sanity/lib/queries";
 import { client } from "@/sanity/lib/client";
 import { BookOpen } from "lucide-react";
+import { filterExpiredResources } from "@/utils/filterExpiredResources";
 export const metadata: Metadata = {
   title: "CRC ",
   description: "Career Resources Center Website",
@@ -19,10 +20,12 @@ type EnglishResource = {
   title: string;
   description: string;
   url?: string;
+  opportunity_deadline?: string;
 };
 
 export default async function Home() {
   const data: EnglishResource[] = await client.fetch(getEnglishLanguageLearning);
+  const filteredData = filterExpiredResources(data);
 
   return (
     <main>
@@ -32,8 +35,8 @@ export default async function Home() {
         <MultipleAnnouncementsBanner page="english_language_learning" containerWidth="w-[1120px]" maxAnnouncements={3} />
         <div className="flex justify-center pb-12">
           <div className="content border border-gray-700 rounded-md p-8 w-[1100px]">
-          {data && data.length > 0 ? (
-            data.map((item, index) => (
+          {filteredData && filteredData.length > 0 ? (
+            filteredData.map((item, index) => (
               <Fragment key={item._id}>
                 <Layout
                   image={item.image_address || "/images/banners/image.svg"}
@@ -41,6 +44,7 @@ export default async function Home() {
                   description={item.description}
                   altText="illustration"
                   double={false}
+                  deadline={item.opportunity_deadline}
                   links={
                     item.url
                       ? [{ text: `Go to ${item.title}`, href: item.url }]

@@ -135,7 +135,7 @@ export default function AspenDashboard() {
   const [stats, setStats] = useState([
     { label: "Assignments Not Done", value: 0, icon: ClipboardCheck, tint: "bg-emerald-100 text-emerald-700" },
     { label: "Essays Submitted", value: 0, icon: FileText, tint: "bg-sky-100 text-sky-700" },
-    { label: "Opportunities Applied", value: 0, icon: Briefcase, tint: "bg-violet-100 text-violet-700" },
+    { label: "Opportunities Submitted", value: 0, icon: Briefcase, tint: "bg-violet-100 text-violet-700" },
   ]);
   const [isStatsLoading, setIsStatsLoading] = useState(true);
 

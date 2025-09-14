@@ -135,7 +135,7 @@ export default function SignInForm() {
               Don't have an account?{" "}
               <Link
                 href="/register"
-                className="text-primary hover:text-orange-600"
+                className="text-primary  hover:underline"
               >
                 Register
               </Link>

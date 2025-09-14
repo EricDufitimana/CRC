@@ -60,7 +60,7 @@ const faqData = [
     left: 160,
     degrees: 5,
     backgroundColor: "#BBDCE5",
-    image: "5.png"
+    image: "5.svg"
   },
   {
     numberQn: "06",
@@ -70,7 +70,7 @@ const faqData = [
     left: 135,
     degrees: -6,
     backgroundColor: "#FED16A",
-    image: "6.png"
+    image: "6.svg"
   }
 ];
 

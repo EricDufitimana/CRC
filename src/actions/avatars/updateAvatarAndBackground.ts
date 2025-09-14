@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/utils/supabase/server";
+import { createClient } from "@/utils/supabase/service-role";
 import { randomUUID } from "crypto";
 
 interface UpdateAvatarAndBackgroundParams {
@@ -35,28 +35,15 @@ export async function updateAvatarAndBackground({
     profileBackground
   });
 
-  try {
-    const supabase = await createClient();
-    
-    // Verify user authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      console.error('❌ updateAvatarAndBackground: Authentication error:', authError);
-      return { success: false, error: 'User not authenticated' };
-    }
-
-    // Verify student exists and belongs to user
-    const { data: student, error: studentError } = await supabase
-      .from('students')
-      .select('id, user_id')
-      .eq('id', studentId)
-      .eq('user_id', userId)
-      .single();
-
-    if (studentError || !student) {
-      console.error('❌ updateAvatarAndBackground: Student not found:', studentError);
-      return { success: false, error: 'Student not found or access denied' };
-    }
+    try {
+      const supabase = await createClient();
+      
+      // Use the passed studentId directly (already validated in layout)
+    console.log('🔍 updateAvatarAndBackground: Using studentId:', {
+      studentId,
+      studentIdType: typeof studentId,
+      parsedStudentId: parseInt(studentId)
+    });
 
     let finalAvatarPath: string | null = null;
 
@@ -118,7 +105,7 @@ export async function updateAvatarAndBackground({
 
     if (finalAvatarPath) {
       updateData.profile_picture = finalAvatarPath;
-      updateData.is_avatar = true;
+
     }
 
     console.log('💾 updateAvatarAndBackground: Updating student record:', updateData);
@@ -126,9 +113,8 @@ export async function updateAvatarAndBackground({
     const { data: updatedStudent, error: updateError } = await supabase
       .from('students')
       .update(updateData)
-      .eq('id', studentId)
-      .eq('user_id', userId)
-      .select('profile_picture, profile_background, is_avatar')
+      .eq('id', parseInt(studentId))
+      .select('profile_picture, profile_background')
       .single();
 
     if (updateError || !updatedStudent) {

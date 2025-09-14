@@ -2,9 +2,14 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Shield, ArrowLeft, Loader2 } from "lucide-react";
+import { Shield, ArrowLeft, Loader2, Send, Mail, User, MessageSquare } from "lucide-react";
 import Image from "next/image";
 import { useUserData } from "../../hooks/useUserData";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { showToastSuccess, showToastError } from "@/components/toasts";
 
 export default function AccountCheckPage() {
   const [isLoading, setIsLoading] = useState(true);
@@ -14,6 +19,13 @@ export default function AccountCheckPage() {
   const [accountExists, setAccountExists] = useState(false);
   const [hasSetup, setHasSetup] = useState<boolean | null>(null);
   const [checkComplete, setCheckComplete] = useState(false); // New state
+  const [isContactDialogOpen, setIsContactDialogOpen] = useState(false);
+  const [contactForm, setContactForm] = useState({
+    name: "",
+    email: "",
+    message: ""
+  });
+  const [isSubmittingContact, setIsSubmittingContact] = useState(false);
   const { userId, isLoading: userDataLoading } = useUserData();
 
   useEffect(() => {
@@ -120,6 +132,63 @@ export default function AccountCheckPage() {
     return () => clearTimeout(timer);
   }, [userId, userDataLoading]);
 
+  const handleContactSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmittingContact(true);
+
+    try {
+      console.log('📤 Sending help support request:', contactForm);
+      
+      const response = await fetch('/api/send-help-message', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(contactForm),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send help request');
+      }
+
+      console.log('✅ Help support request sent successfully:', data);
+      
+      // Show success toast
+      showToastSuccess({
+        headerText: 'Help Message Sent Successfully!',
+        paragraphText: "We'll get back to you soon!",
+        direction: 'left'
+      });
+      
+      // Reset form and close dialog on success
+      setContactForm({ name: "", email: "", message: "" });
+      setTimeout(() => {
+        setIsContactDialogOpen(false);
+      }, 1000);
+      
+    } catch (error) {
+      console.error('❌ Error sending help support request:', error);
+      
+      // Show error toast
+      showToastError({
+        headerText: 'Failed to Send Request',
+        paragraphText: 'Failed to send message. Please try again.',
+        direction: 'left'
+      });
+    } finally {
+      setIsSubmittingContact(false);
+    }
+  };
+
+  const handleContactFormChange = (field: string, value: string) => {
+    setContactForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
   // Show loading state
   if (isLoading || userDataLoading) {
     return (
@@ -191,13 +260,13 @@ export default function AccountCheckPage() {
               Create Account
             </Link>
             
-            <Link
-              href="/contact"
+            <button
+              onClick={() => setIsContactDialogOpen(true)}
               className="inline-flex items-center px-6 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-lg font-medium rounded-xl hover:bg-gray-200 border border-gray-300 shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition duration-200"
             >
               <Shield className="w-5 h-5 mr-3 text-sm" />
               Contact Support
-            </Link>
+            </button>
           </div>
         </div>
       </div>
@@ -205,5 +274,94 @@ export default function AccountCheckPage() {
   }
 
   // Return null if none of the above conditions are met (shouldn't happen)
-  return null;
+  return (
+    <>
+      {/* Contact Support Dialog */}
+      <Dialog open={isContactDialogOpen} onOpenChange={setIsContactDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              Contact Support
+            </DialogTitle>
+          </DialogHeader>
+          
+          <form onSubmit={handleContactSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Your full name"
+                  value={contactForm.name}
+                  onChange={(e) => handleContactFormChange("name", e.target.value)}
+                  className="pl-10"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="your.email@example.com"
+                  value={contactForm.email}
+                  onChange={(e) => handleContactFormChange("email", e.target.value)}
+                  className="pl-10"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="message">Message</Label>
+              <textarea
+                id="message"
+                placeholder="Describe your issue or question..."
+                value={contactForm.message}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleContactFormChange("message", e.target.value)}
+                className="min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                required
+              />
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsContactDialogOpen(false)}
+                className="flex-1"
+                disabled={isSubmittingContact}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSubmittingContact || !contactForm.name || !contactForm.email || !contactForm.message}
+                className="flex-1 bg-dark hover:bg-dark/90"
+              >
+                {isSubmittingContact ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Sending...
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Send className="h-4 w-4" />
+                    Send Message
+                  </div>
+                )}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
 }

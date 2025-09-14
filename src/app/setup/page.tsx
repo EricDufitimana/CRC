@@ -768,20 +768,20 @@ export default function StudentSetupPage() {
             </div>
           ) : (
             /* Back and Continue Buttons for Steps 1 and 2 */
-            <div className="flex items-center justify-between pt-2">
-              {/* Back Button */}
-              <Button 
-                onClick={handleBack}
-                variant="outline"
-                size="sm"
-                className="group inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 border-gray-300 hover:bg-gray-50 transition-all duration-200"
-              >
-                <ArrowLeft className="w-4 h-4 transition-all duration-300 group-hover:-translate-x-1" />
-                <span>Back</span>
-              </Button>
-              
-              {/* Continue Button */}
-              <div className="text-center">
+            <div className="pt-2">
+              <div className="flex items-center justify-between">
+                {/* Back Button */}
+                <Button 
+                  onClick={handleBack}
+                  variant="outline"
+                  size="sm"
+                  className="group inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 border-gray-300 hover:bg-gray-50 transition-all duration-200"
+                >
+                  <ArrowLeft className="w-4 h-4 transition-all duration-300 group-hover:-translate-x-1" />
+                  <span>Back</span>
+                </Button>
+                
+                {/* Continue Button */}
                 <Button 
                   onClick={handleContinue}
                   size="sm"
@@ -799,12 +799,15 @@ export default function StudentSetupPage() {
                   {!isUploading && (
                     <ArrowRight className="w-5 h-5 transition-all duration-300 group-hover:translate-x-1 group-hover:scale-110" />
                   )}
-            </Button>
-            
-            <p className="text-xs text-gray-500 mt-2">
-              You can update these later
-            </p>
-          </div>
+                </Button>
+              </div>
+              
+              {/* Centered paragraph below buttons */}
+              <div className="text-end mt-2">
+                <p className="text-xs text-gray-500">
+                  You can update these later
+                </p>
+              </div>
             </div>
           )}
         </CardContent>

@@ -140,7 +140,7 @@ export default function StickyNotificationBanner() {
         <div ref={contentRef} className="bg-orange-400 text-white py-2">
           <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-4 laptop-lg:px-8">
             <div 
-              className="text-sm prose prose-invert prose-sm max-w-none [&>*]:my-0 [&>p]:inline [&>strong]:font-semibold [&>em]:italic [&>a]:text-white [&>a]:underline [&>a:hover]:text-orange-100"
+              className="text-sm prose prose-invert prose-sm max-w-none [&>*]:my-0 [&>p]:inline [&>strong]:font-semibold [&>em]:italic"
               dangerouslySetInnerHTML={{ __html: parsedContent }}
             />
             <button

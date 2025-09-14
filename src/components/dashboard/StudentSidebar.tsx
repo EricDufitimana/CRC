@@ -8,7 +8,7 @@ import { Button } from "../../../zenith/src/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../../../zenith/src/components/ui/dialog";
 import { FileUpload } from "../../../zenith/src/components/ui/file-upload";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { LayoutDashboard, ClipboardList, Briefcase, FileText, LogOut, Home, Edit3, Camera } from "lucide-react";
+import { LayoutDashboard, ClipboardList, Briefcase, FileText, LogOut, Home, Edit3, Camera, Folder } from "lucide-react";
 import { useSupabase } from "@/hooks/useSupabase";
 import { signOut } from "@/actions/signOut";
 import { useUserData } from "@/hooks/useUserData";
@@ -251,7 +251,7 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
     }
   };
 
-  const handleLogout = async () => {
+  const HandleSignOut = async () => {
     try {
       await signOut();
     } catch (error) {
@@ -359,28 +359,28 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
             </li>
             <li>
               <Link
-                href="/dashboard/student/opportunities"
+                href="/dashboard/student/requests"
                 className={`flex items-center justify-start text-left gap-3 rounded-xl px-3 py-2 text-base ${
-                  isActive('/dashboard/student/opportunities')
+                  isActive('/dashboard/student/requests')
                     ? 'bg-neutral-100 text-neutral-900 hover:bg-neutral-200'
                     : 'text-neutral-600 hover:bg-neutral-100'
                 }`} 
               >
                 <Briefcase className="h-5 w-5 text-neutral-500" />
-                Opportunities
+                Requests
               </Link>
             </li>
             <li>
               <Link
-                href="/dashboard/student/essays"
+                href="/dashboard/student/documents"
                 className={`flex items-center justify-start text-left gap-3 rounded-xl px-3 py-2 text-base ${
-                  isActive('/dashboard/student/essays')
+                  isActive('/dashboard/student/documents')
                     ? 'bg-neutral-100 text-neutral-900 hover:bg-neutral-200'
                     : 'text-neutral-600 hover:bg-neutral-100'
                 }`} 
               >
-                <FileText className="h-5 w-5 text-neutral-500" />
-                Essays
+                <Folder className="h-5 w-5 text-neutral-500" />
+                Documents
               </Link>
             </li>
           </ul>
@@ -400,7 +400,7 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
             <Button
               variant="ghost"
               className="flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-base text-neutral-600 hover:text-neutral-900"
-              onClick={handleLogout}
+              onClick={() => HandleSignOut()}
             >
               <LogOut className="h-5 w-5" />
               Sign out
@@ -411,15 +411,12 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
 
       {/* Avatar Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={handleDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh]">
+        <DialogContent className="max-w-4xl max-h-[80vh]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-center justify-center">
               <Camera className="h-5 w-5" />
               Edit Profile Picture
             </DialogTitle>
-            <DialogDescription className="text-center text-sm text-gray-600">
-              Choose a new profile picture by uploading your own image or selecting from available avatars.
-            </DialogDescription>
           </DialogHeader>
           
           <ScrollArea className="max-h-[60vh]">
@@ -484,7 +481,6 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
                         className="max-w-md mx-auto"
                       />
                     </div>
-                    
                   </div>
                 ) : (
                   <div className="space-y-6">
@@ -520,29 +516,38 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
                         <p className="text-xs text-gray-400 text-center mt-1">Try uploading your own image instead</p>
                       </div>
                     ) : (
-                      <div className="space-y-6">
-                        {/* Avatar Selection */}
-                        <div className="space-y-4 flex">
-                          <div> 
-
+                      <div className="space-y-2">
+                        {/* Side-by-side Avatar and Background Selection */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+                          {/* Avatar Selection Column */}
+                          <div className="space-y-4">
                             <h4 className="text-sm font-medium text-gray-900 text-center">Choose Avatar</h4>
-                        
-                            {/* Avatar Grid */}
-                            <div className="grid grid-cols-2 gap-3 max-w-md mx-auto">
+                            
+                            {/* Show folder organization if we have many avatars */}
+                            {fetchedAvatars.length > 8 && (
+                              <div className="text-center">
+                                <p className="text-xs text-gray-500">
+                                  {fetchedAvatars.length} available avatars
+                                </p>
+                              </div>
+                            )}
+                            
+                            {/* Avatar Grid - Bigger */}
+                            <div className="grid grid-cols-4 gap-3 max-w-md mx-auto">
                               {fetchedAvatars.map((avatar) => (
                                 <button
                                   key={avatar.id}
                                   onClick={() => {
-                                    const avatarPath = 'filePath' in avatar ? avatar.filePath : `default/${avatar.folder}/${avatar.name.toLowerCase().replace(/\s+/g, '-')}.png`;
-                                    console.log('🎯 StudentSidebar: Avatar clicked:', {
-                                      id: avatar.id,
+                                    const filePath = 'filePath' in avatar && avatar.filePath ? avatar.filePath : `default/${avatar.folder}/${avatar.name.toLowerCase().replace(/\s+/g, '-')}.png`;
+                                    console.log('🖼️ StudentSidebar: Avatar selected:', { 
+                                      id: avatar.id, 
+                                      src: avatar.src, 
                                       name: avatar.name,
-                                      src: avatar.src?.substring(0, 50) + '...',
-                                      avatarPath,
-                                      hasFilePath: 'filePath' in avatar
+                                      folder: avatar.folder,
+                                      filePath: filePath
                                     });
-                                    setSelectedAvatar(avatar.src);
-                                    setSelectedAvatarPath(avatarPath);
+                                    setSelectedAvatar(avatar.src); // For display
+                                    setSelectedAvatarPath(filePath); // For storage
                                   }}
                                   className={`relative aspect-square rounded-lg overflow-hidden transition-all duration-200 transform hover:scale-105 ${
                                     selectedAvatar === avatar.src
@@ -550,7 +555,7 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
                                       : 'hover:ring-2 hover:ring-gray-300 hover:shadow-md'
                                   }`}
                                 >
-                                  <Avatar className="h-20 w-20">
+                                  <Avatar className="h-full w-full">
                                     <AvatarImage 
                                       src={avatar.src} 
                                       alt={avatar.name}
@@ -571,30 +576,38 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
                                       </div>
                                     </div>
                                   )}
+                                  
+                                  {/* Folder indicator for organization */}
+                                  {avatar.folder && (
+                                    <div className="absolute top-0.5 left-0.5 bg-white/80 backdrop-blur-sm rounded-full px-1 py-0.5">
+                                      <span className="text-xs font-medium text-gray-600">
+                                        {avatar.folder}
+                                      </span>
+                                    </div>
+                                  )}
                                 </button>
                               ))}
                             </div>
                           </div>
 
-
-
-                        </div>
-                                               {/* Background Selection */}
-                        <div className="space-y-4">
-                          <h4 className="text-sm font-medium text-gray-900 text-center">Choose Background</h4>
-                          <div className="flex justify-center gap-2 flex-wrap">
-                            {['statColors-1', 'statColors-2', 'statColors-3', 'statColors-4', 'statColors-5', 'statColors-6', 'statColors-7'].map((color) => (
-                              <button
-                                key={color}
-                                onClick={() => setSelectedBackground(color)}
-                                className={`w-8 h-8 rounded-full border-2 ${
-                                  selectedBackground === color ? 'border-gray-900' : 'border-gray-300'
-                                } bg-${color}`}
-                              />
-                            ))}
+                          {/* Background Selection Column */}
+                          <div className="space-y-4">
+                            <h4 className="text-sm font-medium text-gray-900 text-center">Choose Background</h4>
+                            <div className="flex justify-center">
+                              <div className="grid grid-cols-4 gap-2 max-w-xs">
+                                {['statColors-1', 'statColors-2', 'statColors-3', 'statColors-4', 'statColors-5', 'statColors-6', 'statColors-7'].map((color) => (
+                                  <button
+                                    key={color}
+                                    onClick={() => setSelectedBackground(color)}
+                                    className={`w-12 h-12 rounded-full border-3 transition-all duration-200 hover:scale-110 ${
+                                      selectedBackground === color ? 'border-gray-900 ring-2 ring-blue-500 ring-offset-2' : 'border-gray-300 hover:border-gray-400'
+                                    } bg-${color}`}
+                                  />
+                                ))}
+                              </div>
+                            </div>
                           </div>
                         </div>
-
                       </div>
                     )}
                   </div>
@@ -602,7 +615,7 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
               </div>
 
               {/* Action Buttons */}
-              <div className="flex justify-center gap-3 pt-4">
+              <div className="flex justify-center gap-3 pt-2">
                 <Button
                   variant="outline"
                   onClick={() => {
@@ -615,41 +628,39 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
                   Cancel
                 </Button>
                 
-                {/* Apply Changes Button - shows for both upload and existing */}
-                {((activeTab === 'upload' && uploadedAvatarFile.length > 0) || (activeTab === 'existing' && selectedAvatar)) && (
-                  <Button
-                    onClick={() => {
-                      console.log('🎯 StudentSidebar: Apply Changes clicked', {
-                        activeTab,
-                        selectedAvatar,
-                        selectedAvatarPath,
-                        selectedBackground,
-                        uploadedAvatarFile: uploadedAvatarFile.length
+                {/* Apply Changes Button - always visible but disabled when no selection */}
+                <Button
+                  onClick={() => {
+                    console.log('🎯 StudentSidebar: Apply Changes clicked', {
+                      activeTab,
+                      selectedAvatar,
+                      selectedAvatarPath,
+                      selectedBackground,
+                      uploadedAvatarFile: uploadedAvatarFile.length
+                    });
+                    
+                    if (activeTab === 'upload') {
+                      handleAvatarUpload();
+                    } else {
+                      handleAvatarSelect({ 
+                        src: selectedAvatar, 
+                        filePath: selectedAvatarPath,
+                        name: 'Selected Avatar'
                       });
-                      
-                      if (activeTab === 'upload') {
-                        handleAvatarUpload();
-                      } else {
-                        handleAvatarSelect({ 
-                          src: selectedAvatar, 
-                          filePath: selectedAvatarPath,
-                          name: 'Selected Avatar'
-                        });
-                      }
-                    }}
-                    disabled={isUploadingAvatar}
-                    className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isUploadingAvatar ? (
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        Applying...
-                      </div>
-                    ) : (
-                      'Apply Changes'
-                    )}
-                  </Button>
-                )}
+                    }
+                  }}
+                  disabled={isUploadingAvatar || ((activeTab === 'upload' && uploadedAvatarFile.length === 0) || (activeTab === 'existing' && !selectedAvatar))}
+                  className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isUploadingAvatar ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Applying...
+                    </div>
+                  ) : (
+                    'Apply Changes'
+                  )}
+                </Button>
               </div>
             </div>
           </ScrollArea>

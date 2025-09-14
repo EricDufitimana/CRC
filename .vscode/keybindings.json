@@ -1,37 +1,45 @@
 {
   "vim.normalModeKeyBindingsNonRecursive": [
-  {
-    "before": [";"],
-    "after": [":"]
-  },
-  {
-    "before": ["<CapsLock>"],
-    "after": ["<Esc>"]
-  },
-  {
-    "before": ["<S-CapsLock>"],
-    "after": ["<Esc>"]
-  },
-  {
-    "before": ["<S-Space>"],
-    "after": []
-  },
-  {
-    "before": [" "],
-     
-    "commands": ["editorScroll", { "to": "down", "by": "halfPage", "revealCursor": true }]
-  },
-  {
-    "before": ["n"],
-    "commands": ["editorScroll", { "to": "up", "by": "halfPage", "revealCursor": true }]
-  },
-  {
-    "before": ["o"],
-    "after": ["1","0","j"]
-  },
-  {
-    "before": ["O"],
-    "after": ["1","0","k"]
-  }
+    {
+      "before": [";"],
+      "after": [":"]
+    },
+    {
+      "before": ["<CapsLock>"],
+      "after": ["<Esc>"]
+    },
+    {
+      "before": ["<S-CapsLock>"],
+      "after": ["<Esc>"]
+    },
+    {
+      "before": ["<S-Space>"],
+
+
+      "after": []
+    },
+    {
+      
+      "before": [" "],
+      "commands": ["editorScroll", { "to": "down", "by": "halfPage", "revealCursor": true }]
+    },
+    {
+      "before": ["."],
+      
+      "after": ["8", "l"]
+    },
+    {
+      "before": [">"],
+      "after": ["8", "h"]
+    },
+    {
+      "before": ["m"],
+      "after": ["j", "j", "j", "j", "j", "j", "j", "j", "j", "j"]
+    },
+    {
+      "before": ["n"],
+      "after": ["k", "k", "k", "k", "k", "k", "k", "k", "k", "k"]
+    }
+
   ]
 }

@@ -2,17 +2,30 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Shield, ArrowLeft, Loader2 } from "lucide-react";
+import { Shield, ArrowLeft, Loader2, Send, Mail, User, MessageSquare } from "lucide-react";
 import Image from "next/image";
 import { useUserData } from "../../hooks/useUserData";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { showToastSuccess, showToastError } from "@/components/toasts";
 
 export default function UnauthorizedPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [verificationComplete, setVerificationComplete] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   const [debugInfo, setDebugInfo] = useState('');
-  const [checkComplete, setCheckComplete] = useState(false); // New state
-  const [shouldShowUnauthorized, setShouldShowUnauthorized] = useState(false); // New state
+  const [checkComplete, setCheckComplete] = useState(false);
+  const [shouldShowUnauthorized, setShouldShowUnauthorized] = useState(false);
+  const [accountExists, setAccountExists] = useState(false);
+  const [isContactDialogOpen, setIsContactDialogOpen] = useState(false);
+  const [contactForm, setContactForm] = useState({
+    name: "",
+    email: "",
+    message: ""
+  });
+  const [isSubmittingContact, setIsSubmittingContact] = useState(false);
   const { userId, adminId, isLoading: userDataLoading } = useUserData();
 
   useEffect(() => {
@@ -22,7 +35,7 @@ export default function UnauthorizedPage() {
     console.log('userDataLoading:', userDataLoading);
     
     // Simulate verification process
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
       console.log('Unauthorized page: Timer completed, checking authorization...');
       
       // Check if user should be redirected
@@ -37,21 +50,124 @@ export default function UnauthorizedPage() {
         // Redirect to admin dashboard after a short delay
         setTimeout(() => {
           window.location.href = '/dashboard/admin';
-        }, 1500); // Reduced from 3000ms to 1500ms for better UX
+        }, 1500);
         
+      } else if (userId) {
+        console.log('Unauthorized page: Checking if user exists in students table...');
+        
+        // Check if user exists in students table
+        const studentResponse = await fetch('/api/check-user-exists', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ userId, table: 'students' })
+        });
+
+        if (!studentResponse.ok) {
+          console.error('Unauthorized page: API error:', studentResponse.status);
+          setAccountExists(false);
+          setDebugInfo('Error checking account status');
+          setIsLoading(false);
+          setCheckComplete(true);
+          setShouldShowUnauthorized(true);
+          return;
+        }
+
+        const studentData = await studentResponse.json();
+        const studentExists = studentData.exists;
+        console.log('Unauthorized page: Student exists:', studentExists);
+
+        if (studentExists) {
+          console.log('Unauthorized page: User account exists, redirecting to student dashboard');
+          setAccountExists(true);
+          setDebugInfo(`User account found, redirecting to student dashboard...`);
+          
+          // Show redirect loader directly
+          setRedirecting(true);
+          setIsLoading(false);
+          
+          // Redirect to student dashboard
+          setTimeout(() => {
+            window.location.href = '/dashboard/student';
+          }, 1500);
+        } else {
+          console.log('Unauthorized page: No user account found in database');
+          setAccountExists(false);
+          setDebugInfo('No user account found in database - account creation required');
+          setIsLoading(false);
+          setCheckComplete(true);
+          setShouldShowUnauthorized(true);
+        }
       } else {
-        console.log('Unauthorized page: No user ID or admin ID found');
-        setDebugInfo('No user ID or admin ID found - staying on unauthorized page');
-        
-        // User is not authorized, show the unauthorized page
-        setShouldShowUnauthorized(true);
+        console.log('Unauthorized page: No userId or adminId available');
+        setAccountExists(false);
+        setDebugInfo('No userId or adminId available - please log in first');
         setIsLoading(false);
         setCheckComplete(true);
+        setShouldShowUnauthorized(true);
       }
     }, 2000);
 
     return () => clearTimeout(timer);
   }, [userId, adminId, userDataLoading]);
+
+  const handleContactSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmittingContact(true);
+
+    try {
+      console.log('📤 Sending help support request:', contactForm);
+      
+      const response = await fetch('/api/send-help-message', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(contactForm),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send help request');
+      }
+
+      console.log('✅ Help support request sent successfully:', data);
+      
+      // Show success toast
+      showToastSuccess({
+        headerText: 'Help Message Sent Successfully!',
+        paragraphText: "We'll get back to you soon!",
+        direction: 'left'
+      });
+      
+      // Reset form and close dialog on success
+      setContactForm({ name: "", email: "", message: "" });
+      setTimeout(() => {
+        setIsContactDialogOpen(false);
+      }, 1000);
+      
+    } catch (error) {
+      console.error('❌ Error sending help support request:', error);
+      
+      // Show error toast
+      showToastError({
+        headerText: 'Failed to Send Request',
+        paragraphText: 'Failed to send message. Please try again.',
+        direction: 'left'
+      });
+    } finally {
+      setIsSubmittingContact(false);
+    }
+  };
+
+  const handleContactFormChange = (field: string, value: string) => {
+    setContactForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
 
   // Show loading state
   if (isLoading || userDataLoading) {
@@ -60,10 +176,10 @@ export default function UnauthorizedPage() {
         <div className="text-center">
           <div className="inline-block w-12 h-12 border-2 border-gray-200 dark:border-gray-700 border-t-primary rounded-full animate-spin"></div>
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-            Verifying Access...
+            Checking Account...
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            Please wait while we verify your account permissions
+            Please wait while we verify your account status
           </p>
         </div>
       </div>
@@ -88,7 +204,7 @@ export default function UnauthorizedPage() {
   }
 
   // Only show unauthorized page if check is complete and user should see it
-  if (checkComplete && shouldShowUnauthorized) {
+  if (checkComplete && shouldShowUnauthorized && !accountExists) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900 p-4">
         <div className="max-w-4xl w-full text-center">
@@ -124,13 +240,13 @@ export default function UnauthorizedPage() {
               Back to Login
             </Link>
             
-            <Link
-              href="/contact"
+            <button
+              onClick={() => setIsContactDialogOpen(true)}
               className="inline-flex items-center px-6 py-[15px] bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-md font-medium rounded-xl hover:bg-gray-200 border border-gray-300 shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition duration-200"
             >
               <Shield className="w-5 h-5 mr-3 text-sm" />
               Contact Support
-            </Link>
+            </button>
           </div>
         </div>
       </div>
@@ -138,5 +254,94 @@ export default function UnauthorizedPage() {
   }
 
   // Return null if none of the above conditions are met (shouldn't happen)
-  return null;
+  return (
+    <>
+      {/* Contact Support Dialog */}
+      <Dialog open={isContactDialogOpen} onOpenChange={setIsContactDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              Contact Support
+            </DialogTitle>
+          </DialogHeader>
+          
+          <form onSubmit={handleContactSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Your full name"
+                  value={contactForm.name}
+                  onChange={(e) => handleContactFormChange("name", e.target.value)}
+                  className="pl-10"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="your.email@example.com"
+                  value={contactForm.email}
+                  onChange={(e) => handleContactFormChange("email", e.target.value)}
+                  className="pl-10"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="message">Message</Label>
+              <textarea
+                id="message"
+                placeholder="Describe your issue or question..."
+                value={contactForm.message}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleContactFormChange("message", e.target.value)}
+                className="min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                required
+              />
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsContactDialogOpen(false)}
+                className="flex-1"
+                disabled={isSubmittingContact}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSubmittingContact || !contactForm.name || !contactForm.email || !contactForm.message}
+                className="flex-1 bg-dark hover:bg-dark/90"
+              >
+                {isSubmittingContact ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Sending...
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Send className="h-4 w-4" />
+                    Send Message
+                  </div>
+                )}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
 }

@@ -8,6 +8,7 @@ import { Fragment } from "react";
 import { getInternships } from "@/sanity/lib/queries";
 import { client } from "@/sanity/lib/client";
 import { Briefcase } from "lucide-react";
+import { filterExpiredResources } from "@/utils/filterExpiredResources";
 
 export const metadata: Metadata = {
   title: "Internships - CRC",
@@ -25,6 +26,7 @@ type Internship = {
 
 export default async function Internships() {
   const data: Internship[] = await client.fetch(getInternships);
+  const filteredData = filterExpiredResources(data);
 
   return (
     <main>
@@ -39,8 +41,8 @@ export default async function Internships() {
         />
         <div className="flex justify-center pb-12">
           <div className="content border border-gray-700 rounded-md p-8 w-[1100px]">
-            {data && data.length > 0 ? (
-              data.map((item, index) => (
+            {filteredData && filteredData.length > 0 ? (
+              filteredData.map((item, index) => (
                 <Fragment key={item._id}>
                   <Layout 
                     image={item.image_address || "/images/banners/image.svg"}
@@ -48,6 +50,7 @@ export default async function Internships() {
                     description={item.description}
                     altText="internship illustration"
                     double={false}
+                    deadline={item.opportunity_deadline}
                     links={
                       item.url
                         ? [{ text: `Apply to ${item.title}`, href: item.url }]
