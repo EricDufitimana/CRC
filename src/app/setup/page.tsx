@@ -387,7 +387,7 @@ export default function StudentSetupPage() {
         </div>
         
         {/* Top Right - Setup Wave */}
-        <div className="absolute bottom-0 -left-16 opacity-70 rotate-180">
+        <div className="absolute bottom-0 -left-32 opacity-70">
           <Image 
             src="/images/setup/setup-wave.svg" 
             alt="Decorative wave" 
@@ -409,7 +409,7 @@ export default function StudentSetupPage() {
         </div>
         
         {/* Bottom Right - Setup Illustration */}
-        <div className="absolute top-0 right-0 ">
+        <div className="absolute top-0 right-0">
           <Image 
             src="/images/setup/setup-illustration.svg" 
             alt="Setup illustration" 
