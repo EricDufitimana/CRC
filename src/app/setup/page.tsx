@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../zenith/src/components/ui/card";
 import { Button } from "../../../zenith/src/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "../../../zenith/src/components/ui/avatar";
@@ -372,6 +373,53 @@ export default function StudentSetupPage() {
 
   return (
     <>  
+      {/* Decorative Illustrations */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        {/* Top Left - Setup Stars */}
+        <div className="absolute top-0 left-4 opacity-70 ">
+          <Image 
+            src="/images/setup/setup-stars.svg" 
+            alt="Decorative stars" 
+            width={100}
+            height={100}
+            className=" object-contain"
+          />
+        </div>
+        
+        {/* Top Right - Setup Wave */}
+        <div className="absolute bottom-0 -left-16 opacity-70 rotate-180">
+          <Image 
+            src="/images/setup/setup-wave.svg" 
+            alt="Decorative wave" 
+            width={400}
+            height={400}
+            className=" object-contain"
+          />
+        </div>
+        
+        {/* Bottom Left - Setup Blob */}
+        <div className="absolute bottom-0 -right-16 ">
+          <Image 
+            src="/images/setup/setup-blob.svg" 
+            alt="Decorative blob" 
+            width={400}
+            height={400}
+            className=" object-contain"
+          />
+        </div>
+        
+        {/* Bottom Right - Setup Illustration */}
+        <div className="absolute top-0 right-0 ">
+          <Image 
+            src="/images/setup/setup-illustration.svg" 
+            alt="Setup illustration" 
+            width={112}
+            height={112}
+            className=" object-contain"
+          />
+        </div>
+      </div>
+
       {/* Content */}
       <div className="relative z-10 flex items-center justify-center min-h-screen p-6 pt-[70px]">
       <Card className="w-full max-w-lg shadow-lg border-0 relative z-50 ring-1 ring-white/20 backdrop-blur-sm bg-white/90 mx-auto">
@@ -708,7 +756,7 @@ export default function StudentSetupPage() {
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
                   <p className="text-xs text-green-700">
-                    Don't worry! You can always update these documents later from your dashboard.
+                    Don&apos;t worry! You can always update these documents later from your dashboard.
                   </p>
                 </div>
               </div>

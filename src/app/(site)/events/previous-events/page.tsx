@@ -115,7 +115,7 @@ export default function PreviousEventsPage() {
               
               {/* Description */}
               <p className="text-gray-600">
-              The Previous Events section highlights our past workshops, mentorship programs, and career guidance sessions. This archive celebrates our students' journeys and the CRC's ongoing commitment to empowering young professionals. 
+              The Previous Events section highlights our past workshops, mentorship programs, and career guidance sessions. This archive celebrates our students&apos; journeys and the CRC&apos;s ongoing commitment to empowering young professionals. 
               </p>
               
             </div>
@@ -202,7 +202,7 @@ export default function PreviousEventsPage() {
                       </svg>
                     </div>
                     <h3 className="text-xl font-semibold text-gray-700 mb-2">No Previous Events</h3>
-                    <p className="text-gray-500">We haven't held any events yet. Check back soon for updates!</p>
+                    <p className="text-gray-500">We haven&apos;t held any events yet. Check back soon for updates!</p>
                   </div>
                 </div>
               )}

@@ -123,7 +123,7 @@ export default function StudentSignInForm() {
 
           <div className="mt-8 text-center">
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Don't have an account?{" "}
+              Don&apos;t have an account?{" "}
               <Link
                 href="/register"
                 className="text-green-500 hover:text-green-600 dark:text-gray-300 dark:hover:text-gray-100 font-medium"

@@ -3,7 +3,7 @@ import React from 'react';
 import Link from 'next/link';
 import { ArrowRight, LayoutDashboard } from "lucide-react";
 import { ExtrudingComponent } from "../animation/ExtrudingComponent";
-import { getSession } from "@/hooks/getSession";
+import { useSession } from "@/hooks/getSession";
 
 const GetStartedButton = () => {
   // Safely get session data with error handling
@@ -12,7 +12,7 @@ const GetStartedButton = () => {
   let isLoading = false;
   
   try {
-    const sessionData = getSession();
+    const sessionData = useSession();
     userId = sessionData?.userId || null;
     adminId = sessionData?.adminId || null;
     isLoading = sessionData?.isLoading || false;

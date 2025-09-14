@@ -443,7 +443,7 @@ export default function DashboardHome() {
           Welcome back, <span className="font-cal-sans font-bold">{adminName || 'Admin'}</span> 👋
         </div>
         <p className="text-gray-600 text-md">
-          Here's what's happening with your students this week
+          Here&apos;s what&apos;s happening with your students this week
         </p>
       </div>
 

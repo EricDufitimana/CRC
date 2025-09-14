@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import { gsap } from "gsap";
-import { getSession } from "@/hooks/getSession";
+import { useSession } from "@/hooks/getSession";
 import { User, LogOut } from "lucide-react";
 import { signOut } from "@/actions/signOut";
 
@@ -68,7 +68,7 @@ const Header = () => {
   
   
   try {
-    const sessionData = getSession();
+    const sessionData = useSession();
     userId = sessionData?.userId || null;
     adminId = sessionData?.adminId || null;
     studentId = sessionData?.studentId || null;

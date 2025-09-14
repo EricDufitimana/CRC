@@ -226,7 +226,7 @@ export default function UnauthorizedPage() {
               Oops! Access Restricted
             </h1>
             <p className="text-md text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
-              You don't have permission to access this area. Please check your credentials or contact support if you believe this is an error.
+              You don&apos;t have permission to access this area. Please check your credentials or contact support if you believe this is an error.
             </p>
           </div>
 

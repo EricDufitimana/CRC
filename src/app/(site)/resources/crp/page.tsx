@@ -58,7 +58,7 @@ export default function Home() {
                   What is the College Readiness Program
                 </h2>
                 <p className="mb-10 text-base leading-relaxed text-body-color dark:text-dark-6">
-                  The College Readiness Program was founded in 2022 to prepare ASYV's top students for the competitive application process required for admission and scholarship to American and international universities. The program begins in S5 Term 2 for qualifying students and continues throughout S6. Students will work on their applications during their time at ASYV; however, they will submit their applications after graduation. 
+                  The College Readiness Program was founded in 2022 to prepare ASYV&apos;s top students for the competitive application process required for admission and scholarship to American and international universities. The program begins in S5 Term 2 for qualifying students and continues throughout S6. Students will work on their applications during their time at ASYV; however, they will submit their applications after graduation. 
 
                   Each cohort contains 20 - 30 students, and meetings are organized by the CRC Further Education Fellow and the CRC Intern. If you would like to be part of this program, please ensure that your marks remain above 75 and watch for the application in S5. 
                 </p>

@@ -2,7 +2,7 @@
 import { lazy, Suspense } from "react";
 import Hero from "@/components/Hero";
 import ScrollUp from "@/components/Common/ScrollUp";
-import { getSession } from "@/hooks/getSession";
+import { useSession } from "@/hooks/getSession";
 
 // Lazy load non-critical components for better initial load
 const About = lazy(() => import("@/components/About"));
@@ -18,7 +18,7 @@ export default function Home() {
   let isLoading = true;
   
   try {
-    const sessionData = getSession();
+    const sessionData = useSession();
     userId = sessionData?.userId || null;
     isLoading = sessionData?.isLoading || false;
   } catch (error) {

@@ -1196,7 +1196,7 @@ export default function AspenDashboard() {
                     <CommandGroup heading="Available workshops" className="pb-4">
                         {!studentId && (
                           <div className="px-2 py-1 text-xs text-amber-600 bg-amber-50 rounded-md mb-2">
-                            Note: You may see all available workshops if your CRC class hasn't been assigned yet.
+                            Note: You may see all available workshops if your CRC class hasn&apos;t been assigned yet.
                           </div>
                         )}
                         
@@ -1760,7 +1760,7 @@ export default function AspenDashboard() {
             </div>
             <div className="text-center">
               <Button onClick={async () => { const cal = await getCalApi({ namespace: 'quick-review' }); cal('modal', { calLink: 'dufitimana-eric/quick-review' }); }} className="w-full bg-statColors-2 hover:bg-statColors-2/80 text-white py-4 px-8 rounded-xl font-semibold text-sm shadow-lg hover:shadow-xl transition-all duration-200 shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(37,99,235,0.35)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_4px_rgba(37,99,235,0.15)]">Book Your Session</Button>
-              <p className="text-xs text-gray-500 mt-3">You'll be redirected to Cal.com to select your preferred time</p>
+              <p className="text-xs text-gray-500 mt-3">You&apos;ll be redirected to Cal.com to select your preferred time</p>
             </div>
             <div className="flex justify-center pt-4">
               <Button variant="outline" onClick={() => setBookingStep('select-time')} className="border-gray-300 text-gray-700 hover:bg-gray-50">Back</Button>

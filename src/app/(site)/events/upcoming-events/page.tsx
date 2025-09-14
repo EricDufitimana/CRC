@@ -208,7 +208,7 @@ export default function UpcomingEventsPage() {
                       </svg>
                     </div>
                     <h3 className="text-xl font-semibold text-gray-700 mb-2">No Upcoming Events</h3>
-                    <p className="text-gray-500">We don't have any upcoming events scheduled yet. Check back soon for updates!</p>
+                    <p className="text-gray-500">We don&apos;t have any upcoming events scheduled yet. Check back soon for updates!</p>
                   </div>
                 </div>
               )}

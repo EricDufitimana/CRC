@@ -70,7 +70,7 @@ export default async function Internships() {
                   </div>
                 </div>
                 <h3 className="text-lg font-medium text-gray-600 mb-2">No internships available</h3>
-                <p className="text-gray-500 max-w-md mx-auto">We're constantly seeking new internship opportunities for our students. Check back regularly for new openings and partnerships.</p>
+                <p className="text-gray-500 max-w-md mx-auto">We&apos;re constantly seeking new internship opportunities for our students. Check back regularly for new openings and partnerships.</p>
               </div>
             )}
           </div>

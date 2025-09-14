@@ -64,7 +64,7 @@ export default async function Home() {
                 </div>
               </div>
               <h3 className="text-lg font-medium text-gray-600 mb-2">No English learning resources available</h3>
-              <p className="text-gray-500 max-w-md mx-auto">We're constantly adding new resources to help improve your English skills. Check back soon for study materials and learning tools.</p>
+              <p className="text-gray-500 max-w-md mx-auto">We&apos;re constantly adding new resources to help improve your English skills. Check back soon for study materials and learning tools.</p>
             </div>
           )}
           </div>

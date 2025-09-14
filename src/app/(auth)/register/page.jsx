@@ -275,7 +275,7 @@ export default function SignUpForm() {
                           <div className="max-h-60 overflow-y-auto">
                             {filteredStudents.length === 0 ? (
                               <div className="p-4 text-center text-sm text-gray-500">
-                                No students found matching "{studentSearchQuery}"
+                                No students found matching &quot;{studentSearchQuery}&quot;
                               </div>
                             ) : (
                               filteredStudents.map((student) => (

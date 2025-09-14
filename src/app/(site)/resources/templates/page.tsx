@@ -79,7 +79,7 @@ export default async function Home() {
                   </div>
                 </div>
                 <h3 className="text-lg font-medium text-gray-600 mb-2">No templates available</h3>
-                <p className="text-gray-500 max-w-md mx-auto">We're working on adding helpful document templates and samples. Check back soon for resources to jumpstart your projects.</p>
+                <p className="text-gray-500 max-w-md mx-auto">We&apos;re working on adding helpful document templates and samples. Check back soon for resources to jumpstart your projects.</p>
               </div>
             )}
             </div>

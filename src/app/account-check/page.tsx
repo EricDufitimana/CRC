@@ -246,7 +246,7 @@ export default function AccountCheckPage() {
               Account Not Found
             </h1>
             <p className="text-md text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
-              It looks like you haven't created your account yet. Please sign up to get started.
+              It looks like you haven&apos;t created your account yet. Please sign up to get started.
             </p>
           </div>
 

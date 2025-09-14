@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createClient } from "@/utils/supabase/client";
 
 interface SessionData {
@@ -9,7 +9,7 @@ interface SessionData {
   error: string | null;
 }
 
-export function getSession() {
+export function useSession() {
   const [sessionData, setSessionData] = useState<SessionData>({
     userId: null,
     adminId: null,
@@ -130,7 +130,7 @@ export function getSession() {
     }
   };
 
-  const initializeSession = async () => {
+  const initializeSession = useCallback(async () => {
     try {
       setSessionData((prev: SessionData) => ({ ...prev, isLoading: true, error: null }));
       await fetchSessionData();
@@ -143,11 +143,11 @@ export function getSession() {
         isLoading: false
       }));
     }
-  };
+  }, []);
 
   useEffect(() => {
     initializeSession();
-  }, []);
+  }, [initializeSession]);
 
   const refreshSessionData = () => {
     initializeSession();

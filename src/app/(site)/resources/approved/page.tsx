@@ -60,7 +60,7 @@ const NotFound = () => {
                 Comming Soon
               </h3>
               <p className="mb-8 text-base text-body-color dark:text-dark-6">
-               The page you are looking hasn't been created yet, but we ensure you it is coming soon.
+               The page you are looking hasn&apos;t been created yet, but we ensure you it is coming soon.
               </p>
               <Link
                 href="/"

@@ -315,7 +315,7 @@ export default function CrcClassGroupsPage() {
                           <AlertDialogHeader>
                             <AlertDialogTitle>Delete CRC Class</AlertDialogTitle>
                             <AlertDialogDescription>
-                              Are you sure you want to delete the class "{g.name}"? This will unassign all students from this class. This action cannot be undone.
+                              Are you sure you want to delete the class &quot;{g.name}&quot;? This will unassign all students from this class. This action cannot be undone.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
