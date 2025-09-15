@@ -194,6 +194,8 @@ const useAssignmentNavigation = () => {
   
   // Single effect for URL synchronization
   useEffect(() => {
+    if (!searchParams) return;
+    
     const urlClass = searchParams.get('crcClassId');
     const urlSubClass = searchParams.get('subClassId');  
     const urlWorkshop = searchParams.get('workshopId');

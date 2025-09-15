@@ -194,6 +194,8 @@ const useAssignmentNavigation = () => {
   
   // Single effect for URL synchronization
   useEffect(() => {
+    if (!searchParams) return;
+    
     const urlClass = searchParams.get('crcClassId');
     const urlSubClass = searchParams.get('subClassId');  
     const urlWorkshop = searchParams.get('workshopId');
@@ -245,8 +247,8 @@ const useAssignmentNavigation = () => {
   
   // Helper to get the effective class ID for API calls with fallback to URL params
   const getEffectiveClassId = useCallback(() => {
-    const urlSubClass = searchParams.get('subClassId');
-    const urlClass = searchParams.get('crcClassId');
+    const urlSubClass = searchParams?.get('subClassId');
+    const urlClass = searchParams?.get('crcClassId');
     return selectedSubClass || urlSubClass || selectedClass || urlClass;
   }, [selectedSubClass, selectedClass, searchParams]);
   

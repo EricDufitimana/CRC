@@ -97,7 +97,7 @@ export default function WorkshopsManagement() {
   
   // Get group from URL params or default to ey
   const [selectedGroup, setSelectedGroup] = useState(() => {
-    const groupFromUrl = searchParams.get('group');
+    const groupFromUrl = searchParams?.get('group');
     return groupFromUrl || "ey";
   });
   const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
@@ -867,6 +867,8 @@ export default function WorkshopsManagement() {
   // Sync URL with selectedGroup when component mounts or URL changes
   const hasInitialized = useRef(false);
   useEffect(() => {
+    if (!searchParams) return;
+    
     const groupFromUrl = searchParams.get('group');
     if (!hasInitialized.current && groupFromUrl) {
       setSelectedGroup(groupFromUrl);

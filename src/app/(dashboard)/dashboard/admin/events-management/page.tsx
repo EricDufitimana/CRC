@@ -96,7 +96,7 @@ export default function EventsManagement() {
   
   // Get category from URL params or default to previous-events
   const [selectedCategory, setSelectedCategory] = useState(() => {
-    const categoryFromUrl = searchParams.get('category');
+    const categoryFromUrl = searchParams?.get('category');
     return categoryFromUrl || "previous-events";
   });
   const [events, setEvents] = useState<SanityEvent[]>([]);
