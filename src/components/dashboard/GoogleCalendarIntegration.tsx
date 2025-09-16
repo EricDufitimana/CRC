@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../..
 import { Button } from "../../../zenith/src/components/ui/button";
 import { Badge } from "../../../zenith/src/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "../../../zenith/src/components/ui/dialog";
-import { Calendar, CalendarContent, CalendarDay, CalendarGrid, CalendarHeader, CalendarHead, CalendarRow, CalendarTitle } from "../ui/calendar";
 import { 
   Calendar as CalendarIcon, 
   ExternalLink, 
@@ -201,71 +200,62 @@ export function GoogleCalendarIntegration({ sessions, onSessionClick }: GoogleCa
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Calendar className="w-full">
-            <CalendarHeader>
-              <CalendarTitle>July 2024</CalendarTitle>
-            </CalendarHeader>
-            <CalendarGrid>
-              <CalendarHead>
-                <CalendarRow>
-                  <CalendarDay>Sun</CalendarDay>
-                  <CalendarDay>Mon</CalendarDay>
-                  <CalendarDay>Tue</CalendarDay>
-                  <CalendarDay>Wed</CalendarDay>
-                  <CalendarDay>Thu</CalendarDay>
-                  <CalendarDay>Fri</CalendarDay>
-                  <CalendarDay>Sat</CalendarDay>
-                </CalendarRow>
-              </CalendarHead>
-              <CalendarContent>
-                {/* This is a simplified calendar view - in a real app, you'd use a proper calendar library */}
-                <div className="p-8 text-center">
-                  <div className="grid grid-cols-7 gap-1">
-                    {Array.from({ length: 35 }, (_, i) => {
-                      const date = new Date(2024, 6, 1 + i);
-                      const daySessions = getSessionsForDate(date);
-                      const isToday = date.toDateString() === new Date().toDateString();
-                      
-                      return (
-                        <div
-                          key={i}
-                          className={`p-2 min-h-[80px] border rounded-md cursor-pointer hover:bg-dashboard-background transition-colors ${
-                            isToday ? 'bg-blue-50 border-blue-200' : 'border-gray-200'
-                          }`}
-                          onClick={() => setSelectedDate(date)}
-                        >
-                          <div className="text-sm font-medium mb-1">
-                            {date.getDate()}
+          <div className="w-full">
+            <div className="flex items-center justify-center mb-4">
+              <h3 className="text-lg font-semibold">July 2024</h3>
+            </div>
+            <div className="grid grid-cols-7 gap-1 mb-2">
+              <div className="p-2 text-center text-sm font-medium text-dashboard-muted-foreground">Sun</div>
+              <div className="p-2 text-center text-sm font-medium text-dashboard-muted-foreground">Mon</div>
+              <div className="p-2 text-center text-sm font-medium text-dashboard-muted-foreground">Tue</div>
+              <div className="p-2 text-center text-sm font-medium text-dashboard-muted-foreground">Wed</div>
+              <div className="p-2 text-center text-sm font-medium text-dashboard-muted-foreground">Thu</div>
+              <div className="p-2 text-center text-sm font-medium text-dashboard-muted-foreground">Fri</div>
+              <div className="p-2 text-center text-sm font-medium text-dashboard-muted-foreground">Sat</div>
+            </div>
+            <div className="grid grid-cols-7 gap-1">
+              {Array.from({ length: 35 }, (_, i) => {
+                const date = new Date(2024, 6, 1 + i);
+                const daySessions = getSessionsForDate(date);
+                const isToday = date.toDateString() === new Date().toDateString();
+                
+                return (
+                  <div
+                    key={i}
+                    className={`p-2 min-h-[80px] border rounded-md cursor-pointer hover:bg-dashboard-background transition-colors ${
+                      isToday ? 'bg-blue-50 border-blue-200' : 'border-gray-200'
+                    }`}
+                    onClick={() => setSelectedDate(date)}
+                  >
+                    <div className="text-sm font-medium mb-1">
+                      {date.getDate()}
+                    </div>
+                    {daySessions.length > 0 && (
+                      <div className="space-y-1">
+                        {daySessions.slice(0, 2).map((session) => (
+                          <div
+                            key={session.id}
+                            className="text-xs p-1 rounded bg-blue-100 text-blue-800 truncate"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onSessionClick(session);
+                            }}
+                          >
+                            {session.title.substring(0, 15)}...
                           </div>
-                          {daySessions.length > 0 && (
-                            <div className="space-y-1">
-                              {daySessions.slice(0, 2).map((session) => (
-                                <div
-                                  key={session.id}
-                                  className="text-xs p-1 rounded bg-blue-100 text-blue-800 truncate"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onSessionClick(session);
-                                  }}
-                                >
-                                  {session.title.substring(0, 15)}...
-                                </div>
-                              ))}
-                              {daySessions.length > 2 && (
-                                <div className="text-xs text-dashboard-muted-foreground">
-                                  +{daySessions.length - 2} more
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                        ))}
+                        {daySessions.length > 2 && (
+                          <div className="text-xs text-dashboard-muted-foreground">
+                            +{daySessions.length - 2} more
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                </div>
-              </CalendarContent>
-            </CalendarGrid>
-          </Calendar>
+                );
+              })}
+            </div>
+          </div>
         </CardContent>
       </Card>
 
