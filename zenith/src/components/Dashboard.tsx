@@ -1,7 +1,4 @@
 import { useState } from "react";
-import { DashboardSidebar } from "./DashboardSidebar";
-import { DashboardHeader } from "./DashboardHeader";
-import { StudentTable } from "./StudentTable";
 import { StatsCards } from "./StatsCards";
 import { TasksList } from "./TasksList";
 import { DashboardCalendar } from "./DashboardCalendar";
@@ -9,18 +6,10 @@ export function Dashboard({ children }: { children?: React.ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [isDarkTheme, setIsDarkTheme] = useState(true);
   return <div className="min-h-screen bg-background flex w-full">
-      <DashboardSidebar 
-        collapsed={sidebarCollapsed} 
-        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-        isDarkTheme={isDarkTheme}
-      />
+      
       
       <div className="flex-1 flex flex-col">
-        <DashboardHeader 
-          isDarkTheme={isDarkTheme}
-          onThemeToggle={() => setIsDarkTheme(!isDarkTheme)}
-        />
-        
+   
         <main className="flex-1 p-6 max-w-7xl mx-auto w-full rounded-tl-md relative bg-gray-50">
           {children ? children : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -39,7 +28,6 @@ export function Dashboard({ children }: { children?: React.ReactNode }) {
                 <StatsCards />
                 
                 <div className="flex-1">
-                  <StudentTable />
                 </div>
               </div>
               
