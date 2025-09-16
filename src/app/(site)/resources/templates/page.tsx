@@ -30,6 +30,7 @@ type Template = {
   description: string;
   url?: string;
   secondary_url?: string;
+  opportunity_deadline?:string;
 };
 
 export default async function Home() {

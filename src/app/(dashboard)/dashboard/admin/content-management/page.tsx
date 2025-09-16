@@ -185,12 +185,7 @@ export default function ContentManagement() {
       direction: 'right'
     });
 
-    try {
-      await addPromise;
-      return { ...prevstate, error: "", status: "SUCCESS" };
-    } catch (error) {
-      return { ...prevstate, error: error instanceof Error ? error.message : "Failed to add resource", status: "ERROR" };
-    }
+    return { ...prevstate, error: "", status: "SUCCESS" };
   };
 
   const[state,formAction, isPending] = useActionState(handleAddResource, {error:"", status: "INITIAL"})
@@ -945,6 +940,7 @@ export default function ContentManagement() {
           </div>
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   );
 } 
