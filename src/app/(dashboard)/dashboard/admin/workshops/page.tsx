@@ -166,7 +166,7 @@ export default function WorkshopsManagement() {
 
   // Update URL when group changes
   const updateGroupInUrl = (group: string) => {
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(searchParams?.toString() || '');
     params.set('group', group);
     router.push(`?${params.toString()}`);
   };

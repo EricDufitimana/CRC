@@ -839,7 +839,7 @@ export default function EventsManagement() {
 
   // Update URL when category changes
   const updateCategoryInUrl = (category: string) => {
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(searchParams?.toString() || '');
     params.set('category', category);
     router.push(`?${params.toString()}`);
   };
