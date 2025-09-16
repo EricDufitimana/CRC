@@ -932,7 +932,7 @@ export default function ContentManagement() {
               Cancel
             </Button>
             <Button 
-              variant="destructive" 
+            variant="destructive" 
               onClick={handleDeleteConfirm}
             >
               Delete
@@ -941,6 +941,6 @@ export default function ContentManagement() {
         </DialogContent>
       </Dialog>
       </div>
-    </div>
+    
   );
 } 
