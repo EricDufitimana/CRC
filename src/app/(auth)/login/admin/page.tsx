@@ -61,6 +61,7 @@ export default function AdminSignInForm() {
 
   const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     setIsSubmittingContact(true);
 
     try {

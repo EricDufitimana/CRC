@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, startTransition } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "../../../../../../zenith/src/components/ui/button";
 import { Input } from "../../../../../../zenith/src/components/ui/input";
@@ -407,7 +407,10 @@ export default function WorkshopsManagement() {
       formData.append("presentation_file", selectedFile);
     }
     
-    await formAction(formData);
+    // Use startTransition to properly call the action
+    startTransition(() => {
+      formAction(formData);
+    });
   };
 
   const handleAssignmentFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
