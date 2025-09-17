@@ -80,7 +80,8 @@ export async function submitOpportunityHandler(prevState, formData) {
             const opportunityTitle = submissionData.title;
             const description = submissionData.description || 'No description provided';
             const dateTime = new Date().toLocaleString();
-            const dashboardLink = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/dashboard/admin/opportunity-tracker`;
+            const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+            const dashboardLink = `${baseUrl}/dashboard/admin/opportunity-tracker`;
             
             console.log('🔍 Email parameters:', {
               adminName,

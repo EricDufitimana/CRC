@@ -22,7 +22,7 @@ export default function StudentSignInForm() {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: "http://localhost:3000/account-check",
+          redirectTo: `${window.location.origin}/account-check`,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',

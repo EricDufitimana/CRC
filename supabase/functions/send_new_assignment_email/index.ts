@@ -193,7 +193,7 @@ serve(async (req) => {
       description,
       deadline: formattedDeadline,
       crc_class_name,
-      dashboard_link: `${siteUrl || "http://localhost:3000"}/dashboard/student/cypress/assignments`
+      dashboard_link: `${siteUrl || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"}/dashboard/student/cypress/assignments`
     };
 
     console.log('📧 Email parameters prepared:', emailParams);

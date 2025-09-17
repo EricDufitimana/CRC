@@ -64,7 +64,8 @@ export async function deferOpportunityTo(opportunity_id, from_admin_id, to_admin
           const toAdminName = `${toAdmin.honorific || ''} ${toAdmin.first_name || ''} ${toAdmin.last_name || ''}`.trim();
           const studentName = `${student.first_name || ''} ${student.last_name || ''}`.trim();
           
-          const dashboardLink = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/dashboard/admin/opportunity-tracker`;
+          const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+          const dashboardLink = `${baseUrl}/dashboard/admin/opportunity-tracker`;
           
           console.log('🔍 Email parameters:', {
             fromAdminName,

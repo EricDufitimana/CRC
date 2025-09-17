@@ -17,7 +17,8 @@ export async function getAvatarsWithSignedUrls(): Promise<{
   try {
     console.log('🔄 Fetching avatars with signed URLs...');
     
-    const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/avatars/get-signed-urls`, {
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+    const response = await fetch(`${baseUrl}/api/avatars/get-signed-urls`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -58,7 +59,8 @@ export async function getAvatarsWithSignedUrlsCustom(expiresIn: number = 3600): 
   try {
     console.log(`🔄 Fetching avatars with signed URLs (expires in ${expiresIn}s)...`);
     
-    const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/avatars/get-signed-urls`, {
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+    const response = await fetch(`${baseUrl}/api/avatars/get-signed-urls`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

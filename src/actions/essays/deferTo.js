@@ -110,7 +110,8 @@ export async function deferTo(essay_id, from_admin_id, to_admin_id) {
     try {
       const toAdmin = [toAdminData.honorific, toAdminData.first_name, toAdminData.last_name].filter(Boolean).join(' ');
       const toAdminEmail = toAdminData.email;
-      const dashboardLink = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/dashboard/admin/essay-requests`;
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+      const dashboardLink = `${baseUrl}/dashboard/admin/essay-requests`;
 
       if (toAdmin && essayData.title && toAdminEmail) {
         console.log('📧 Sending essay referral notification to receiving admin...');

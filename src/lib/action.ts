@@ -109,22 +109,23 @@ export const addResource = async(state: any, form:FormData) => {
           console.log("📧 Mapping category to URL...");
           const getCategoryUrl = (category: string) => {
             console.log("📧 Category mapping input:", category);
+            const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
             let url;
             switch (category) {
               case 'new_opportunities':
-                url = 'http://localhost:3000/resources/newopportunities';
+                url = `${baseUrl}/resources/newopportunities`;
                 break;
               case 'recurring_opportunities':
-                url = 'http://localhost:3000/resources/internships';
+                url = `${baseUrl}/resources/internships`;
                 break;
               case 'templates':
-                url = 'http://localhost:3000/resources/templates';
+                url = `${baseUrl}/resources/templates`;
                 break;
               case 'english_language_learning':
-                url = 'http://localhost:3000/resources/ell';
+                url = `${baseUrl}/resources/ell`;
                 break;
               default:
-                url = 'http://localhost:3000/resources/newopportunities';
+                url = `${baseUrl}/resources/newopportunities`;
                 break;
             }
             console.log("📧 Mapped URL:", url);

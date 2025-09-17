@@ -110,7 +110,8 @@ export async function submitEssayHandler(prevState, formData) {
           minute: '2-digit'
         });
 
-        const dashboardLink = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/dashboard/admin/essay-requests`;
+        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+        const dashboardLink = `${baseUrl}/dashboard/admin/essay-requests`;
 
         console.log('📧 Email details prepared:');
         console.log('   - Admin Name:', adminName);
