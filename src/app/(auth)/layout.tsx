@@ -5,13 +5,14 @@ import ScrollToTop from "@/components/ScrollToTop";
 import { ThemeProvider } from "next-themes";
 import "../../styles/index.css";
 import "../../styles/prism-vsc-dark-plus.css";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import PreLoader from "@/components/Common/PreLoader";
 import Link from "next/link";
 import { Toaster, ToastBar } from "react-hot-toast";
 import "../../styles/index.css";
 import { Boxes } from "@/components/ui/background-boxes";
 import Head from "../(site)/head";
+import { Loader2 } from "lucide-react";
 
 
 export default function RootLayout({
@@ -37,7 +38,15 @@ export default function RootLayout({
           >
             <div className="relative p-6 bg-white z-1 dark:bg-gray-900 sm:p-0 no-scrollbar overflow-y-scroll">
               <div className="relative flex flex-col justify-center w-full h-screen lg:flex-row dark:bg-gray-900 sm:p-0">
-                  {children}
+                  <Suspense fallback={
+                    <div className="flex items-center justify-center w-full h-full">
+                      <div className="flex flex-col items-center gap-4">
+                        <Loader2 className="h-8 w-8 animate-spin" />
+                      </div>
+                    </div>
+                  }>
+                    {children}
+                  </Suspense>
                 <div className="items-center hidden w-full h-full lg:w-1/2 lg:grid  overflow-hidden p-1">
                   <div className="relative w-full h-full overflow-hidden bg-slate-900 rounded-2xl">
                     <div className="absolute inset-0 w-full h-full bg-slate-900 z-20 [mask-image:radial-gradient(transparent,white)] pointer-events-none rounded-3xl" />
