@@ -12,8 +12,6 @@ import { Toaster, ToastBar } from "react-hot-toast";
 import "../../styles/index.css";
 import { Boxes } from "@/components/ui/background-boxes";
 import Head from "../(site)/head";
-import { Loader2 } from "lucide-react";
-
 
 export default function RootLayout({
   children,
@@ -40,9 +38,7 @@ export default function RootLayout({
               <div className="relative flex flex-col justify-center w-full h-screen lg:flex-row dark:bg-gray-900 sm:p-0">
                   <Suspense fallback={
                     <div className="flex items-center justify-center w-full h-full">
-                      <div className="flex flex-col items-center gap-4">
-                        <Loader2 className="h-8 w-8 animate-spin" />
-                      </div>
+                      <PreLoader />
                     </div>
                   }>
                     {children}
