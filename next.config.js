@@ -1,5 +1,32 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            // Add every origin that is allowed to embed this site:
+            // - Local dev (common ports)
+            // - Your future production domain
+            value: [
+              "default-src 'self';",
+              "frame-ancestors",
+              // add/remove lines below as needed
+              "'self'",
+              "http://localhost:3000",
+              "http://127.0.0.1:3000",
+              "http://localhost:5000",
+              "http://127.0.0.1:5000",
+              "https://asyv.ac.rw",
+              "https://www.asyv.ac.rw",
+            ].join(' ') // produces: default-src ... frame-ancestors 'self' ...
+          },
+        ],
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       {
