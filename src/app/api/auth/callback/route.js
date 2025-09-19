@@ -229,8 +229,8 @@ export async function GET(request) {
         .single();
       
       if (adminRecord) {
-        console.log('Existing user is an admin, redirecting to unauthorized page');
-        return NextResponse.redirect(new URL('/unauthorized', request.url));
+        console.log('Existing user is an admin, redirecting to admin-verification page');
+        return NextResponse.redirect(new URL('/admin-verification', request.url));
       } else {
         console.log('Existing user is a student, redirecting to login');
         return NextResponse.redirect(new URL('/login?message=already_registered', request.url));
@@ -318,8 +318,8 @@ export async function GET(request) {
       .single();
     
     if (adminRecord) {
-      console.log('User is an admin, redirecting to unauthorized page for verification');
-      return NextResponse.redirect(new URL('/unauthorized', request.url));
+      console.log('User is an admin, redirecting to admin-verification page for verification');
+      return NextResponse.redirect(new URL('/admin-verification', request.url));
     } else {
       console.log('User is a student, redirecting to login with success message');
       return NextResponse.redirect(new URL('/login?message=google_signup_success', request.url));

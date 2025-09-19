@@ -90,9 +90,9 @@ export async function updateSession(request: NextRequest) {
             timestamp: new Date().toISOString()
           });
           
-          // User is not an admin, redirect to unauthorized page
+          // User is not an admin, redirect to admin-verification page
           const url = request.nextUrl.clone()
-          url.pathname = '/unauthorized'
+          url.pathname = '/admin-verification'
           return NextResponse.redirect(url)
         }
 
@@ -120,9 +120,9 @@ export async function updateSession(request: NextRequest) {
             timestamp: new Date().toISOString()
           });
           
-          // User is not a student, redirect to unauthorized page
+          // User is not a student, redirect to admin-verification page
           const url = request.nextUrl.clone()
-          url.pathname = '/unauthorized'
+          url.pathname = '/admin-verification'
           return NextResponse.redirect(url)
         }
 
@@ -135,9 +135,9 @@ export async function updateSession(request: NextRequest) {
       }
     } catch (error) {
       console.log('❌ Middleware authorization error:', error);
-      // On error, redirect to unauthorized page
+      // On error, redirect to admin-verification page
       const url = request.nextUrl.clone()
-      url.pathname = '/unauthorized'
+      url.pathname = '/admin-verification'
       return NextResponse.redirect(url)
     }
   }

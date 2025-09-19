@@ -1,8 +1,8 @@
 import '@/styles/index.css';
 
 export const metadata = {
-  title: 'Unauthorized Access - CRC Platform',
-  description: 'You do not have permission to access this area. Please contact support if you believe this is an error.',
+  title: 'Admin Verification - CRC Platform',
+  description: 'Admin verification in progress. Please wait while we verify your account status.',
 }
 
 export default function RootLayout({

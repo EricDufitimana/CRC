@@ -1,4 +1,21 @@
 "use server";
+function getBaseUrl() {
+  if (typeof window !== "undefined") {
+    // client side
+    return window.location.origin;
+  }
+
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return process.env.NEXT_PUBLIC_SITE_URL; // full URL
+  }
+
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`; // Vercel auto-provides hostname
+  }
+
+  return "http://localhost:3000"; // fallback for local server
+}
+
 
 export interface AvatarData {
   id: string;
@@ -17,7 +34,8 @@ export async function getAvatarsWithSignedUrls(): Promise<{
   try {
     console.log('🔄 Fetching avatars with signed URLs...');
     
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+    const baseUrl = getBaseUrl();
+    console.log('🔗 Base URL:', baseUrl);
     const response = await fetch(`${baseUrl}/api/avatars/get-signed-urls`, {
       method: 'GET',
       headers: {
@@ -59,7 +77,8 @@ export async function getAvatarsWithSignedUrlsCustom(expiresIn: number = 3600): 
   try {
     console.log(`🔄 Fetching avatars with signed URLs (expires in ${expiresIn}s)...`);
     
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+    const baseUrl = getBaseUrl();
+    console.log('🔗 Base URL:', baseUrl);
     const response = await fetch(`${baseUrl}/api/avatars/get-signed-urls`, {
       method: 'POST',
       headers: {

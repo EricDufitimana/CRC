@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { EventCard, EventDetailsModal } from "@/components/Events";
 import { useState, useEffect } from "react";
@@ -165,7 +165,7 @@ export default function UpcomingEventsPage() {
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-12 mt-8">
               {loading ? (
                 <div className="col-span-full text-center py-16">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto text-neutral-400" />
                   <p className="text-lg text-gray-600">Loading events...</p>
                 </div>
               ) : error ? (

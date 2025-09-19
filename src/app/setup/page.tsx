@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import { z } from "zod";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../zenith/src/components/ui/card";
 import { Button } from "../../../zenith/src/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "../../../zenith/src/components/ui/avatar";
@@ -11,9 +12,13 @@ import { FileUpload } from "../../../zenith/src/components/ui/file-upload";
 import { BackgroundGradientAnimation } from "@/components/ui/background-gradient-animation";
 import { useUserData } from "@/hooks/useUserData";
 import { useRouter } from "next/navigation";
-import { ArrowRight, User, FileText, Upload, Image as ImageIcon, Camera, ArrowLeft, Link } from "lucide-react";
+import { ArrowRight, User, FileText, Upload, Image as ImageIcon, Camera, ArrowLeft, Link, Loader2 } from "lucide-react";
 import { getAvatars, AvatarData as BaseAvatarData } from "@/actions/avatars/getAvatars";
 import { getAvatarsWithSignedUrls, AvatarData } from "@/actions/avatars/getAvatarsWithSignedUrls";
+import { AnimatedText } from "@/components/animation/AnimatedText";
+
+// URL validation schema
+const urlSchema = z.string().url("Please enter a valid URL");
 
 export default function StudentSetupPage() {
   const [studentData, setStudentData] = useState<any>(null);
@@ -32,6 +37,9 @@ export default function StudentSetupPage() {
   const [uploadedAvatarFile, setUploadedAvatarFile] = useState<File[]>([]);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [setupError, setSetupError] = useState<string | null>(null);
+  const [showWelcomeText, setShowWelcomeText] = useState<boolean>(false);
+  const [showButton, setShowButton] = useState<boolean>(false);
+  const [resumeUrlError, setResumeUrlError] = useState<string | null>(null);
   const { userId, studentId, isLoading: userDataLoading } = useUserData();
   const router = useRouter();
 
@@ -66,8 +74,26 @@ export default function StudentSetupPage() {
     
     // Clear any previous errors
     setSetupError(null);
+    setResumeUrlError(null);
     
-    if (currentStep < 2) {
+    // Validate required fields on step 3 (final step)
+    if (currentStep === 3) {
+      if (academicReportFile.length === 0) {
+        setSetupError('Academic report is required to complete setup.');
+        return;
+      }
+      
+      // Validate resume URL if provided
+      if (resumeLink.trim()) {
+        const urlValidation = urlSchema.safeParse(resumeLink.trim());
+        if (!urlValidation.success) {
+          setResumeUrlError(urlValidation.error.errors[0].message);
+          return;
+        }
+      }
+    }
+    
+    if (currentStep < 3) {
       // Move to next step
       console.log('📝 Setup: Moving to next step', { from: currentStep, to: currentStep + 1 });
       setCurrentStep(prev => prev + 1);
@@ -182,13 +208,18 @@ export default function StudentSetupPage() {
 
         // Only navigate to dashboard if everything succeeded
         console.log('🏠 Setup: All operations successful, navigating to dashboard...');
-        router.push('/dashboard/student');
+        
+        // Keep uploading state true until redirect
+        setTimeout(() => {
+          router.push('/dashboard/student');
+        }, 1000);
       } catch (error) {
         console.error('💥 Setup: Error completing setup:', error);
         setSetupError(`Setup failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        setIsUploading(false); // Reset uploading state on error
         // Don't redirect on error
       } finally {
-        setIsUploading(false);
+        // Don't set isUploading to false here - let it stay true until redirect
       }
     }
   };
@@ -307,6 +338,47 @@ export default function StudentSetupPage() {
     fetchAvatarsFromServer();
   }, []);
 
+  // Sequential animation timing for step 0
+  useEffect(() => {
+    if (currentStep === 0 && studentData?.first_name) {
+      // Reset animation states
+      setShowWelcomeText(false);
+      setShowButton(false);
+      
+      // Show welcome text after greeting animation completes (estimated 2.5 seconds)
+      const welcomeTimer = setTimeout(() => {
+        console.log('Setting showWelcomeText to true');
+        setShowWelcomeText(true);
+        
+        // Force a longer delay to ensure the element is mounted and scroll trigger is ready
+        setTimeout(() => {
+          // Force ScrollTrigger to refresh and recalculate
+          if (typeof window !== 'undefined' && (window as any).ScrollTrigger) {
+            (window as any).ScrollTrigger.refresh();
+            // Force trigger the animation by scrolling
+            window.scrollTo(0, window.scrollY + 1);
+            window.scrollTo(0, window.scrollY - 1);
+          }
+        }, 500);
+      }, 2500);
+      
+      // Show button after welcome text animation completes (estimated 6 seconds total)
+      const buttonTimer = setTimeout(() => {
+        setShowButton(true);
+      }, 5100);
+      
+      return () => {
+        clearTimeout(welcomeTimer);
+        clearTimeout(buttonTimer);
+      };
+    } else if (currentStep !== 0) {
+      // Reset animation states when not on step 0
+      setShowWelcomeText(false);
+      setShowButton(false);
+    }
+  }, [currentStep, studentData?.first_name]);
+
+
   const setupSteps = [
     {
       icon: Camera,
@@ -324,6 +396,8 @@ export default function StudentSetupPage() {
       description: "Upload your resume"
     }
   ];
+
+  const totalSteps = 3; // Steps Overview (1), Profile Setup (2), Documents (3)
 
   // Use fetched avatars from Supabase, fallback to sample avatars if none loaded
   const sampleAvatars = [
@@ -349,10 +423,23 @@ export default function StudentSetupPage() {
 
   if (userDataLoading || isLoading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center space-y-4">
-          <Skeleton className="h-8 w-64 mx-auto" />
-          <Skeleton className="h-4 w-48 mx-auto" />
+      <div 
+        className="min-h-screen flex items-center justify-center overflow-hidden"
+        style={{
+          backgroundImage: 'url("/images/setup/setup-background.png")',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat'
+        }}
+      >
+        <div className="text-center">
+          <div className="inline-block w-12 h-12 border-2 border-gray-200 dark:border-gray-700 border-t-primary rounded-full animate-spin"></div>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            Loading Setup Page...
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400">
+            Please wait while the setup page gets ready
+          </p>
         </div>
       </div>
     );
@@ -360,10 +447,18 @@ export default function StudentSetupPage() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div 
+        className="flex items-center justify-center h-full min-h-screen overflow-hidden"
+        style={{
+          backgroundImage: 'url("/images/setup/setup-background.png")',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat'
+        }}
+      >
         <div className="text-center space-y-4">
           <p className="text-red-500">Error loading profile: {error}</p>
-          <Button onClick={() => window.location.reload()}>
+          <Button onClick={() => window.location.reload()} className="bg-dark hover:bg-dark/90  text-white">
             Try Again
           </Button>
         </div>
@@ -373,81 +468,122 @@ export default function StudentSetupPage() {
 
   return (
     <>  
-      {/* Decorative Illustrations */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        {/* Top Left - Setup Stars */}
-        <div className="absolute top-0 left-4 opacity-70 ">
-          <Image 
-            src="/images/setup/setup-stars.svg" 
-            alt="Decorative stars" 
-            width={100}
-            height={100}
-            className=" object-contain"
-          />
+      {/* Content Container with Background */}
+      <div 
+        className="relative flex items-center justify-center min-h-screen p-6 pt-[70px] overflow-hidden"
+        style={{
+          backgroundImage: 'url("/images/setup/setup-background.png")',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat'
+        }}
+      >
+        {/* Decorative Illustrations - Above background, below content */}
+        <div className="absolute inset-0 pointer-events-none z-10">
+          {/* Top Left - Setup Stars */}
+          <div className="absolute top-0 left-4 opacity-70">
+            <Image 
+              src="/images/setup/setup-stars.svg" 
+              alt="Decorative stars" 
+              width={100}
+              height={100}
+              className="object-contain"
+            />
+          </div>
+          
+          {/* Top Right - Setup Wave */}
+          <div className="absolute bottom-0 -left-32 opacity-70">
+            <Image 
+              src="/images/setup/setup-wave.svg" 
+              alt="Decorative wave" 
+              width={400}
+              height={400}
+              className="object-contain"
+            />
+          </div>
+          
+          {/* Bottom Left - Setup Blob */}
+          <div className="absolute bottom-0 -right-16">
+            <Image 
+              src="/images/setup/setup-blob.svg" 
+              alt="Decorative blob" 
+              width={400}
+              height={400}
+              className="object-contain opacity-90"
+            />
+          </div>
+          
+          {/* Bottom Right - Setup Illustration */}
+          <div className="absolute top-0 right-0">
+            <Image 
+              src="/images/setup/setup-illustration.svg" 
+              alt="Setup illustration" 
+              width={112}
+              height={112}
+              className="object-contain"
+            />
+          </div>
         </div>
-        
-        {/* Top Right - Setup Wave */}
-        <div className="absolute bottom-0 -left-32 opacity-70">
-          <Image 
-            src="/images/setup/setup-wave.svg" 
-            alt="Decorative wave" 
-            width={400}
-            height={400}
-            className=" object-contain"
-          />
-        </div>
-        
-        {/* Bottom Left - Setup Blob */}
-        <div className="absolute bottom-0 -right-16 ">
-          <Image 
-            src="/images/setup/setup-blob.svg" 
-            alt="Decorative blob" 
-            width={400}
-            height={400}
-            className=" object-contain"
-          />
-        </div>
-        
-        {/* Bottom Right - Setup Illustration */}
-        <div className="absolute top-0 right-0">
-          <Image 
-            src="/images/setup/setup-illustration.svg" 
-            alt="Setup illustration" 
-            width={112}
-            height={112}
-            className=" object-contain"
-          />
-        </div>
-      </div>
 
-      {/* Content */}
-      <div className="relative z-10 flex items-center justify-center min-h-screen p-6 pt-[70px]">
+        {/* Main Content - Above illustrations */}
+        <div className="relative z-20 w-full">
       <Card className="w-full max-w-lg shadow-lg border-0 relative z-50 ring-1 ring-white/20 backdrop-blur-sm bg-white/90 mx-auto">
         <CardHeader className="text-center pb-4">
           <CardTitle className="text-xl font-semibold text-gray-900 mb-2">
-            {currentStep === 0 && "Welcome to CRC Platform!"}
-            {currentStep === 1 && "Profile Setup"}
-            {currentStep === 2 && "Upload Documents"}
+            {currentStep === 0 && (
+              <div className="text-center">
+                <AnimatedText 
+                  animation="letters-fade-in"
+                  as="div"
+                  className="text-4xl font-bold text-gray-900 mb-4 font-cal-sans"
+                  startTrigger="top center"
+                >
+                  {studentData?.first_name && studentData?.last_name 
+                    ? `Hi, ${studentData.first_name} ${studentData.last_name}!` 
+                    : studentData?.first_name 
+                      ? `Hi, ${studentData.first_name}!` 
+                      : 'Hi!'
+                  }
+                </AnimatedText>
+                {showWelcomeText && (
+                  <div className="mt-2">
+                    <AnimatedText 
+                      animation="letters-fade-in"
+                      as="div"
+                      className="text-2xl font-normal text-gray-700 font-cal-sans"
+                      startTrigger="top bottom"
+                    >
+                      Welcome to CRC Platform!
+                    </AnimatedText>
+                  </div>
+                )}
+              </div>
+            )}
+            {currentStep === 1 && "Setup Overview"}
+            {currentStep === 2 && "Profile Setup"}
+            {currentStep === 3 && "Upload Documents"}
           </CardTitle>
           
-          <p className="text-sm text-gray-600">
-            {currentStep === 0 && "Let's get you set up with your profile and documents."}
-            {currentStep === 1 && "Choose your profile picture to personalize your account."}
-            {currentStep === 2 && "Upload your academic reports and resume to complete your profile."}
-          </p>
-          <div className="absolute top-0 right-6 z-50">
-              <span className="text-green-600 font-semibold text-xs">
-                Step {currentStep} of 3
-              </span>
+          <div className="text-sm text-gray-600">
+            {currentStep === 1 && <p>Here's what we'll do together to set up your profile.</p>}
+            {currentStep === 2 && <p>Choose your profile picture to personalize your account.</p>}
+            {currentStep === 3 && <p>Upload your academic reports and resume to complete your profile.</p>}
           </div>
+          {currentStep > 0 && (
+            <div className="absolute top-0 right-6 z-50">
+              <span className="text-green-600 font-semibold text-xs">
+                Step {currentStep} of {totalSteps}
+              </span>
+            </div>
+          )}
         </CardHeader>
 
         <CardContent className="space-y-6 relative">
           {/* Step Counter - Show on all steps */}
          
 
-          {/* Setup Steps Preview - Only show on step 0 */}
-          {currentStep === 0 && (
+          {/* Setup Steps Preview - Only show on step 1 */}
+          {currentStep === 1 && (
             <div className="space-y-4">
           <div className="space-y-3">
             <h3 className="text-sm font-medium text-gray-900 text-center">
@@ -460,8 +596,8 @@ export default function StudentSetupPage() {
                 return (
                       <div key={index} className="flex items-center space-x-3 p-3 rounded-md backdrop-blur-sm border bg-white/60 border-white/30">
                     <div className="flex-shrink-0">
-                      <div className="h-6 w-6 rounded-full bg-blue-100 flex items-center justify-center">
-                        <IconComponent className="h-3 w-3 text-blue-600" />
+                      <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                        <IconComponent className="h-4 w-4 text-blue-600" />
                       </div>
                     </div>
                     <div className="flex-1">
@@ -481,8 +617,8 @@ export default function StudentSetupPage() {
             </div>
           )}
 
-          {/* Profile Picture Selection - Only show on step 1 */}
-          {currentStep === 1 && (
+          {/* Profile Picture Selection - Only show on step 2 */}
+          {currentStep === 2 && (
             <div className="space-y-8">
               {/* Avatar Preview */}
               <div className="flex justify-center">
@@ -697,21 +833,19 @@ export default function StudentSetupPage() {
             </div>
           )}
 
-          {/* Upload Documents - Only show on step 2 */}
-          {currentStep === 2 && (
+          {/* Upload Documents - Only show on step 3 */}
+          {currentStep === 3 && (
             <div className="space-y-6">
-              <h3 className="text-sm font-medium text-gray-900 text-center">
-                Upload your documents
-              </h3>
+       
               
               <div className="space-y-6">
                 {/* Academic Reports Upload */}
                 <div className="space-y-3">
                   <div className="flex items-center space-x-2">
                     <FileText className="h-5 w-5 text-gray-600" />
-                    <h4 className="text-sm font-medium text-gray-900">Academic Reports</h4>
+                    <h4 className="text-base font-medium text-gray-900">Academic Reports</h4>
+                    <span className="text-red-500 text-xs">*Required</span>
                   </div>
-                  <p className="text-xs text-gray-600">Upload your transcripts or academic reports</p>
                   <FileUpload
                     multiple={false}
                     accept=".pdf,.doc,.docx"
@@ -734,9 +868,9 @@ export default function StudentSetupPage() {
                 <div className="space-y-3">
                   <div className="flex items-center space-x-2">
                     <Link className="h-5 w-5 text-gray-600" />
-                    <h4 className="text-sm font-medium text-gray-900">Resume/CV Link</h4>
+                    <h4 className="text-base font-medium text-gray-900">Resume/CV Link</h4>
+                    <span className="text-gray-400 text-xs">(Optional)</span>
                   </div>
-                  <p className="text-xs text-gray-600">Provide a link to your resume or curriculum vitae (Google Docs, LinkedIn, etc.)</p>
                   <Input
                     type="url"
                     placeholder="https://docs.google.com/document/..."
@@ -744,9 +878,24 @@ export default function StudentSetupPage() {
                     onChange={(e) => {
                       console.log('🔗 Setup: Resume link changed:', e.target.value);
                       setResumeLink(e.target.value);
+                      
+                      // Clear URL error when user starts typing
+                      if (resumeUrlError) {
+                        setResumeUrlError(null);
+                      }
+                      
+                      // Real-time validation if there's content
+                      if (e.target.value.trim()) {
+                        const urlValidation = urlSchema.safeParse(e.target.value.trim());
+                        if (!urlValidation.success) {
+                          setResumeUrlError(urlValidation.error.errors[0].message);
+                        }
+                      }
                     }}
-                    className="w-full"
                   />
+                  {resumeUrlError && (
+                    <p className="text-red-500 text-xs mt-1">{resumeUrlError}</p>
+                  )}
                 </div>
               </div>
 
@@ -797,38 +946,27 @@ export default function StudentSetupPage() {
           )}
 
           {/* Navigation Buttons */}
-          {currentStep === 0 ? (
+          {currentStep === 0 && (
             /* Centered Continue Button for Step 0 */
-          <div className="text-center pt-2">
-            <Button 
-              onClick={handleContinue}
-              size="sm"
-              disabled={isUploading}
-              className="group inline-flex items-center justify-center gap-3 px-7 py-3 bg-dark border border-dark text-white font-medium rounded-md hover:bg-gray-800 shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition-all duration-200 ease-linear disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <span>Continue</span>
-                <ArrowRight className="w-5 h-5 transition-all duration-300 group-hover:translate-x-1 group-hover:scale-110" />
-              </Button>
-              
-              <p className="text-xs text-gray-500 mt-2">
-                You can update these later
-              </p>
-            </div>
-          ) : (
-            /* Back and Continue Buttons for Steps 1 and 2 */
-            <div className="pt-2">
-              <div className="flex items-center justify-between">
-                {/* Back Button */}
+            showButton && (
+              <div className="text-center pt-2 animate-fade-in">
                 <Button 
-                  onClick={handleBack}
-                  variant="outline"
+                  onClick={handleContinue}
                   size="sm"
-                  className="group inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 border-gray-300 hover:bg-gray-50 transition-all duration-200"
+                  disabled={isUploading}
+                  className="group inline-flex items-center justify-center gap-3 px-7 py-3 bg-dark border border-dark text-white font-medium rounded-md hover:bg-gray-800 shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition-all duration-200 ease-linear disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <ArrowLeft className="w-4 h-4 transition-all duration-300 group-hover:-translate-x-1" />
-                  <span>Back</span>
+                  <span>Continue</span>
+                  <ArrowRight className="w-5 h-5 transition-all duration-300 group-hover:translate-x-1 group-hover:scale-110" />
                 </Button>
-                
+              </div>
+            )
+          )}
+          {currentStep === 1 &&  (
+            /* Back and Continue Buttons for Steps 1 */
+            <div className="pt-2">
+              <div className="flex items-center justify-center">
+              
                 {/* Continue Button */}
                 <Button 
                   onClick={handleContinue}
@@ -839,7 +977,7 @@ export default function StudentSetupPage() {
                   <span>
                     {isUploading 
                       ? 'Uploading...' 
-                      : currentStep < 2 
+                      : currentStep < 3 
                         ? 'Continue' 
                         : 'Complete Setup'
                     }
@@ -851,16 +989,67 @@ export default function StudentSetupPage() {
               </div>
               
               {/* Centered paragraph below buttons */}
-              <div className="text-end mt-2">
+              <div className="text-center mt-2">
                 <p className="text-xs text-gray-500">
                   You can update these later
                 </p>
               </div>
             </div>
+          ) 
+        }
+        {(currentStep === 2 || currentStep === 3) && (
+            <div className="pt-2">
+            <div className="flex items-center justify-between">
+              {/* Back Button */}
+              <Button 
+                onClick={handleBack}
+                variant="outline"
+                size="sm"
+                className="group inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 border-gray-300 hover:bg-gray-50 transition-all duration-200"
+              >
+                <ArrowLeft className="w-4 h-4 transition-all duration-300 group-hover:-translate-x-1" />
+                <span>Back</span>
+              </Button>
+              
+              {/* Continue Button */}
+              <Button 
+                onClick={handleContinue}
+                size="sm"
+                disabled={isUploading}
+                className="group inline-flex items-center justify-center gap-3 px-7 py-3 bg-dark border border-dark text-white font-medium rounded-md hover:bg-gray-800 shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition-all duration-200 ease-linear disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span>
+                  {isUploading 
+                    ?
+                    <div className="flex items-center gap-2">
+                     <Loader2 className="w-4 h-4 animate-spin text-white" />
+                     Uploading...
+                    </div> 
+                    
+                    : currentStep < 3 
+                      ? 'Continue' 
+                      : 'Complete Setup'
+                  }
+                </span>
+                {!isUploading && (
+                  <ArrowRight className="w-5 h-5 transition-all duration-300 group-hover:translate-x-1 group-hover:scale-110" />
+                )}
+              </Button>
+            </div>
+            
+            {/* Centered paragraph below buttons */}
+            <div className="text-end mt-2">
+              <p className="text-xs text-gray-500">
+                You can update these later
+              </p>
+            </div>
+          </div>
           )}
+          
         </CardContent>
       </Card>
-    </div>
+        </div>
+      </div>
     </>
   );
 }

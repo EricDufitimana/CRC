@@ -11,13 +11,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { showToastSuccess, showToastError } from "@/components/toasts";
 
-export default function UnauthorizedPage() {
+export default function AdminVerificationPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [verificationComplete, setVerificationComplete] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   const [debugInfo, setDebugInfo] = useState('');
   const [checkComplete, setCheckComplete] = useState(false);
-  const [shouldShowUnauthorized, setShouldShowUnauthorized] = useState(false);
+  const [shouldShowAdminVerification, setShouldShowAdminVerification] = useState(false);
   const [accountExists, setAccountExists] = useState(false);
   const [isContactDialogOpen, setIsContactDialogOpen] = useState(false);
   const [contactForm, setContactForm] = useState({
@@ -29,18 +29,18 @@ export default function UnauthorizedPage() {
   const { userId, adminId, isLoading: userDataLoading } = useUserData();
 
   useEffect(() => {
-    console.log('Unauthorized page: useEffect triggered');
+    console.log('Admin verification page: useEffect triggered');
     console.log('userId:', userId);
     console.log('adminId:', adminId);
     console.log('userDataLoading:', userDataLoading);
     
     // Simulate verification process
     const timer = setTimeout(async () => {
-      console.log('Unauthorized page: Timer completed, checking authorization...');
+      console.log('Admin verification page: Timer completed, checking authorization...');
       
       // Check if user should be redirected
       if (adminId) {
-        console.log('Unauthorized page: User is admin, should redirect to admin dashboard');
+        console.log('Admin verification page: User is admin, should redirect to admin dashboard');
         setDebugInfo(`Admin user detected (ID: ${adminId}), redirecting...`);
         
         // Show redirect loader for admin users directly
@@ -53,7 +53,7 @@ export default function UnauthorizedPage() {
         }, 1500);
         
       } else if (userId) {
-        console.log('Unauthorized page: Checking if user exists in students table...');
+        console.log('Admin verification page: Checking if user exists in students table...');
         
         // Check if user exists in students table
         const studentResponse = await fetch('/api/check-user-exists', {
@@ -65,21 +65,21 @@ export default function UnauthorizedPage() {
         });
 
         if (!studentResponse.ok) {
-          console.error('Unauthorized page: API error:', studentResponse.status);
+          console.error('Admin verification page: API error:', studentResponse.status);
           setAccountExists(false);
           setDebugInfo('Error checking account status');
           setIsLoading(false);
           setCheckComplete(true);
-          setShouldShowUnauthorized(true);
+          setShouldShowAdminVerification(true);
           return;
         }
 
         const studentData = await studentResponse.json();
         const studentExists = studentData.exists;
-        console.log('Unauthorized page: Student exists:', studentExists);
+        console.log('Admin verification page: Student exists:', studentExists);
 
         if (studentExists) {
-          console.log('Unauthorized page: User account exists, redirecting to student dashboard');
+          console.log('Admin verification page: User account exists, redirecting to student dashboard');
           setAccountExists(true);
           setDebugInfo(`User account found, redirecting to student dashboard...`);
           
@@ -92,20 +92,20 @@ export default function UnauthorizedPage() {
             window.location.href = '/dashboard/student';
           }, 1500);
         } else {
-          console.log('Unauthorized page: No user account found in database');
+          console.log('Admin verification page: No user account found in database');
           setAccountExists(false);
           setDebugInfo('No user account found in database - account creation required');
           setIsLoading(false);
           setCheckComplete(true);
-          setShouldShowUnauthorized(true);
+          setShouldShowAdminVerification(true);
         }
       } else {
-        console.log('Unauthorized page: No userId or adminId available');
+        console.log('Admin verification page: No userId or adminId available');
         setAccountExists(false);
         setDebugInfo('No userId or adminId available - please log in first');
         setIsLoading(false);
         setCheckComplete(true);
-        setShouldShowUnauthorized(true);
+        setShouldShowAdminVerification(true);
       }
     }, 2000);
 
@@ -203,8 +203,8 @@ export default function UnauthorizedPage() {
     );
   }
 
-  // Only show unauthorized page if check is complete and user should see it
-  if (checkComplete && shouldShowUnauthorized && !accountExists) {
+  // Only show admin verification page if check is complete and user should see it
+  if (checkComplete && shouldShowAdminVerification && !accountExists) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900 p-4">
         <div className="max-w-4xl w-full text-center">

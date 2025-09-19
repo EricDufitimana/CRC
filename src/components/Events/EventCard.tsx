@@ -89,7 +89,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onViewDetails }) =>
   };
 
   return (
-    <Card className="group transition-all duration-300 border border-neutral-200 flex flex-col h-full">
+    <Card className="transition-all duration-300 border border-neutral-200 flex flex-col h-full">
       
       {/* Event Image */}
       <div className="p-4">
@@ -121,15 +121,17 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onViewDetails }) =>
           <MapPin className="h-4 w-4 flex-shrink-0" />
           <span className="truncate" title={event.location}>{event.location}</span>
         </div>
-        
-        <Button 
-          variant="outline" 
-          className="w-full border-dark text-dark hover:bg-dark hover:border-dark hover:text-white transition-all duration-300"
-          onClick={handleViewDetails}
-        >
-          View Details
-          <ArrowRight className="ml-2 h-4 w-4 text-dark group-hover:text-white group-hover:scale-110 group-hover:translate-x-1 transition-all duration-300" />
-        </Button>
+        <div>
+          <Button 
+            variant="outline" 
+            className="w-full border-dark text-dark hover:bg-dark hover:border-dark hover:text-white transition-all duration-300 group"
+            onClick={handleViewDetails}
+          >
+            View Details
+            <ArrowRight className="ml-2 h-4 w-4 text-dark group-hover:text-white group-hover:scale-110 group-hover:translate-x-1 transition-all duration-300" />
+          </Button>        
+        </div> 
+ 
       </div>
       
       {/* Event Details Modal */}

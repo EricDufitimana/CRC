@@ -35,7 +35,7 @@ export default function AdminSignInForm() {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/unauthorized`,
+          redirectTo: `${window.location.origin}/admin-verification`,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
