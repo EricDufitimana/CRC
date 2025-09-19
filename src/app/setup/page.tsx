@@ -565,7 +565,7 @@ export default function StudentSetupPage() {
           </CardTitle>
           
           <div className="text-sm text-gray-600">
-            {currentStep === 1 && <p>Here's what we'll do together to set up your profile.</p>}
+            {currentStep === 1 && <p>Here&apos;s what we&apos;ll do together to set up your profile.</p>}
             {currentStep === 2 && <p>Choose your profile picture to personalize your account.</p>}
             {currentStep === 3 && <p>Upload your academic reports and resume to complete your profile.</p>}
           </div>
