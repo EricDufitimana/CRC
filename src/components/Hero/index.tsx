@@ -86,7 +86,7 @@ const Hero = () => {
                
                 {/* Star */}
                 <div 
-                  className="absolute top-[300px] left-[330px] w-28 h-28 opacity-0 md:opacity-100 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28"
+                  className="absolute top-[300px] left-[330px] w-28 h-28 opacity-0"
                   style={{
                     animation: 'fadeIn 0.8s ease-out forwards',
                     animationDelay: '1.4s'
@@ -102,7 +102,7 @@ const Hero = () => {
                 
                 {/* Up Lines */}
                 <div 
-                  className="absolute bottom-[250px] right-[-90px] w-24 h-24 opacity-0 hidden sm:block md:w-20 md:h-20 lg:w-24 lg:h-24"
+                  className="absolute bottom-[250px] right-[-90px] w-24 h-24 opacity-0"
                   style={{
                     animation: 'fadeIn 0.8s ease-out forwards',
                     animationDelay: '1.6s'
@@ -118,7 +118,7 @@ const Hero = () => {
                 
                 {/* Wavy Lines */}
                 <div 
-                  className="absolute top-[-80px] left-[-5px] w-64 h-64 opacity-0 hidden md:block lg:w-56 lg:h-56 xl:w-64 xl:h-64"
+                  className="absolute top-[-80px] left-[-5px] w-64 h-64 opacity-0"
                   style={{
                     animation: 'fadeIn 0.8s ease-out forwards',
                     animationDelay: '1.8s'
