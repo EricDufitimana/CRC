@@ -191,7 +191,7 @@ const Header = () => {
         ref={headerRef}
         className={`ud-header z-[60] flex items-center fixed w-full`}
          
-        style={{ top: "var(--banner-height, 0px)" }}
+        style={{ top: sticky ? "0px" : "var(--banner-height, 0px)" }}
       >
         <div ref={containerRef} className={`w-full ${sticky ? "flex justify-center px-4" : "container laptop-lg:px-12"}`}>
           <div ref={navCardRef} className={`relative items-center flex ${

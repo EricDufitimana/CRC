@@ -18,16 +18,19 @@ export default function StickyNotificationBanner() {
   const contentRef = useRef<HTMLDivElement | null>(null);
   const [measuredHeight, setMeasuredHeight] = useState<number>(0);
 
+  
+
   // Update CSS variable with current banner height so header can offset
   const updateBannerHeightVar = () => {
-    const el = wrapperRef.current;
-    const isVisible = !!notification && !isDismissed && !isScrolledHidden;
-    const height = isVisible ? measuredHeight : 0;
+    const shouldShowBanner = !!notification && !isDismissed;
+    const height = shouldShowBanner ? measuredHeight : 0;
     if (typeof document !== "undefined") {
       document.documentElement.style.setProperty("--banner-height", `${height}px`);
     }
   };
 
+
+  
   useEffect(() => {
     const fetchNotification = async () => {
       try {
@@ -45,7 +48,26 @@ export default function StickyNotificationBanner() {
     };
     fetchNotification();
   }, []);
-
+  // Add this new useEffect right after the notification fetch effect
+  useEffect(() => {
+    if (notification && contentRef.current) {
+      // Temporarily make the banner visible but transparent to measure it
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = contentRef.current.outerHTML;
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.visibility = 'hidden';
+      tempDiv.style.top = '-9999px';
+      document.body.appendChild(tempDiv);
+      
+      const height = tempDiv.offsetHeight;
+      setMeasuredHeight(height);
+      
+      // Immediately reserve the space
+      document.documentElement.style.setProperty("--banner-height", `${height}px`);
+      
+      document.body.removeChild(tempDiv);
+    }
+  }, [notification]);
   // Parse markdown content when notification changes
   useEffect(() => {
     const parseMarkdown = async () => {
@@ -68,8 +90,7 @@ export default function StickyNotificationBanner() {
 
   useEffect(() => {
     updateBannerHeightVar();
-  }, [notification, isDismissed, isScrolledHidden]);
-
+  }, [notification, isDismissed, measuredHeight]); // Remove isScrolledHidden from dependencies
   useEffect(() => {
     const onResize = () => {
       if (contentRef.current) {
@@ -104,24 +125,33 @@ export default function StickyNotificationBanner() {
   }, [notification, isDismissed]);
 
   // Measure content height when notification loads
+  // Replace the existing measurement useEffect with this:
   useEffect(() => {
-    if (!notification) return;
+    if (!notification) {
+      document.documentElement.style.setProperty("--banner-height", "0px");
+      return;
+    }
+    
     const measure = () => {
       if (contentRef.current) {
-        setMeasuredHeight(contentRef.current.offsetHeight);
+        const height = contentRef.current.offsetHeight;
+        setMeasuredHeight(height);
+        // Update the CSS variable with the measured height
+        if (!isDismissed) {
+          document.documentElement.style.setProperty("--banner-height", `${height}px`);
+        }
       }
-      updateBannerHeightVar();
     };
+    
     measure();
-    // small delay to capture fonts/layout
-    const t = setTimeout(measure, 0);
+    const t = setTimeout(measure, 100); // Slightly longer delay for fonts
     return () => clearTimeout(t);
-  }, [notification]);
+  }, [notification, isDismissed]);
 
   if (!notification) return null;
 
   const isOpen = !isDismissed && !isScrolledHidden;
-
+  const shouldReserveSpace = !isDismissed; // Reserve space even when scrolled hidden
   return (
     <div
       ref={wrapperRef}
@@ -129,13 +159,13 @@ export default function StickyNotificationBanner() {
       aria-hidden={!isOpen}
     >
       <div
-        style={{
-          maxHeight: isOpen ? measuredHeight : 0,
-          opacity: isOpen ? 1 : 0,
-          transform: isOpen ? "translateY(0)" : "translateY(-8px)",
-          transition: "max-height 250ms ease, opacity 200ms ease, transform 200ms ease",
-          overflow: "hidden",
-        }}
+      style={{
+        maxHeight: isOpen ? measuredHeight : 0,
+        opacity: isOpen ? 1 : 0,
+        transform: isOpen ? "translateY(0)" : "translateY(-8px)",
+        transition: "max-height 250ms ease, opacity 200ms ease, transform 200ms ease",
+        overflow: "hidden",
+      }}
       >
         <div ref={contentRef} className="bg-orange-400 text-white py-2">
           <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-4 laptop-lg:px-8">
