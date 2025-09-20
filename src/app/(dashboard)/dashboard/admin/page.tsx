@@ -175,7 +175,8 @@ export default function DashboardHome() {
         // Load announcements
         const announcementsResponse = await fetch('/api/announcements/fetch');
         if (announcementsResponse.ok) {
-          const announcementsData = await announcementsResponse.json();
+          const responseData = await announcementsResponse.json();
+          const announcementsData = responseData.announcements || [];
           const thisWeekAnnouncements = announcementsData.filter((announcement: Announcement) => {
             const announcementDate = new Date(announcement.created_at);
             return isWithinInterval(announcementDate, { start: startOfThisWeek, end: endOfThisWeek });
