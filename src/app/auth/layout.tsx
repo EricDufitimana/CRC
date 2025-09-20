@@ -1,3 +1,4 @@
+import Head from "../(site)/head"
 export const metadata = {
   title: 'CRC - Career Resources Center',
   description: 'Career Resources Center Website',
@@ -11,5 +12,8 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  return <>{children}</>
+  return <>
+  {Head("CRC - Carrer Resources Center")}
+  {children}
+  </>
 }

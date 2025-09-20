@@ -2,10 +2,23 @@
 import { ReactNode } from "react";
 import { Toaster } from "react-hot-toast";
 import StudentSidebar from "@/components/dashboard/StudentSidebar";
+import Head from "../../../(site)/head";
+import { usePathname } from "next/navigation";
 
 export default function AspenLayout({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+
+  const getTitle = () => {
+    if (pathname?.includes("assignments")) return "Assignments - Student Dashboard"
+    else if (pathname?.includes("documents")) return "Documents - Student Dashboard"
+    else if (pathname?.includes("requests")) return "Requests - Student Dashboard"
+    else return "Student Dashboard - Career Resources Center"
+  }
+
   return (
-    <div className="min-h-screen bg-neutral-100">
+    <>
+      {Head(getTitle())}
+      <div className="min-h-screen bg-neutral-100">
       <div className="mx-auto max-w-[1400px] px-2 py-0 md:py-0 bg-neutral-100">
         <div className="flex gap-4 h-[99vh] py-4 bg-neutral-100">
           {/* Sidebar */}
@@ -35,6 +48,7 @@ export default function AspenLayout({ children }: { children: ReactNode }) {
           },
         }}
       />
-    </div>
+      </div>
+    </>
   );
 }

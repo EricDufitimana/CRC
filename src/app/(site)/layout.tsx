@@ -37,15 +37,27 @@ export default function RootLayout({
   
   if (firstLoad) return <PreLoader />
 
+  const getTitle = () => {
+    if (pathname?.includes("resources")) return "Resources - Career Resourcces Center"
+    else if (pathname?.includes("previous-events")) return "Previous Events - Career Resources Center"
+    else if (pathname?.includes("upcoming-events"	)) return "Upcoming Events - Career Resources Center"
+    else if(pathname?.includes("workshops")) return "Workshops - Career Resources Center"
+    else return "Home - Career Resources Center"
+
+  }
+
+  
+
   return (
     <ThemeProvider
       attribute="class"
       enableSystem={false}
       defaultTheme="light"
     >
+      {Head(getTitle())}
       {pathname === "/" && <StickyNotificationBanner />}
       <div style={{ paddingTop: "var(--banner-height, 0px)", transition: "padding-top 200ms ease" }}>
-        <Header />
+        <Header/>
         <LoadingIndicator />
         {children}
         <Footer />

@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import Head from "../../../(site)/head";
 import Link from "next/link";
 import { Button } from "../../../../../zenith/src/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "../../../../../zenith/src/components/ui/avatar";
@@ -46,6 +47,19 @@ export default function DashboardAdminLayout({ children }: { children: React.Rea
   const router = useRouter();
   const pathname = usePathname();
   const [searchOpen, setSearchOpen] = useState(false);
+
+  const getTitle = () => {
+    if (pathname?.includes("student-management")) return "Student Management - Admin Dashboard"
+    else if (pathname?.includes("assignments-management")) return "Assignments Management - Admin Dashboard"
+    else if (pathname?.includes("announcements-management")) return "Announcements Management - Admin Dashboard"
+    else if (pathname?.includes("events-management")) return "Events Management - Admin Dashboard"
+    else if (pathname?.includes("content-management")) return "Content Management - Admin Dashboard"
+    else if (pathname?.includes("workshops")) return "Workshops - Admin Dashboard"
+    else if (pathname?.includes("attendance")) return "Attendance - Admin Dashboard"
+    else if (pathname?.includes("crc-class-groups")) return "CRC Class Groups - Admin Dashboard"
+    else if (pathname?.includes("testing")) return "Testing - Admin Dashboard"
+    else return "Admin Dashboard - Career Resources Center"
+  }
   const [mounted, setMounted] = useState(false);
   const [contentOpen, setContentOpen] = useState(false);
   const [requestsOpen, setRequestsOpen] = useState(false);
@@ -141,10 +155,12 @@ export default function DashboardAdminLayout({ children }: { children: React.Rea
   }, [mounted]);
 
   return (
-    <div 
-      suppressHydrationWarning={true} 
-      className="min-h-screen background-blur-2xl transition-colors duration-300 bg-gray-50"
-    >
+    <>
+      {Head(getTitle())}
+      <div 
+        suppressHydrationWarning={true} 
+        className="min-h-screen background-blur-2xl transition-colors duration-300 bg-gray-50"
+      >
           {/* Sidebar as background foundation */}
           <div className="fixed left-0 top-0 bottom-0 w-60 backdrop-blur-2xl flex flex-col z-10 transition-colors duration-300 bg-gray-50 border-gray-200/30">
             {/* Navigation */}
@@ -464,6 +480,7 @@ export default function DashboardAdminLayout({ children }: { children: React.Rea
               />
             )}
           </Toaster>
-    </div>
+      </div>
+    </>
   );
 } 

@@ -12,6 +12,7 @@ import { Toaster, ToastBar } from "react-hot-toast";
 import "../../styles/index.css";
 import { Boxes } from "@/components/ui/background-boxes";
 import Head from "../(site)/head";
+import {usePathname} from "next/navigation"
 
 export default function RootLayout({
   children,
@@ -19,11 +20,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   const [loading, setLoading] = useState<boolean>(true);
+  const pathname = usePathname()
 
   useEffect(() => {
     setTimeout(() => setLoading(false), 1000);
   }, []);
 
+
+  const getTitle = () => {
+    if (pathname?.includes("login")) return "Login - Career Resources Center"
+    else if(pathname?.includes("register")) return "Register - Career Resources Center"
+    else return "Auth - Career Resources Center"
+
+  }
   return (
     <>
       {loading ? (
@@ -34,6 +43,7 @@ export default function RootLayout({
             enableSystem={false}
             defaultTheme="light"
           >
+            {Head(getTitle())}
             <div className="relative p-6 bg-white z-1 dark:bg-gray-900 sm:p-0 no-scrollbar overflow-y-scroll">
               <div className="relative flex flex-col justify-center w-full h-screen lg:flex-row dark:bg-gray-900 sm:p-0">
                   <Suspense fallback={
