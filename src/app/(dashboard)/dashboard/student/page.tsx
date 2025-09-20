@@ -11,7 +11,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Calendar, FileText, Briefcase, CheckCircle, ClipboardCheck, Bell, ArrowRight, Users, Loader2, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../../../zenith/src/components/ui/dialog";
-import { Input } from "../../../../../zenith/src/components/ui/input";
+import { Input ,InputWithRing} from "@/components/ui/input";
 import { Textarea } from "../../../../../zenith/src/components/ui/textarea";
 import { Label } from "../../../../../zenith/src/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../../zenith/src/components/ui/select";
@@ -1299,7 +1299,7 @@ export default function AspenDashboard() {
             {selectedAssignment.submission_style === 'google_link' ? (
               <div>
                 <Label htmlFor="assignment-google-link">Google Docs Link</Label>
-                <Input id="assignment-google-link" name="google_doc_link" type="url" placeholder="https://docs.google.com/document/..." value={googleDocLink} onChange={(e) => setGoogleDocLink(e.target.value)} disabled={isAssignmentSubmitting} required className="border border-neutral-200 transition-colors duration-200 ease-in-out rounded-xl" />
+                <InputWithRing id="assignment-google-link" name="google_doc_link" type="url" placeholder="https://docs.google.com/document/..." value={googleDocLink} onChange={(e) => setGoogleDocLink(e.target.value)} disabled={isAssignmentSubmitting} required className="border border-neutral-200 transition-colors duration-200 ease-in-out rounded-xl" />
               </div>
             ) : (
               <div>
@@ -1378,7 +1378,7 @@ export default function AspenDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {crcFellows.length === 0 ? (
                 <div className="col-span-full text-center py-12">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-300 mx-auto mb-3"></div>
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-neutral-400" />
                   <p className="text-gray-500 text-sm">Loading fellows...</p>
                 </div>
               ) : (
@@ -1422,7 +1422,7 @@ export default function AspenDashboard() {
           <div className="space-y-4">
             <div>
               <Label htmlFor="essay-title">Essay Title</Label>
-              <Input id="essay-title" value={essayTitle} onChange={(e) => setEssayTitle(e.target.value)} placeholder="Enter your essay title" className="border  border-neutral-200  transition-colors duration-200 ease-in-out rounded-xl" />
+              <InputWithRing id="essay-title" value={essayTitle} onChange={(e) => setEssayTitle(e.target.value)} placeholder="Enter your essay title" className="border  border-neutral-200  transition-colors duration-200 ease-in-out rounded-xl" />
             </div>
             <div>
               <Label htmlFor="essay-description">Description</Label>
@@ -1441,7 +1441,7 @@ export default function AspenDashboard() {
             </div>
             <div>
               <Label htmlFor="essay-word-count">Word Count (Optional)</Label>
-              <Input id="essay-word-count" name="word_count" type="number" placeholder="Enter word count" value={essayWordCount} onChange={(e) => setEssayWordCount(e.target.value)} className="border border-neutral-200  transition-colors duration-200 ease-in-out rounded-xl" />
+              <InputWithRing id="essay-word-count" name="word_count" type="number" placeholder="Enter word count" value={essayWordCount} onChange={(e) => setEssayWordCount(e.target.value)} className="border border-neutral-200  transition-colors duration-200 ease-in-out rounded-xl" />
             </div>
             <div className="flex justify-between pt-2">
               <Button variant="outline" className="rounded-xl" onClick={() => setEssayStep('select-fellow')}>Back</Button>
@@ -1462,11 +1462,11 @@ export default function AspenDashboard() {
             <input type="hidden" name="description" value={essayDescription} />
             <div>
               <Label htmlFor="essay-deadline">Deadline (Optional)</Label>
-              <Input id="essay-deadline" name="deadline" type="date" value={essayDeadline} onChange={(e) => setEssayDeadline(e.target.value)} disabled={isEssaySubmitting} className="border border-neutral-200  transition-colors duration-200 ease-in-out rounded-xl" />
+              <InputWithRing id="essay-deadline" name="deadline" type="date" value={essayDeadline} onChange={(e) => setEssayDeadline(e.target.value)} disabled={isEssaySubmitting} className="border border-neutral-200  transition-colors duration-200 ease-in-out rounded-xl" />
             </div>
             <div>
               <Label htmlFor="google-docs-link">Google Docs Link</Label>
-              <Input id="google-docs-link" name="googleDocsLink" type="url" placeholder="https://docs.google.com/document/d/..." value={essayLink} onChange={(e) => setEssayLink(e.target.value)} disabled={isEssaySubmitting} required className="border border-neutral-200  transition-colors duration-200 ease-in-out rounded-xl" />
+              <InputWithRing id="google-docs-link" name="googleDocsLink" type="url" placeholder="https://docs.google.com/document/d/..." value={essayLink} onChange={(e) => setEssayLink(e.target.value)} disabled={isEssaySubmitting} required className="border border-neutral-200  transition-colors duration-200 ease-in-out rounded-xl" />
             </div>
             <div className="flex justify-between space-x-2 pt-2">
               <Button variant="outline" className="rounded-xl" onClick={() => setEssayStep('details')} disabled={isEssaySubmitting}>Back</Button>
@@ -1587,7 +1587,7 @@ export default function AspenDashboard() {
             <div className="space-y-4">
               <div>
                 <Label htmlFor="opportunity-title">Title</Label>
-                <Input id="opportunity-title" value={oppTitle} onChange={(e) => setOppTitle(e.target.value)} placeholder="Enter opportunity title" disabled={isOpportunitySubmitting} required className="border border-neutral-200  transtion duration-200 ease-in-out rounded-xl" />
+                <InputWithRing id="opportunity-title" value={oppTitle} onChange={(e) => setOppTitle(e.target.value)} placeholder="Enter opportunity title" disabled={isOpportunitySubmitting} required className="border border-neutral-200  transtion duration-200 ease-in-out rounded-xl" />
               </div>
               <div>
                 <Label htmlFor="opportunity-description">Description (optional)</Label>
@@ -1620,11 +1620,11 @@ export default function AspenDashboard() {
               <input type="hidden" name="description" value={oppDescription} />
               <div>
                 <Label htmlFor="opportunity-deadline">Deadline (optional)</Label>
-                <Input id="opportunity-deadline" name="deadline" type="date" value={oppDeadline} onChange={(e) => setOppDeadline(e.target.value)} disabled={isOpportunitySubmitting} className="border border-neutral-200 transition-colors duration-200 ease-in-out rounded-xl" />
+                <InputWithRing id="opportunity-deadline" name="deadline" type="date" value={oppDeadline} onChange={(e) => setOppDeadline(e.target.value)} disabled={isOpportunitySubmitting} className="border border-neutral-200 transition-colors duration-200 ease-in-out rounded-xl" />
               </div>
               <div>
                 <Label htmlFor="opportunity-link">Link</Label>
-                <Input id="opportunity-link" name="link" type="url" placeholder="https://example.com/opportunity" required value={oppLink} onChange={(e) => setOppLink(e.target.value)} disabled={isOpportunitySubmitting} className="border border-neutral-200 transition-colors duration-200 ease-in-out rounded-xl" />
+                <InputWithRing  id="opportunity-link" name="link" type="url" placeholder="https://example.com/opportunity" required value={oppLink} onChange={(e) => setOppLink(e.target.value)} disabled={isOpportunitySubmitting} className="border border-neutral-200 transition-colors duration-200 ease-in-out rounded-xl" />
               </div>
               <div className="flex justify-between space-x-2 pt-4">
                 <Button variant="outline" className="rounded-xl px-8 text-sm" onClick={() => setOppStep('details')} disabled={isOpportunitySubmitting}>Back</Button>
