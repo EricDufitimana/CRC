@@ -27,6 +27,7 @@ import {
   Bell, 
   ChevronDown,
   ChevronRight,
+  Loader2,
   
 } from "lucide-react";
 import "../../../../../zenith/src/index.css";
@@ -52,6 +53,7 @@ export default function DashboardAdminLayout({ children }: { children: React.Rea
   const { adminId } = useUserData();
   const [adminName, setAdminName] = useState<string>('');
   const [adminEmail, setAdminEmail] = useState<string>('');
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   // Function to handle dropdown toggling - ensures only one is open at a time
   const handleDropdownToggle = (dropdownType: 'content' | 'requests' | 'classes') => {
@@ -107,15 +109,21 @@ export default function DashboardAdminLayout({ children }: { children: React.Rea
   const dayName = format(currentDate, "EEEE");
   const fullDate = format(currentDate, "MMMM d, yyyy");
 
-  const handleLogout = async () => {
+  const handleLogout = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     try {
+      setIsSigningOut(true);
       const result = await signOut();
       if (result.success) {
         router.push('/');
       }
     } catch (error) {
       console.error("Failed to logout:", error);
+      // Keep loading state active since we'll redirect anyway
     }
+    // Don't reset isSigningOut - let it stay true for infinite loading
   }
 
   // Apply body styles through useEffect
@@ -371,8 +379,17 @@ export default function DashboardAdminLayout({ children }: { children: React.Rea
                   <DropdownMenuItem onClick={() => window.location.href = '/'}>
                     Home
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleLogout}>
-                    Log out
+                  <DropdownMenuItem 
+                    onClick={handleLogout} 
+                    onSelect={(e) => e.preventDefault()}
+                    disabled={isSigningOut}
+                  >
+                    <div className="flex items-center gap-2">
+                      {isSigningOut ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : null}
+                      {isSigningOut ? "Signing out..." : "Log out"}
+                    </div>
                   </DropdownMenuItem>
                   
                 </DropdownMenuContent>

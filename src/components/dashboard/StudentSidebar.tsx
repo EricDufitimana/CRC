@@ -8,7 +8,7 @@ import { Button } from "../../../zenith/src/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../../../zenith/src/components/ui/dialog";
 import { FileUpload } from "../../../zenith/src/components/ui/file-upload";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { LayoutDashboard, ClipboardList, Briefcase, FileText, LogOut, Home, Edit3, Camera, Folder } from "lucide-react";
+import { LayoutDashboard, ClipboardList, Briefcase, FileText, LogOut, Home, Edit3, Camera, Folder, Loader2 } from "lucide-react";
 import { useSupabase } from "@/hooks/useSupabase";
 import { signOut } from "@/actions/signOut";
 import { useUserData } from "@/hooks/useUserData";
@@ -251,12 +251,17 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
     }
   };
 
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
   const HandleSignOut = async () => {
     try {
+      setIsSigningOut(true);
       await signOut();
     } catch (error) {
       console.error("Error logging out:", error);
+      // Keep loading state active since we'll redirect anyway
     }
+    // Don't reset isSigningOut - let it stay true for infinite loading
   }
 
   // Debug: Log key state for troubleshooting
@@ -401,9 +406,14 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
               variant="ghost"
               className="flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-base text-neutral-600 hover:text-neutral-900"
               onClick={() => HandleSignOut()}
+              disabled={isSigningOut}
             >
-              <LogOut className="h-5 w-5" />
-              Sign out
+              {isSigningOut ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <LogOut className="h-5 w-5" />
+              )}
+              {isSigningOut ? "Signing out..." : "Sign out"}
             </Button>
           </div>
         </div>
