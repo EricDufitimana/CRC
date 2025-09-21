@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { OptimizedScrollAnimation } from "../animation/OptimizedScrollAnimation";
-import { OptimizedAnimatedText } from "../animation/OptimizedAnimatedText";
+import { AnimatedText } from "../animation/AnimatedText";
 
 const About = () => {
   return (
@@ -15,30 +15,27 @@ const About = () => {
             <div className="w-full px-4 py-8 lg:w-1/2">
             <OptimizedScrollAnimation direction='left'>
               <div className="mb-12 max-w-[540px] lg:mb-0">
-                <OptimizedAnimatedText 
-                  animation="none"
+                <AnimatedText 
+                  animation="words-slide-up"
                   as="h2" 
                   className="mb-5 text-3xl font-bold leading-tight text-dark dark:text-white sm:text-[40px] sm:leading-[1.2]"
-                  delay={0}
                 >
                   What is CRC?
-                </OptimizedAnimatedText>
-                <OptimizedAnimatedText 
-                  animation="slide-up-smooth"
+                </AnimatedText>
+                <AnimatedText 
+                  animation="words-slide-up"
                   as="p" 
-                  className="mb-10 text-base leading-relaxed text-body-color dark:text-dark-6"
-                  delay={200}
+                  className="mb-10 text-base font-normal leading-relaxed text-body-color dark:text-dark-6 !font-normal"
                 >
                   The Career Resources Center (CRC) operates as a part of the Liquidnet Family High School at The Agahozo-Shalom Youth Village. The mission of the CRC Department is to supply students with the skills, knowledge, and resources they need to succeed after graduating from ASYV. As the job and education markets in Rwanda become increasingly competitive, the CRC plays a crucial role in empowering ASYV students and alumni to build successful careers.
-                </OptimizedAnimatedText>
-                <OptimizedAnimatedText 
-                  animation="slide-up-smooth"
+                </AnimatedText>
+                <AnimatedText 
+                  animation="words-slide-up"
                   as="p" 
-                  className="mb-10 text-base leading-relaxed text-body-color dark:text-dark-6"
-                  delay={300}
+                  className="mb-10 text-base font-normal leading-relaxed text-body-color dark:text-dark-6 !font-normal"
                 >
                   Understanding that each student has unique educational and professional goals, we prepare students for three pathways post-graduation: further education, direct employment, and entrepreneurship. The CRC organizes professional development and work readiness workshops, builds partnerships with businesses across Rwanda, assists students and alumni with job/internship applications, supports students and alumni with university and scholarship applications, and hosts career mentorship events.
-                </OptimizedAnimatedText>
+                </AnimatedText>
               </div>
             </OptimizedScrollAnimation>
 
@@ -83,22 +80,20 @@ const About = () => {
                 <OptimizedScrollAnimation direction="down" delay={300}>
                   <div className="relative z-10 mb-4 flex items-center justify-center rounded-sm overflow-hidden bg-secondary px-6 py-12 sm:mb-8 sm:h-[160px] sm:p-5 lg:mb-4 xl:mb-8">
                     <div>
-                      <OptimizedAnimatedText 
-                        animation="fade-up"
+                      <AnimatedText 
+                        animation="letters-fade-in"
                         as="span" 
                         className="block text-5xl font-extrabold text-white"
-                        delay={100}
                       >
                         10+
-                      </OptimizedAnimatedText>
-                      <OptimizedAnimatedText 
-                        animation="fade-up"
+                      </AnimatedText>
+                      <AnimatedText 
+                        animation="words-slide-up"
                         as="span" 
                         className="block text-base font-semibold text-white"
-                        delay={200}
                       >
                         Years of experience
-                      </OptimizedAnimatedText>
+                      </AnimatedText>
 
                     </div>
                     <div>

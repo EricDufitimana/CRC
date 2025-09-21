@@ -7,6 +7,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import SectionTitle from '../Common/SectionTitle';
 import AnimateOnScroll from '../animation/animateOnScroll';
 import Image from 'next/image';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Register ScrollTrigger plugin
 gsap.registerPlugin(ScrollTrigger);
@@ -77,6 +78,7 @@ const faqData = [
 export default function HorizontalFaq() {
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const container = containerRef.current;
@@ -101,37 +103,40 @@ export default function HorizontalFaq() {
       }
     });
 
-    // Animate cards on scroll
-    gsap.fromTo(".faq-card", 
-      { 
-        opacity: 0, 
-        y: 100,
-        scale: 0.8,
-        rotation: 0
-      },
-      {
-        opacity: 1,
-        y: 0,
-        scale: 1,
-        rotation: (index) => faqData[index]?.degrees || 0,
-        duration: 1.2,
-        stagger: 0.3,
-        ease: "back.out(1.7)",
-        scrollTrigger: {
-          trigger: container,
-          start: "top center",
-          end: "center center",
-          once: true,
-          markers: false
+    // Only animate cards on desktop, show them statically on mobile
+    if (!isMobile) {
+      gsap.fromTo(".faq-card", 
+        { 
+          opacity: 0, 
+          y: 100,
+          scale: 0.8,
+          rotation: 0
+        },
+        {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          rotation: (index) => faqData[index]?.degrees || 0,
+          duration: 1.2,
+          stagger: 0.3,
+          ease: "back.out(1.7)",
+          scrollTrigger: {
+            trigger: container,
+            start: "top center",
+            end: "center center",
+            once: true,
+            markers: false
+          }
         }
-      }
-    );
+      );
+    }
+    // On mobile, cards are already visible by default - no animation needed
 
     return () => {
       horizontalScroll.kill();
       ScrollTrigger.getAll().forEach(trigger => trigger.kill());
     };
-  }, []);
+  }, [isMobile]);
 
   return (
     <section 
@@ -169,7 +174,14 @@ export default function HorizontalFaq() {
           style={{ width: `${faqData.length * 400}px` }}
         >
           {faqData.map((faq, index) => (
-            <div key={index} className="faq-card flex-shrink-0">
+            <div 
+              key={index} 
+              className={`faq-card flex-shrink-0 ${isMobile ? 'opacity-100' : ''}`}
+              style={isMobile ? { 
+                opacity: 1, 
+                transform: `rotate(${faq.degrees}deg) translateY(0px) scale(1)` 
+              } : {}}
+            >
               <FaqCard 
                 numberQn={faq.numberQn}
                 question={faq.question}

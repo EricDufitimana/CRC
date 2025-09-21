@@ -2,7 +2,7 @@
 import {useSpring, animated} from "@react-spring/web";
 import AnimateOnScroll from "../animation/animateOnScroll";
 import { useInView } from "react-intersection-observer";
-
+import { useIsMobile } from "@/hooks/use-mobile";
 
 function Number({ n }: { n: number }) {
   const [ref, inView] = useInView({
@@ -25,6 +25,7 @@ function Number({ n }: { n: number }) {
 }
 
 const CallToAction = () => {
+  const isMobile = useIsMobile();
   return (
   <AnimateOnScroll direction="down" delay={0.2}>
     <section className="relative z-10 overflow-hidden bg-secondary_lite py-12 lg:py-[8px]">
@@ -32,8 +33,8 @@ const CallToAction = () => {
         <div className="relative overflow-hidden">
           <div className="-mx-4 flex flex-wrap items-stretch">
             <div className="w-full px-4">
-              <div className=" text-left flex justify-between">
-                <div className="p-4">
+              <div className={` text-left flex justify-between ${isMobile ? "flex-col" : ""}`}>
+                <div className={`p-4 ${isMobile ? "text-center" : ""}`}>
                   <h2 className="mb-2.5 text-3xl font-bold text-dark md:text-[38px] md:leading-[1.44]">
                   <span>Our Impact in <span className="text-primary">Numbers</span></span>
                   </h2>
@@ -44,12 +45,12 @@ const CallToAction = () => {
                 </div>
                 <div className="grid grid-cols-2 p-4 max-w-[500px] gap-8 text-dark ">
                   <div className="">
-                    <h1 className="text-4xl font-bold "><Number n={60} />+</h1>
-                    <p className="text-sm text-gray-400">Students accepted to universities abroad</p>
+                    <h1 className="text-4xl font-bold "><Number n={110} />+</h1>
+                    <p className="text-sm text-gray-400">Students accepted to universities outside Africa</p>
                   </div>
                   <div className="">
-                    <h1 className="text-4xl font-bold"><Number n={40}/>+</h1>
-                    <p className="text-sm text-gray-400">Graduates now employed in top local & international orgs</p>
+                    <h1 className="text-4xl font-bold"><Number n={850}/>+</h1>
+                    <p className="text-sm text-gray-400">Students accepted to universities in Africa</p>
                   </div>
                   <div className="">
                     <h1 className="text-4xl font-bold"><Number n={30}/>+</h1>
@@ -73,7 +74,7 @@ const CallToAction = () => {
           <svg
             width="495"
             height="470"
-            viewBox="0 0 495 470"
+            viewBox={isMobile ? "0 0 1200 1200" : "0 0 495 470"}
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
           >
@@ -104,7 +105,7 @@ const CallToAction = () => {
           <svg
             width="493"
             height="470"
-            viewBox="0 0 493 470"
+            viewBox={isMobile ? "0 60 500 500" : "0 0 493 470"}	
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
           >

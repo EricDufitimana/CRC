@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/carousel";
 
 import { urlFor } from '@/sanity/lib/image';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Sanity Event type definition
 type SanityEvent = {
@@ -79,6 +80,7 @@ interface EventDetailsModalProps {
 
 export function EventDetailsModal({ event, isOpen, onClose }: EventDetailsModalProps) {
   const [api, setApi] = React.useState<any>();
+  const isMobile = useIsMobile();
 
   // Debug logging
   console.log('EventDetailsModal - Event:', event);
@@ -130,11 +132,11 @@ export function EventDetailsModal({ event, isOpen, onClose }: EventDetailsModalP
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden p-0 bg-white z-[9999]">
+      <DialogContent className={`${isMobile ? 'max-w-[95vw] max-h-[95vh] mx-2 overflow-y-auto' : 'max-w-6xl max-h-[90vh] overflow-hidden'} p-0 bg-white z-[9999]`}>
         <DialogTitle className="sr-only">Event Details</DialogTitle>
-        <div className="grid lg:grid-cols-3 gap-0">
+        <div className={`grid ${isMobile ? 'grid-cols-1' : 'lg:grid-cols-3'} gap-0`}>
                     {/* Left Panel - Image Display */}
-          <div className="lg:col-span-2 relative h-full px-1">
+          <div className={`${isMobile ? 'col-span-1 h-[40vh]' : 'lg:col-span-2'} relative h-full px-1`}>
             {galleryImages.length === 1 ? (
               // Single image when only one image in gallery
               <div className="w-full h-full rounded-lg overflow-hidden py-1">
@@ -164,7 +166,7 @@ export function EventDetailsModal({ event, isOpen, onClose }: EventDetailsModalP
                   loop: true,
                 }}
               >
-                <CarouselContent className="h-[90vh] py-1">
+                <CarouselContent className={`${isMobile ? 'h-[40vh]' : 'h-[90vh]'} py-1`}>
                   {galleryImages.length > 0 ? (
                     galleryImages.map((imageUrl, index) => (
                       <CarouselItem key={index} className="pl-0">
@@ -202,7 +204,7 @@ export function EventDetailsModal({ event, isOpen, onClose }: EventDetailsModalP
           </div>
 
           {/* Right Panel - Content */}
-          <div className="lg:col-span-1 p-6 lg:p-8 bg-white">
+          <div className={`${isMobile ? 'col-span-1 p-4' : 'lg:col-span-1 p-6 lg:p-8'} bg-white`}>
             <div className="h-full flex flex-col">
               {/* Header Section */}
               <div className="mb-6 h-short:mb-2">
@@ -213,11 +215,11 @@ export function EventDetailsModal({ event, isOpen, onClose }: EventDetailsModalP
                   {event.category}
                 </Badge>
                 
-                <DialogTitle className="text-2xl md:text-3xl font-bold text-gray-900 mt-4 mb-4 leading-tight h-short:text-xl ">
+                <DialogTitle className={`${isMobile ? 'text-xl' : 'text-2xl md:text-3xl'} font-bold text-gray-900 mt-4 mb-4 leading-tight h-short:text-xl`}>
                   {event.title}
                 </DialogTitle>
                 
-                <div className="space-y-3 h-short:space-y-1 text-sm text-gray-600">
+                <div className={`space-y-3 h-short:space-y-1 ${isMobile ? 'text-sm' : 'text-sm'} text-gray-600`}>
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-blue-600" />
                     <span>{format(eventDate, "EEEE, MMMM d, yyyy")}</span>
@@ -233,13 +235,13 @@ export function EventDetailsModal({ event, isOpen, onClose }: EventDetailsModalP
               </div>
 
               {/* Main Content */}
-              <div className="flex-1 space-y-6 overflow-hidden">
+              <div className={`flex-1 ${isMobile ? 'space-y-4 overflow-y-auto' : 'space-y-6 overflow-hidden'}`}>
                 {/* Description */}
-                <div className="overflow-hidden">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3 h-short:text-base">
+                <div className={isMobile ? '' : 'overflow-hidden'}>
+                  <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-gray-900 mb-3 h-short:text-base`}>
                     About This Event
                   </h3>
-                  <p className="text-base text-gray-700 leading-relaxed overflow-hidden h-short:text-sm">
+                  <p className={`${isMobile ? 'text-sm' : 'text-base'} text-gray-700 leading-relaxed ${isMobile ? '' : 'overflow-hidden'} h-short:text-sm`}>
                     {event.description}
                   </p>
                 </div>
@@ -248,11 +250,11 @@ export function EventDetailsModal({ event, isOpen, onClose }: EventDetailsModalP
                        {/* Organizer */}
                 {event.event_organizer && (
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3 h-short:text-base">
+                    <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-gray-900 mb-3 h-short:text-base`}>
                       Event Organizer
                     </h3>
                     <div className="flex items-center gap-3">
-                      <Avatar className="h-12 w-12 h-short:h-10 h-short:w-10">
+                      <Avatar className={`${isMobile ? 'h-10 w-10' : 'h-12 w-12'} h-short:h-10 h-short:w-10`}>
                         <AvatarImage 
                           src={event.event_organizer.image || undefined} 
                           alt={event.event_organizer.name} 
@@ -262,9 +264,9 @@ export function EventDetailsModal({ event, isOpen, onClose }: EventDetailsModalP
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-medium text-gray-900 h-short:text-sm">{event.event_organizer.name}</p>
+                        <p className={`${isMobile ? 'text-sm' : 'font-medium'} text-gray-900 h-short:text-sm`}>{event.event_organizer.name}</p>
                         {event.event_organizer.role && (
-                          <p className="text-sm text-gray-600 h-short:text-xs">{event.event_organizer.role}</p>
+                          <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 h-short:text-xs`}>{event.event_organizer.role}</p>
                         )}
                       </div>
                     </div>

@@ -1,7 +1,8 @@
-
+"use client"
 import Image from "next/image";
 import Link from "next/link";
 import { Calendar, Clock } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface LinkType  {
   text: string,
@@ -20,6 +21,7 @@ interface LayoutProps {
 
 
 const Layout = ({image, title, description, double=false, links=[], altText, deadline} : LayoutProps) => {
+  const isMobile = useIsMobile();
   // Helper function to format deadline and determine urgency
   const formatDeadline = (deadline: string) => {
     const deadlineDate = new Date(deadline);
@@ -39,8 +41,8 @@ const Layout = ({image, title, description, double=false, links=[], altText, dea
   return (
     <main>
       
-          <div className="p-8 flex justify-between">
-            <div className="relative w-[350px] h-[350px]">
+          <div className={isMobile ? "flex flex-col gap-6 justify-center items-center" : "p-8 flex justify-between"}>
+            <div className={isMobile ? "relative w-[250px] h-[250px]" : "relative w-[350px] h-[350px]"}>
               <Image
                 src={image}
                 fill
@@ -48,20 +50,20 @@ const Layout = ({image, title, description, double=false, links=[], altText, dea
                 className="rounded-md object-cover" 
               />
             </div>
-            <div className="w-[50%] flex flex-col justify-between h-[350px] ">
+            <div className={`flex flex-col justify-between min-h-[350px] ${isMobile ? "w-full" : "w-[50%]"}`}>
               <div className="">
-                 <div className="flex items-start justify-between pb-4">
-                   <h2 className="text-2xl font-bold">{title}</h2>
-                   {deadlineInfo && (
-                     <div className={`flex items-center gap-1 text-sm font-medium ${deadlineInfo.color} ml-4`}>
-                       <Calendar className="h-4 w-4" />
-                       <span>{deadlineInfo.text}</span>
-                     </div>
-                   )}
-                 </div>
-                  <p className="pb-4 text-lg font-light">{description}</p>
+              <div className={`pb-4 ${isMobile ? "flex flex-col items-center text-center gap-2" : "flex items-center justify-between"}`}>
+                <h2 className="text-2xl font-bold">{title}</h2>
+                {deadlineInfo && (
+                  <div className={`flex items-center gap-1 text-sm font-medium ${deadlineInfo.color} ${isMobile ? "" : "ml-4"}`}>
+                    <Calendar className="h-4 w-4" />
+                    <span className="inline">{deadlineInfo.text}</span>
+                  </div>
+                )}
               </div>
-              <div className="flex justify-between mt-auto">
+              <p className={`pb-4 text-lg font-light ${isMobile ? "text-center" : ""}`}>{description}</p>
+              </div>
+              <div className={`flex justify-between  ${isMobile ? "-mt-2" : "mt-auto"}`}>
                 {links.length>0 && (
                   <Link
                   href={links[0].href}

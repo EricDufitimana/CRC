@@ -4,8 +4,10 @@ import Link from 'next/link';
 import { ArrowRight, LayoutDashboard } from "lucide-react";
 import { ExtrudingComponent } from "../animation/ExtrudingComponent";
 import { useSession } from "@/hooks/getSession";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const GetStartedButton = () => {
+  const isMobile = useIsMobile();
   // Safely get session data with error handling
   let userId = null;
   let adminId = null;
@@ -29,26 +31,25 @@ const GetStartedButton = () => {
       scaleFrom={0.8}
       scaleTo={1}
       autoPlay={true}
+      className={`${isMobile ? "w-full" : ""}`}
     >
       {userId ? (
-        // User is logged in - show dashboard button
-        <Link
+          <Link
           href={adminId ? "/dashboard/admin" : "/dashboard/student"}
-          className="group inline-flex items-center justify-center gap-3 px-7 py-3 bg-secondary border border-secondary text-white font-medium rounded-md  shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition-all duration-200 ease-linear"
-        >
+          className={`${isMobile ? "w-full flex" : "px-7 py-3 inline-flex"} group items-center justify-center gap-3 bg-secondary border border-secondary text-white font-medium rounded-md shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition-all duration-200 ease-linear`}
+          >
           <LayoutDashboard className="w-5 h-5" />
           <span>Go to Dashboard</span>
           <ArrowRight className="w-5 h-5 transition-all duration-300 group-hover:translate-x-1 group-hover:scale-110" />
-        </Link>
+          </Link>
       ) : (
-        // User is not logged in - show get started button
-        <Link
+          <Link
           href="/register"
-          className="group inline-flex items-center justify-center gap-3 px-7 py-3 bg-dark border border-dark text-white font-medium rounded-md hover:bg-gray-800 shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition-all duration-200 ease-linear"
-        >
+          className={`${isMobile ? "w-full py-3 text-center p-2 flex" : "px-7 py-3 inline-flex"} group items-center justify-center gap-3 bg-dark border border-dark text-white font-medium rounded-md hover:bg-gray-800 shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition-all duration-200 ease-linear`}
+          >
           <span>Get Started</span>
           <ArrowRight className="w-5 h-5 transition-all duration-300 group-hover:translate-x-1 group-hover:scale-110" />
-        </Link>
+          </Link>
       )}
     </ExtrudingComponent>
   );

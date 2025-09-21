@@ -97,8 +97,8 @@ const Contact = () => {
                     </h3>
                     <p className="text-base text-body-color dark:text-dark-6">
                       <Link
-                        href={"/dashboard/student"}
-                        className="inline-flex items-center justify-center rounded-md border border-primary px-14 py-[14px] text-center text-dark font-medium transition duration-300 ease-in-out hover:bg-primary hover:text-white "
+                        href={"/login"}
+                        className="inline-flex items-center justify-center rounded-md border border-primary px-14 py-[14px] text-center text-dark font-medium transition duration-300 ease-in-out bg-primary text-white hover:bg-primary/90 "
                       >
                         Book A Meeting
                       </Link>

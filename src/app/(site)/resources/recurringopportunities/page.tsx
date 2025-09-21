@@ -1,6 +1,5 @@
 import ScrollUp from "@/components/Common/ScrollUp";
 import { Metadata } from "next";
-import HeaderLayout from "@/components/other/headerLayout";
 import MultipleAnnouncementsBanner from "@/components/Banner/MultipleAnnouncementsBanner";
 import Layout from "@/components/other/ResourceLayout";
 import { Fragment } from "react";
@@ -8,6 +7,7 @@ import { getRecurringOpportunities } from "@/sanity/lib/queries";
 import { client } from "@/sanity/lib/client";
 import { RotateCcw } from "lucide-react";
 import { filterExpiredResources } from "@/utils/filterExpiredResources";
+import ConditionalHeader from "../../../../components/other/ConditionalHeader";
 
 export const metadata: Metadata = {
   title: "Recurring Opportunities - CRC",
@@ -30,9 +30,11 @@ export default async function RecurringOpportunities() {
   return (
     <main>
       <ScrollUp />
-      <HeaderLayout 
-        image="/images/banners/recurring-opportunities.svg" 
-        bottomPaddingClass="pb-8" 
+      <ConditionalHeader 
+        title="Recurring Opportunities" 
+        description="Explore ongoing and recurring opportunities available through the Career Resources Center."
+        image="/images/banners/recurring-opportunities.svg"
+        bottomPaddingClass="pb-8"
       />
       <div className="space-y-8">
         <MultipleAnnouncementsBanner 
@@ -42,7 +44,7 @@ export default async function RecurringOpportunities() {
           containerWidth="w-[1120px]"
         />
         <div className="flex justify-center pb-12">
-          <div className="content border border-gray-700 rounded-md p-8 w-[1100px]">
+          <div className="content border border-gray-700 rounded-md p-8 w-[1100px] max-w-[90%] mx-auto">
             {filteredData && filteredData.length > 0 ? (
               filteredData.map((item, index) => (
                 <Fragment key={item._id}>

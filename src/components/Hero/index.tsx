@@ -6,9 +6,11 @@ import Image from "next/image";
 import GetStartedButton from "../other/getStartedButton";
 import { AnimatedText } from "../animation/AnimatedText";
 import { ExtrudingComponent } from "../animation/ExtrudingComponent";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 
 const Hero = () => {
+  const isMobile = useIsMobile();
   useEffect(() => {
     console.log('Width:', window.innerWidth);
     console.log('Height:', window.innerHeight);
@@ -17,7 +19,7 @@ const Hero = () => {
     <>
       <section
         id="home"
-        className="relative overflow-hidden bg-white pt-[120px] md:pt-[130px] lg:pt-[160px]"
+        className="relative overflow-hidden bg-white pt-[100px] md:pt-[130px] lg:pt-[160px]"
       >
         <div className="container max-section-sm">
           <div className="flex flex-wrap">
@@ -48,13 +50,13 @@ const Hero = () => {
                 <AnimatedText 
                   animation="words-slide-from-right"
                   as="p" 
-                  className="text-sm text-left max-w-2xl text-red-400"
+                  className={`text-sm text-left max-w-2xl text-red-400 ${isMobile ? "py-4" : ""}`}	
                   startTrigger="top 90%"
                 >
                   *The resources and opportunities shared here are meant for current ASYV students. Please do not share with non-ASYV students. ASYV Alumni may access this website, but should be aware that they can find more useful information from the CRC Officer and Alumni Whatsapp and email groups.
                 </AnimatedText>
               </div>
-              <div className="hero-image-container relative">
+              <div className={`hero-image-container relative ${isMobile ? "hidden" : ""}`}>
                 {/* Hero image with extrude effect */}
                 <ExtrudingComponent
                   delay={0.2}

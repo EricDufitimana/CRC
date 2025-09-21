@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 
 const quickLinks = [
@@ -9,7 +10,7 @@ const quickLinks = [
   },
   {
     label: "Career Resources",
-    link: "/resources",
+    link: "/resources/newopportunities",
   },
   {
     label: "Events & Workshops",
@@ -63,6 +64,8 @@ const workshops = [
   
 
 const Footer = () => {
+  const isMobile = useIsMobile();
+  
   return (
     <footer className="relative overflow-hidden pt-20 lg:pt-[100px]">
       <div className="absolute inset-0 -z-10">
@@ -138,8 +141,8 @@ const Footer = () => {
       </div>
 
       <div className="container relative z-10">
-        <div className="-mx-4 flex flex-wrap">
-          <div className="w-full px-4 sm:w-1/2 md:w-1/2 lg:w-4/12 xl:w-3/12">
+        <div className={isMobile ? "grid grid-cols-2 gap-6" : "-mx-4 flex flex-wrap"}>
+          <div className={isMobile ? "col-span-2" : "w-full px-4 sm:w-1/2 md:w-1/2 lg:w-4/12 xl:w-3/12"}>
             <div className="mb-10 w-full">
               <Link href="/" className="mb-2 -mt-4 inline-block max-w-[160px]">
                 <Image
@@ -176,7 +179,7 @@ const Footer = () => {
             </div>
           </div>
 
-          <div className="w-full px-4 sm:w-1/2 md:w-1/2 lg:w-2/12 xl:w-2/12">
+          <div className={isMobile ? "" : "w-full px-4 sm:w-1/2 md:w-1/2 lg:w-2/12 xl:w-2/12"}>
             <div className="mb-10 w-full">
               <h4 className="mb-9 text-lg font-semibold text-white">
                 Quick Links
@@ -196,7 +199,7 @@ const Footer = () => {
             </div>
           </div>
 
-          <div className="w-full px-4 sm:w-1/2 md:w-1/2 lg:w-3/12 xl:w-2/12">
+          <div className={isMobile ? "" : "w-full px-4 sm:w-1/2 md:w-1/2 lg:w-3/12 xl:w-2/12"}>
             <div className="mb-10 w-full">
               <h4 className="mb-9 text-lg font-semibold text-white">
                 Resources
@@ -216,7 +219,7 @@ const Footer = () => {
             </div>
           </div>
 
-          <div className="w-full px-4 sm:w-1/2 md:w-1/2 lg:w-3/12 xl:w-2/12">
+          <div className={isMobile ? "" : "w-full px-4 sm:w-1/2 md:w-1/2 lg:w-3/12 xl:w-2/12"}>
             <div className="mb-10 w-full">
               <h4 className="mb-9 text-lg font-semibold text-white">
                 Workshops
@@ -236,7 +239,7 @@ const Footer = () => {
             </div>
           </div>
 
-          <div className="w-full px-4 md:w-2/3 lg:w-6/12 xl:w-3/12">
+          <div className={isMobile ? "" : "w-full px-4 md:w-2/3 lg:w-6/12 xl:w-3/12"}>
             <div className="mb-10 w-full">
               <h4 className="mb-9 text-lg font-semibold text-white">
                 Contact CRC

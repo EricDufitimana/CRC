@@ -9,11 +9,14 @@ import { getNewOpportunities } from "@/sanity/lib/queries";
 import { client } from "@/sanity/lib/client";
 import { Sparkles } from "lucide-react";
 import { filterExpiredResources } from "@/utils/filterExpiredResources";
+import ConditionalHeader from "../../../../components/other/ConditionalHeader";
 
 export const metadata: Metadata = {
   title: "CRC ",
   description: "Career Resources Center Website",
 };
+
+
 
 type Opportunity = {
   _id: string;
@@ -31,7 +34,12 @@ export default async function Home() {
   return (
     <main>
       <ScrollUp />
-      <HeaderLayout image="/images/banners/new_opportunities_2.svg" bottomPaddingClass="pb-8" />
+      <ConditionalHeader 
+        title="New Opportunities" 
+        description="Discover the latest educational and career opportunities available to ASYV students and alumni."
+        image="/images/banners/new_opportunities_2.svg"
+        bottomPaddingClass="pb-8"
+      />
       <div className="space-y-8">
         <MultipleAnnouncementsBanner 
           page="new_opportunities" 
@@ -40,7 +48,7 @@ export default async function Home() {
           containerWidth="w-[1120px]"
         />
         <div className="flex justify-center pb-12">
-          <div className="content border border-gray-700 rounded-md p-8 w-[1100px]">
+          <div className="content border border-gray-700 rounded-md p-8 w-[1100px] max-w-[90%] mx-auto">
           {filteredData && filteredData.length > 0 ? (
             filteredData.map((item, index) => (
               <Fragment key={item._id}>

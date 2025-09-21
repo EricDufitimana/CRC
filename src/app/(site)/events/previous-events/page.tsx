@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import EventsNotificationBanner from "@/components/Banner/EventsNotificationBanner";
 import MultipleAnnouncementsBanner from "@/components/Banner/MultipleAnnouncementsBanner";
 import SectionTitle from "@/components/Common/SectionTitle";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // Type definition based on Sanity schema
 type Event = {
@@ -55,7 +56,7 @@ export default function PreviousEventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
+  const isMobile = useIsMobile();
   useEffect(() => {
     const fetchEvents = async () => {
       try {
@@ -94,11 +95,11 @@ export default function PreviousEventsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-100">
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-green-50 via-white to-green-50">
+      <section className={`relative overflow-hidden bg-gradient-to-br from-green-50 via-white to-green-50 ${isMobile ? "pt-[120px]" : ""}`}>
         {/* Bleed Effect Background */}
         <div className="absolute inset-0 bg-gradient-to-r from-green-100/30 via-transparent to-green-200/20"></div>
         
-        <div className="container mx-auto px-4 py-20 lg:py-32">
+        <div className={`container mx-auto px-4 py-20 lg:py-32 ${isMobile ? "w-full" : ""}`}>
           <div className="grid lg:grid-cols-2 gap-12 items-center px-12">
             {/* Left Column - Text Content */}
             <div className="space-y-8 pl-4">
@@ -120,7 +121,7 @@ export default function PreviousEventsPage() {
               
             </div>
             
-              <div className="relative">
+              <div className={`relative ${isMobile ? "hidden" : ""}`}>
                 <div className="relative">
                   <div className="w-full h-[36rem] relative">
                     <Image

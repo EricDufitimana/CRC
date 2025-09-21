@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import EventsNotificationBanner from "@/components/Banner/EventsNotificationBanner";
 import MultipleAnnouncementsBanner from "@/components/Banner/MultipleAnnouncementsBanner";
 import SectionTitle from "@/components/Common/SectionTitle";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // Type definition based on Sanity schema
 type Event = {
@@ -55,6 +56,7 @@ export default function UpcomingEventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -96,17 +98,17 @@ export default function UpcomingEventsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-100">
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-orange-50 via-white to-orange-50">
+      <section className={`relative overflow-hidden bg-gradient-to-br from-orange-50 via-white to-orange-50 ${isMobile ? "pt-[120px]" : ""}`}>
         {/* Bleed Effect Background */}
         <div className="absolute inset-0 bg-gradient-to-r from-orange-100/30 via-transparent to-orange-200/20"></div>
         
         {/* Zigzag circle positioned at screen edge */}
         
         
-        <div className="container mx-auto px-4 py-20 lg:py-32">
+        <div className={`container mx-auto px-4 py-20 lg:py-32 ${isMobile ? "w-full" : ""}`}>
           <div className="grid lg:grid-cols-2 gap-12 items-center px-12">
             {/* Left Column - Text Content */}
-            <div className="space-y-8 pl-8">
+            <div className="space-y-8 pl-4">
               {/* Tagline */}
               <p className="text-orange-700 text-lg font-medium">
                 Exciting events coming your way.
@@ -125,20 +127,19 @@ export default function UpcomingEventsPage() {
               
             </div>
             
-            {/* Right Column - Image */}
-            <div className="relative">
-              <div className="relative">
-                <div className="w-full h-[38rem] relative">
-                  <Image
-                    src={"/images/events/upcoming-events.svg"}
-                    alt={`Upcoming events illustration`}
-                    fill
-                    priority
-                    className="object-contain"
-                  />
+              <div className={`relative ${isMobile ? "hidden" : ""}`}>
+                <div className="relative">
+                  <div className="w-full h-[36rem] relative">
+                    <Image
+                      src={"/images/events/upcoming-events.svg"}
+                      alt={`Upcoming events illustration`}
+                      fill
+                      priority
+                      className="object-contain"
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
           </div>
         </div>
       </section>

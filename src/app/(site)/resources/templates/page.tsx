@@ -7,7 +7,6 @@ import Image from "next/image";
 import Link from "next/link";
 import Layout from "@/components/other/ResourceLayout";
 import { layout } from "@/types/layout";
-import HeaderLayout from "@/components/other/headerLayout";
 import ResourcesNotificationBanner from "@/components/Banner/ResourcesNotificationBanner";
 import MultipleAnnouncementsBanner from "@/components/Banner/MultipleAnnouncementsBanner";
 import { Fragment, Suspense } from "react";
@@ -17,6 +16,7 @@ import GridSkeleton from "@/components/ui/GridSkeleton";
 import ResourceSkeleton from "@/components/ui/ResourceSkeleton";
 import { FileText } from "lucide-react";
 import { filterExpiredResources } from "@/utils/filterExpiredResources";
+import ConditionalHeader from "../../../../components/other/ConditionalHeader";
 
 export const metadata: Metadata = {
   title: "CRC ",
@@ -40,12 +40,17 @@ export default async function Home() {
   return (
     <main>
       <ScrollUp />
-      <HeaderLayout image="/images/banners/templates.svg" bottomPaddingClass="pb-8" />
+      <ConditionalHeader 
+        title="Templates" 
+        description="Access helpful document templates and samples to jumpstart your projects and applications."
+        image="/images/banners/templates.svg"
+        bottomPaddingClass="pb-8"
+      />
       <div className="space-y-8">
         <MultipleAnnouncementsBanner page="templates" theme="amber" maxAnnouncements={3} containerWidth="w-[1120px]" />
         <Suspense fallback={<ResourceSkeleton count={5} />}>
           <div className=" flex justify-center pb-12">
-            <div className="content border border-gray-700 rounded-md p-8 w-[1100px]">
+            <div className="content border border-gray-700 rounded-md p-8 w-[1100px] max-w-[90%] mx-auto">
 
             {filteredData && filteredData.length > 0 ? (
               filteredData.map((item, index) => (
