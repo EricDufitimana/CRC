@@ -35,7 +35,6 @@ export default function StudentSetupPage() {
   const [resumeLink, setResumeLink] = useState<string>('');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedAvatarFile, setUploadedAvatarFile] = useState<File[]>([]);
-  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [setupError, setSetupError] = useState<string | null>(null);
   const [showWelcomeText, setShowWelcomeText] = useState<boolean>(false);
   const [showButton, setShowButton] = useState<boolean>(false);
@@ -230,72 +229,6 @@ export default function StudentSetupPage() {
     }
   };
 
-  const handleAvatarUpload = async () => {
-    console.log('🖼️ Setup: handleAvatarUpload called', { 
-      uploadedAvatarFile: uploadedAvatarFile.length,
-      studentId,
-      userId 
-    });
-    
-    if (uploadedAvatarFile.length === 0) {
-      console.log('⚠️ Setup: No avatar file to upload');
-      return;
-    }
-    
-    try {
-      setIsUploadingAvatar(true);
-      
-      const formData = new FormData();
-      formData.append('student_id', studentId?.toString() || '');
-      formData.append('user_id', userId || '');
-      formData.append('avatar', uploadedAvatarFile[0]);
-
-      console.log('📤 Setup: Uploading avatar file:', {
-        fileName: uploadedAvatarFile[0].name,
-        fileSize: uploadedAvatarFile[0].size,
-        fileType: uploadedAvatarFile[0].type
-      });
-
-      const uploadResponse = await fetch('/api/students/update-profile', {
-        method: 'POST',
-        body: formData,
-      });
-
-      console.log('📡 Setup: Avatar upload response status:', uploadResponse.status);
-
-      if (!uploadResponse.ok) {
-        const errorData = await uploadResponse.json();
-        console.error('❌ Setup: Failed to upload avatar:', errorData);
-        alert('Failed to upload avatar. Please try again.');
-        return;
-      }
-
-      const result = await uploadResponse.json();
-      console.log('✅ Setup: Avatar uploaded successfully:', result);
-      
-      // Update the selected avatar to show the uploaded one
-      if (result.data.avatarUpload?.avatarUrl) {
-        console.log('🖼️ Setup: Setting selected avatar to uploaded URL:', result.data.avatarUpload.avatarUrl);
-        setSelectedAvatar(result.data.avatarUpload.avatarUrl);
-      }
-      
-      // Set the avatar path for storage
-      if (result.data.avatarUpload?.avatarPath) {
-        console.log('🖼️ Setup: Setting selected avatar path to uploaded path:', result.data.avatarUpload.avatarPath);
-        setSelectedAvatarPath(result.data.avatarUpload.avatarPath);
-      }
-      
-      // Switch to existing tab to show the uploaded avatar
-      console.log('🔄 Setup: Switching to existing tab');
-      setActiveTab('existing');
-      
-    } catch (error) {
-      console.error('💥 Setup: Error uploading avatar:', error);
-      alert('Error uploading avatar. Please try again.');
-    } finally {
-      setIsUploadingAvatar(false);
-    }
-  };
 
   // Fetch avatars from server action with signed URLs
   const fetchAvatarsFromServer = async () => {
@@ -624,7 +557,13 @@ export default function StudentSetupPage() {
               <div className="flex justify-center">
                 <div className="relative">
                   <Avatar className={`h-28 w-28 ring-4 ring-white/30 shadow-2xl bg-${selectedBackground}`}>
-                    <AvatarImage src={selectedAvatar || '/images/avatars/avatar-001.png'} />
+                    <AvatarImage 
+                      src={
+                        activeTab === 'upload' && uploadedAvatarFile.length > 0
+                          ? URL.createObjectURL(uploadedAvatarFile[0])
+                          : selectedAvatar || '/images/avatars/avatar-001.png'
+                      } 
+                    />
                     <AvatarFallback className="text-3xl font-bold bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500 text-white">
                       {studentData?.first_name?.charAt(0) || 'U'}
                     </AvatarFallback>
@@ -683,15 +622,24 @@ export default function StudentSetupPage() {
                     </div>
                     
                     {uploadedAvatarFile.length > 0 && (
-                      <div className="text-center">
-                        <Button 
-                          onClick={handleAvatarUpload}
-                          disabled={isUploadingAvatar}
-                          size="sm"
-                          className="bg-blue-600 hover:bg-blue-700 text-white"
-                        >
-                          {isUploadingAvatar ? 'Uploading...' : 'Upload Avatar'}
-                        </Button>
+                      <div className="text-center space-y-3">
+                        <div className="flex justify-center">
+                          <Avatar className="h-16 w-16 ring-2 ring-blue-500">
+                            <AvatarImage 
+                              src={URL.createObjectURL(uploadedAvatarFile[0])} 
+                              alt="Selected avatar preview"
+                            />
+                            <AvatarFallback className="text-lg font-bold bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500 text-white">
+                              {studentData?.first_name?.charAt(0) || 'U'}
+                            </AvatarFallback>
+                          </Avatar>
+                        </div>
+                        <p className="text-sm text-gray-600">
+                          {uploadedAvatarFile[0].name} selected
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          Will be uploaded when you complete setup
+                        </p>
                       </div>
                     )}
                   </div>

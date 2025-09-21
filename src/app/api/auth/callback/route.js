@@ -3,8 +3,44 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    },
+    global: {
+      fetch: (url, options = {}) => {
+        return fetch(url, {
+          ...options,
+          timeout: 30000, // 30 second timeout
+        });
+      }
+    }
+  }
 );
+
+// Helper function to retry Supabase operations
+async function retrySupabaseOperation(operation, maxRetries = 3, delay = 1000) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`Attempt ${attempt}/${maxRetries} for Supabase operation`);
+      const result = await operation();
+      return result;
+    } catch (error) {
+      console.error(`Attempt ${attempt} failed:`, error.message);
+      
+      if (attempt === maxRetries) {
+        throw error;
+      }
+      
+      // Wait before retrying (exponential backoff)
+      const waitTime = delay * Math.pow(2, attempt - 1);
+      console.log(`Waiting ${waitTime}ms before retry...`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+  }
+}
 
 export async function POST(request) {
   try {
@@ -20,32 +56,66 @@ export async function POST(request) {
       return NextResponse.json({ error: 'No user_id provided' }, { status: 400 });
     }
 
-    // Get user details from Supabase
-    const { data: user, error: userError } = await supabase.auth.admin.getUserById(user_id);
+    // Get user details from Supabase with retry logic
+    let user, userError;
+    try {
+      const result = await retrySupabaseOperation(
+        () => supabase.auth.admin.getUserById(user_id),
+        3, // max retries
+        1000 // initial delay
+      );
+      user = result.data;
+      userError = result.error;
+    } catch (error) {
+      console.error('Failed to get user after retries:', error);
+      return NextResponse.json({ 
+        error: 'Unable to verify user', 
+        message: 'Network timeout while verifying user account',
+        details: 'Please try again in a few moments',
+        code: 'USER_VERIFICATION_TIMEOUT'
+      }, { status: 503 });
+    }
     
     if (userError || !user.user) {
       console.error('Error getting user:', userError);
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      return NextResponse.json({ 
+        error: 'User not found', 
+        message: 'User account could not be verified',
+        details: userError?.message || 'User not found in the system',
+        code: 'USER_NOT_FOUND'
+      }, { status: 404 });
     }
 
     console.log('User found:', user.user.id);
     console.log('User metadata:', user.user.user_metadata);
 
-    // Create profile for the new user
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .insert([
-        {
-          user_id: user.user.id,
-          Names: user.user.user_metadata?.full_name || user.user.user_metadata?.name || 'User',
-          email: user.user.email,
-          role: 'student',
-          is_new_user: true,
-          welcome_email_sent: false
-        }
-      ])
-      .select()
-      .single();
+    // Create profile for the new user with retry logic
+    let profile, profileError;
+    try {
+      const result = await retrySupabaseOperation(
+        () => supabase
+          .from('profiles')
+          .insert([
+            {
+              user_id: user.user.id,
+              Names: user.user.user_metadata?.full_name || user.user.user_metadata?.name || 'User',
+              email: user.user.email,
+              role: 'student',
+              is_new_user: true,
+              welcome_email_sent: false
+            }
+          ])
+          .select()
+          .single(),
+        2, // max retries
+        500 // initial delay
+      );
+      profile = result.data;
+      profileError = result.error;
+    } catch (error) {
+      console.error('Failed to create profile after retries:', error);
+      profileError = error;
+    }
 
     if (profileError) {
       console.error('Error creating profile:', profileError);
@@ -54,12 +124,29 @@ export async function POST(request) {
       console.log('Profile created successfully:', profile.id);
     }
 
-    // Find existing student record by student_id
-    const { data: existingStudent, error: findError } = await supabase
-      .from('students')
-      .select('*')
-      .eq('student_id', student_code)
-      .single();
+    // Find existing student record by student_id with retry logic
+    let existingStudent, findError;
+    try {
+      const result = await retrySupabaseOperation(
+        () => supabase
+          .from('students')
+          .select('*')
+          .eq('student_id', student_code)
+          .single(),
+        3, // max retries
+        500 // initial delay
+      );
+      existingStudent = result.data;
+      findError = result.error;
+    } catch (error) {
+      console.error('Failed to find student after retries:', error);
+      return NextResponse.json({ 
+        error: 'Unable to verify student', 
+        message: 'Network timeout while looking up student record',
+        details: 'Please try again in a few moments',
+        code: 'STUDENT_LOOKUP_TIMEOUT'
+      }, { status: 503 });
+    }
 
     if (findError) {
       console.error('Error finding student:', findError);
@@ -98,19 +185,36 @@ export async function POST(request) {
 
 
 
-    // Update the existing student record with the new user_id
+    // Update the existing student record with the new user_id with retry logic
     console.log('Updating existing student with user_id:', user.user.id);
 
-    const { data: updatedStudent, error: updateError } = await supabase
-      .from('students')
-      .update({ 
-        user_id: user.user.id,
-        email: user.user.email,
-        date_of_registration: new Date().toISOString()
-      })
-      .eq('id', existingStudent.id)
-      .select()
-      .single();
+    let updatedStudent, updateError;
+    try {
+      const result = await retrySupabaseOperation(
+        () => supabase
+          .from('students')
+          .update({ 
+            user_id: user.user.id,
+            email: user.user.email,
+            date_of_registration: new Date().toISOString()
+          })
+          .eq('id', existingStudent.id)
+          .select()
+          .single(),
+        3, // max retries
+        500 // initial delay
+      );
+      updatedStudent = result.data;
+      updateError = result.error;
+    } catch (error) {
+      console.error('Failed to update student after retries:', error);
+      return NextResponse.json({ 
+        error: 'Unable to update student', 
+        message: 'Network timeout while updating student record',
+        details: 'Please try again in a few moments',
+        code: 'STUDENT_UPDATE_TIMEOUT'
+      }, { status: 503 });
+    }
 
     if (updateError) {
       console.error('Error updating student:', updateError);
@@ -123,6 +227,33 @@ export async function POST(request) {
     }
 
     console.log('Student updated successfully:', updatedStudent.id);
+    
+    // Send welcome email after successful student update
+    try {
+      console.log('📧 Sending welcome email for user:', user.user.id);
+      
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+      const welcomeEmailResponse = await fetch(`${baseUrl}/api/send-welcome-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ user_id: user.user.id })
+      });
+      
+      if (welcomeEmailResponse.ok) {
+        const welcomeEmailData = await welcomeEmailResponse.json();
+        console.log('✅ Welcome email sent successfully:', welcomeEmailData);
+      } else {
+        const welcomeEmailError = await welcomeEmailResponse.json();
+        console.error('❌ Welcome email failed:', welcomeEmailError);
+        // Don't fail the entire process if welcome email fails
+      }
+    } catch (welcomeEmailError) {
+      console.error('❌ Error sending welcome email:', welcomeEmailError);
+      // Don't fail the entire process if welcome email fails
+    }
+    
     return NextResponse.json({ message: 'Student updated successfully', student: updatedStudent });
 
   } catch (error) {
@@ -160,8 +291,20 @@ export async function GET(request) {
       return NextResponse.redirect(new URL('/login?error=no_code', request.url));
     }
 
-    // Exchange code for session
-    const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+    // Exchange code for session with retry logic
+    let data, exchangeError;
+    try {
+      const result = await retrySupabaseOperation(
+        () => supabase.auth.exchangeCodeForSession(code),
+        3, // max retries
+        1000 // initial delay
+      );
+      data = result.data;
+      exchangeError = result.error;
+    } catch (error) {
+      console.error('Failed to exchange code after retries:', error);
+      return NextResponse.redirect(new URL(`/login?error=exchange_timeout&details=${encodeURIComponent('Network timeout during authentication')}`, request.url));
+    }
     
     if (exchangeError) {
       console.error('Code exchange error:', exchangeError);
@@ -309,6 +452,32 @@ export async function GET(request) {
     }
 
     console.log('Student created successfully:', student.id);
+    
+    // Send welcome email after successful student creation
+    try {
+      console.log('📧 Sending welcome email for new student:', user.id);
+      
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+      const welcomeEmailResponse = await fetch(`${baseUrl}/api/send-welcome-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ user_id: user.id })
+      });
+      
+      if (welcomeEmailResponse.ok) {
+        const welcomeEmailData = await welcomeEmailResponse.json();
+        console.log('✅ Welcome email sent successfully for new student:', welcomeEmailData);
+      } else {
+        const welcomeEmailError = await welcomeEmailResponse.json();
+        console.error('❌ Welcome email failed for new student:', welcomeEmailError);
+        // Don't fail the entire process if welcome email fails
+      }
+    } catch (welcomeEmailError) {
+      console.error('❌ Error sending welcome email for new student:', welcomeEmailError);
+      // Don't fail the entire process if welcome email fails
+    }
     
     // Check if this user is an admin
     const { data: adminRecord } = await supabase
