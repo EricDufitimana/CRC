@@ -138,7 +138,7 @@ model students {
   student_id           String               @unique
   first_name           String
   last_name            String
-  email                String
+  email                String?
   profile_picture      String?
   date_of_registration DateTime?            @db.Timestamp(6)
   user_id              String?              @unique @db.Uuid
@@ -146,6 +146,7 @@ model students {
   major_full           major_full?
   major_short          major_short?
   gpa                  String?
+  gender               gender?
   crc_class_id         BigInt?
   profile_background   profile_background?  @default(statColors_4)
   academic_report_path String?
@@ -679,6 +680,9 @@ enum major_full {
   Physics_Chemistry_Biology              @map("Physics-Chemistry-Biology")
   Mathematics_Computer_Science_Economics @map("Mathematics-Computer Science-Economics")
   Mathematics_Economics_Geography        @map("Mathematics-Economics-Geography")
+  Mathematics_Physics_Chemistry_Biology  @map("Mathematics-Physics-Chemistry-Biology")
+  Mathematics_Physics_Geography_Economics @map("Mathematics-Physics-Geography-Economics")
+  History_Geography_Literature_Psychology @map("History-Geography-Literature-Psychology")
 
   @@schema("public")
 }
@@ -693,6 +697,11 @@ enum major_short {
   B
   C
   D
+  MPCB
+  MPGE_A @map("MPGE A")
+  HGLP_A @map("HGLP A")
+  MPGE_B @map("MPGE B")
+  HGLP_B @map("HGLP B")
 
   @@schema("public")
 }
@@ -762,6 +771,13 @@ enum priority {
   high
   medium
   low
+
+  @@schema("public")
+}
+
+enum gender {
+  male
+  female
 
   @@schema("public")
 }

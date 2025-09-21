@@ -48,7 +48,7 @@ export default function StudentManagement() {
     // Search term filtering (case-insensitive)
     const searchMatch = searchTerm === "" || 
       student.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student.major_short.toLowerCase().includes(searchTerm.toLowerCase());
 
     // Grade filtering
@@ -383,7 +383,7 @@ export default function StudentManagement() {
                 placeholder="Search students by name..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-10 transition-colors duration-300 focus-visible:ring-2 focus-visible:ring-offset-2 bg-white/80 border-gray-300 text-gray-900 placeholder:text-gray-500 focus-visible:ring-black dark:bg-gray-800/80 dark:border-gray-600 dark:text-white dark:placeholder:text-gray-400 dark:focus-visible:ring-white"
+                className="pl-10 pr-10 transition-colors duration-300  bg-white/80 border-gray-300 text-gray-900 placeholder:text-gray-500"
               />
               {searchTerm && (
                 <button
@@ -758,7 +758,7 @@ export default function StudentManagement() {
                         value={emailSubject} 
                         onChange={e => setEmailSubject(e.target.value)} 
                         placeholder="Enter email subject" 
-                        className="focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 rounded-xl"
+                        className=" rounded-xl"
                         required
                       />
                     </div>

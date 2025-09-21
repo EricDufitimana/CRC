@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../../../components
 import { Badge } from "../../../../components/ui/badge";
 import { Button } from "../../../../components/ui/button";
 import { Progress } from "../../../../components/ui/progress";
+import { ScrollArea } from "../../../../components/ui/scroll-area";
 
 import { 
   FileText, 
@@ -658,84 +659,86 @@ export default function DashboardHome() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="h-[calc(52vh-80px)] overflow-y-auto pt-2">
-              {loading ? (
-                <div className="space-y-4">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="space-y-2">
-                      <div className="h-4 w-full bg-gray-200 rounded animate-pulse" />
-                      <div className="h-3 w-24 bg-gray-200 rounded animate-pulse" />
-                    </div>
-                  ))}
-                </div>
-              ) : assignments.length > 0 ? (
-                <div className="space-y-4">
-                  {assignments.map((assignment) => (
-                    <div 
-                      key={assignment.id} 
-                      className="group relative p-4 border border-gray-200 rounded-xl hover:border-purple-200 hover:bg-gradient-to-r hover:from-purple-50 hover:to-transparent transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50"
-                      onClick={() => handleAssignmentClick(assignment)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          handleAssignmentClick(assignment);
-                        }
-                      }}
-                      tabIndex={0}
-                      role="button"
-                      aria-label={`View assignment: ${assignment.title}`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                            <h4 className="font-semibold text-gray-900 truncate group-hover:text-purple-700 transition-colors">
-                              {assignment.title}
-                            </h4>
-                          </div>
-                          <div className="flex items-center space-x-3 text-sm text-gray-600 mb-1">
-                            <span className="flex items-center">
-                              <Users className="h-3 w-3 mr-1" />
-                              {(() => {
-                                const groupName = assignment.workshop_crc_class;
-                                if (groupName?.includes('S4') || groupName?.includes('Senior 4')) {
-                                  return 'Senior 4';
-                                } else if (groupName?.includes('EY') || groupName?.includes('Enrichment Year')) {
-                                  return 'Enrichment Year';
-                                }
-                                return groupName;
-                              })()}
-                            </span>
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            Workshop: {assignment.workshop_title}
-                          </div>
-                        </div>
-                        <div className="ml-4 flex-shrink-0">
-                          <div className="text-right">
-                            <div className="text-sm font-semibold text-red-600">
-                              {format(new Date(assignment.submission_idate), "MMM dd")}
+            <CardContent className="h-[calc(52vh-80px)] pt-2">
+              <ScrollArea className="h-full">
+                {loading ? (
+                  <div className="space-y-4">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="space-y-2">
+                        <div className="h-4 w-full bg-gray-200 rounded animate-pulse" />
+                        <div className="h-3 w-24 bg-gray-200 rounded animate-pulse" />
+                      </div>
+                    ))}
+                  </div>
+                ) : assignments.length > 0 ? (
+                  <div className="space-y-4 pr-4">
+                    {assignments.map((assignment) => (
+                      <div 
+                        key={assignment.id} 
+                        className="group relative p-4 border border-gray-200 rounded-xl hover:border-purple-200 hover:bg-gradient-to-r hover:from-purple-50 hover:to-transparent transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50"
+                        onClick={() => handleAssignmentClick(assignment)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            handleAssignmentClick(assignment);
+                          }
+                        }}
+                        tabIndex={0}
+                        role="button"
+                        aria-label={`View assignment: ${assignment.title}`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                              <h4 className="font-semibold text-gray-900 truncate group-hover:text-purple-700 transition-colors">
+                                {assignment.title}
+                              </h4>
                             </div>
-                            <div className="text-xs text-gray-500">Due Date</div>
+                            <div className="flex items-center space-x-3 text-sm text-gray-600 mb-1">
+                              <span className="flex items-center">
+                                <Users className="h-3 w-3 mr-1" />
+                                {(() => {
+                                  const groupName = assignment.workshop_crc_class;
+                                  if (groupName?.includes('S4') || groupName?.includes('Senior 4')) {
+                                    return 'Senior 4';
+                                  } else if (groupName?.includes('EY') || groupName?.includes('Enrichment Year')) {
+                                    return 'Enrichment Year';
+                                  }
+                                  return groupName;
+                                })()}
+                              </span>
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              Workshop: {assignment.workshop_title}
+                            </div>
                           </div>
-                          <div className="mt-2 flex justify-end">
-                            <ArrowRight className="h-4 w-4 text-purple-500 group-hover:text-purple-600 transition-all duration-200 group-hover:translate-x-1 group-hover:scale-110" />
+                          <div className="ml-4 flex-shrink-0">
+                            <div className="text-right">
+                              <div className="text-sm font-semibold text-red-600">
+                                {format(new Date(assignment.submission_idate), "MMM dd")}
+                              </div>
+                              <div className="text-xs text-gray-500">Due Date</div>
+                            </div>
+                            <div className="mt-2 flex justify-end">
+                              <ArrowRight className="h-4 w-4 text-purple-500 group-hover:text-purple-600 transition-all duration-200 group-hover:translate-x-1 group-hover:scale-110" />
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12 text-gray-500">
-                  <div className="relative">
-                    <Calendar className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                    <div className="absolute inset-0 bg-purple-100 rounded-full opacity-20 animate-pulse"></div>
+                    ))}
                   </div>
-                  <p className="text-lg font-medium text-gray-400 mb-2">No assignments due this week</p>
-                  <p className="text-sm text-gray-400">All caught up! 🎉</p>
-                </div>
-              )}
+                ) : (
+                  <div className="text-center py-12 text-gray-500">
+                    <div className="relative">
+                      <Calendar className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                      <div className="absolute inset-0 bg-purple-100 rounded-full opacity-20 animate-pulse"></div>
+                    </div>
+                    <p className="text-lg font-medium text-gray-400 mb-2">No assignments due this week</p>
+                    <p className="text-sm text-gray-400">All caught up! 🎉</p>
+                  </div>
+                )}
+              </ScrollArea>
             </CardContent>
           </Card>
 
@@ -765,116 +768,118 @@ export default function DashboardHome() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="h-[calc(50vh-80px)] overflow-y-auto pt-2">
-              {loading ? (
-                <div className="space-y-3">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="group relative p-3 bg-red-50 border border-red-200 rounded-lg">
-                      <div className="flex items-center">
-                        <div className="h-4 w-4 bg-red-200 rounded mr-3 flex-shrink-0 animate-pulse"></div>
-                        <div className="h-4 w-32 bg-red-200 rounded animate-pulse"></div>
+            <CardContent className="h-[calc(50vh-80px)] pt-2">
+              <ScrollArea className="h-full">
+                {loading ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="group relative p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <div className="flex items-center">
+                          <div className="h-4 w-4 bg-red-200 rounded mr-3 flex-shrink-0 animate-pulse"></div>
+                          <div className="h-4 w-32 bg-red-200 rounded animate-pulse"></div>
+                        </div>
+                        <div className="absolute top-2 right-2 w-2 h-2 bg-red-300 rounded-full animate-pulse"></div>
                       </div>
-                      <div className="absolute top-2 right-2 w-2 h-2 bg-red-300 rounded-full animate-pulse"></div>
-                    </div>
-                  ))}
-                </div>
-              ) : (essaysNeedingAttention.length > 0 || opportunitiesNeedingAttention.length > 0 || workshopsWithoutAttendance.length > 0 || assignmentsNeedingAttention.length > 0) ? (
-                <div className="space-y-3">
-                  {/* Workshops missing attendance */}
-                  {workshopsWithoutAttendance.map((workshop, index) => {
-                    // Find which CRC classes are missing attendance
-                    const missingClasses = workshop.crc_classes ? workshop.crc_classes.filter((crcClass: any) => {
-                      const workshopClassKey = `${workshop.title}-${crcClass.name}`;
-                      const hasAttendance = Object.values(attendanceByWorkshop || {}).some((record: any) => 
-                        `${record.workshop_title}-${record.class_name}` === workshopClassKey
+                    ))}
+                  </div>
+                ) : (essaysNeedingAttention.length > 0 || opportunitiesNeedingAttention.length > 0 || workshopsWithoutAttendance.length > 0 || assignmentsNeedingAttention.length > 0) ? (
+                  <div className="space-y-3 pr-4">
+                    {/* Workshops missing attendance */}
+                    {workshopsWithoutAttendance.map((workshop, index) => {
+                      // Find which CRC classes are missing attendance
+                      const missingClasses = workshop.crc_classes ? workshop.crc_classes.filter((crcClass: any) => {
+                        const workshopClassKey = `${workshop.title}-${crcClass.name}`;
+                        const hasAttendance = Object.values(attendanceByWorkshop || {}).some((record: any) => 
+                          `${record.workshop_title}-${record.class_name}` === workshopClassKey
+                        );
+                        return !hasAttendance;
+                      }) : [];
+                      
+                      return (
+                        <div key={`workshop-${index}`} className="group relative p-3 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-all duration-200">
+                          <div className="flex items-start">
+                            <AlertTriangle className="h-4 w-4 text-red-600 mr-3 flex-shrink-0 mt-0.5" />
+                            <div className="flex-1">
+                              <span className="text-sm text-red-800 font-medium">{workshop.title}</span>
+                              <div className="text-xs text-red-600 mt-1">
+                                Missing attendance for: {missingClasses.map((c: any) => c.name).join(', ')}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                        </div>
                       );
-                      return !hasAttendance;
-                    }) : [];
-                    
-                    return (
-                      <div key={`workshop-${index}`} className="group relative p-3 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-all duration-200">
+                    })}
+                    {/* Essays needing attention */}
+                    {essaysNeedingAttention.map((essay, index) => (
+                      <div key={`essay-${index}`} className="group relative p-3 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-all duration-200">
                         <div className="flex items-start">
                           <AlertTriangle className="h-4 w-4 text-red-600 mr-3 flex-shrink-0 mt-0.5" />
                           <div className="flex-1">
-                            <span className="text-sm text-red-800 font-medium">{workshop.title}</span>
-                            <div className="text-xs text-red-600 mt-1">
-                              Missing attendance for: {missingClasses.map((c: any) => c.name).join(', ')}
-                            </div>
+                            <span className="text-sm text-red-800 font-medium">{essay.title}</span>
+                            <div className="text-xs text-red-600 mt-1">Essay pending for over a week</div>
                           </div>
                         </div>
                         <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
                       </div>
-                    );
-                  })}
-                  {/* Essays needing attention */}
-                  {essaysNeedingAttention.map((essay, index) => (
-                    <div key={`essay-${index}`} className="group relative p-3 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-all duration-200">
-                      <div className="flex items-start">
-                        <AlertTriangle className="h-4 w-4 text-red-600 mr-3 flex-shrink-0 mt-0.5" />
-                        <div className="flex-1">
-                          <span className="text-sm text-red-800 font-medium">{essay.title}</span>
-                          <div className="text-xs text-red-600 mt-1">Essay pending for over a week</div>
+                    ))}
+                    
+                    {/* Opportunities needing attention */}
+                    {opportunitiesNeedingAttention.map((opportunity, index) => (
+                      <div key={`opportunity-${index}`} className="group relative p-3 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-all duration-200">
+                        <div className="flex items-start">
+                          <AlertTriangle className="h-4 w-4 text-red-600 mr-3 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <span className="text-sm text-red-800 font-medium">{opportunity.title}</span>
+                            <div className="text-xs text-red-600 mt-1">Opportunity pending for over a week</div>
+                          </div>
                         </div>
+                        <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
                       </div>
-                      <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                    </div>
-                  ))}
-                  
-                  {/* Opportunities needing attention */}
-                  {opportunitiesNeedingAttention.map((opportunity, index) => (
-                    <div key={`opportunity-${index}`} className="group relative p-3 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-all duration-200">
-                      <div className="flex items-start">
-                        <AlertTriangle className="h-4 w-4 text-red-600 mr-3 flex-shrink-0 mt-0.5" />
-                        <div className="flex-1">
-                          <span className="text-sm text-red-800 font-medium">{opportunity.title}</span>
-                          <div className="text-xs text-red-600 mt-1">Opportunity pending for over a week</div>
+                    ))}
+                    
+                    {/* Assignments needing attention */}
+                    {assignmentsNeedingAttention.map((assignment, index) => (
+                      <div 
+                        key={`assignment-${index}`} 
+                        className="group relative p-3 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-all duration-200 cursor-pointer"
+                        onClick={() => handleAssignmentClick(assignment)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            handleAssignmentClick(assignment);
+                          }
+                        }}
+                        tabIndex={0}
+                        role="button"
+                        aria-label={`View assignment: ${assignment.title}`}
+                      >
+                        <div className="flex items-start">
+                          <AlertTriangle className="h-4 w-4 text-red-600 mr-3 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <span className="text-sm text-red-800 font-medium">{assignment.title}</span>
+                            <div className="text-xs text-red-600 mt-1">Assignment due soon or overdue</div>
+                          </div>
+                          <div className="ml-2 flex-shrink-0">
+                            <ArrowRight className="h-3 w-3 text-red-500 group-hover:text-red-600 transition-colors" />
+                          </div>
                         </div>
+                        <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
                       </div>
-                      <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                    </div>
-                  ))}
-                  
-                  {/* Assignments needing attention */}
-                  {assignmentsNeedingAttention.map((assignment, index) => (
-                    <div 
-                      key={`assignment-${index}`} 
-                      className="group relative p-3 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-all duration-200 cursor-pointer"
-                      onClick={() => handleAssignmentClick(assignment)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          handleAssignmentClick(assignment);
-                        }
-                      }}
-                      tabIndex={0}
-                      role="button"
-                      aria-label={`View assignment: ${assignment.title}`}
-                    >
-                      <div className="flex items-start">
-                        <AlertTriangle className="h-4 w-4 text-red-600 mr-3 flex-shrink-0 mt-0.5" />
-                        <div className="flex-1">
-                          <span className="text-sm text-red-800 font-medium">{assignment.title}</span>
-                          <div className="text-xs text-red-600 mt-1">Assignment due soon or overdue</div>
-                        </div>
-                        <div className="ml-2 flex-shrink-0">
-                          <ArrowRight className="h-3 w-3 text-red-500 group-hover:text-red-600 transition-colors" />
-                        </div>
-                      </div>
-                      <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                    </div>
-                  ))}
-                  
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <div className="relative">
-                    <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-500" />
-                    <div className="absolute inset-0 bg-green-100 rounded-full opacity-20 animate-pulse"></div>
+                    ))}
+                    
                   </div>
-                  <p className="text-lg font-medium text-gray-600 mb-2">All caught up!</p>
-                  <p className="text-sm text-gray-400">No items require attention</p>
-                </div>
-              )}
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <div className="relative">
+                      <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-500" />
+                      <div className="absolute inset-0 bg-green-100 rounded-full opacity-20 animate-pulse"></div>
+                    </div>
+                    <p className="text-lg font-medium text-gray-600 mb-2">All caught up!</p>
+                    <p className="text-sm text-gray-400">No items require attention</p>
+                  </div>
+                )}
+              </ScrollArea>
             </CardContent>
           </Card>
         </div>
@@ -900,91 +905,93 @@ export default function DashboardHome() {
           </div>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <div className="space-y-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex items-center justify-between p-4 border rounded-lg bg-gray-50">
-                  <div className="space-y-2">
-                    <div className="h-4 w-48 bg-gray-200 rounded animate-pulse" />
-                    <div className="h-3 w-32 bg-gray-200 rounded animate-pulse" />
+          <ScrollArea className="h-[400px]">
+            {loading ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center justify-between p-4 border rounded-lg bg-gray-50">
+                    <div className="space-y-2">
+                      <div className="h-4 w-48 bg-gray-200 rounded animate-pulse" />
+                      <div className="h-3 w-32 bg-gray-200 rounded animate-pulse" />
+                    </div>
+                    <div className="h-6 w-20 bg-gray-200 rounded animate-pulse" />
                   </div>
-                  <div className="h-6 w-20 bg-gray-200 rounded animate-pulse" />
-                </div>
-              ))}
-            </div>
-          ) : attendanceRecords.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {attendanceRecords.map((record, index) => {
-                const attendancePercentage = Math.round((record.present_count / record.total_count) * 100);
-                const getAttendanceColor = (percentage: number) => {
-                  if (percentage >= 90) return 'text-green-600 bg-green-50 border-green-200';
-                  if (percentage >= 75) return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-                  return 'text-red-600 bg-red-50 border-red-200';
-                };
-                const getAttendanceIcon = (percentage: number) => {
-                  if (percentage >= 90) return <CheckCircle className="h-4 w-4" />;
-                  if (percentage >= 75) return <AlertCircle className="h-4 w-4" />;
-                  return <XCircle className="h-4 w-4" />;
-                };
-                
-                return (
-                  <div key={index} className="group relative p-4 border border-gray-200 rounded-xl hover:border-orange-200 hover:bg-gradient-to-r hover:from-orange-50 hover:to-transparent transition-all duration-200 cursor-pointer">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-gray-900 truncate group-hover:text-orange-700 transition-colors mb-1">
-                          {record.workshop_title}
-                        </h4>
-                        <p className="text-sm text-gray-600 mb-2">{record.class_name}</p>
-                        <div className="flex items-center space-x-2 text-xs text-gray-500">
-                          <Calendar className="h-3 w-3" />
-                          <span>{format(new Date(record.date), "MMM dd, yyyy")}</span>
+                ))}
+              </div>
+            ) : attendanceRecords.length > 0 ? (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 pr-4">
+                {attendanceRecords.map((record, index) => {
+                  const attendancePercentage = Math.round((record.present_count / record.total_count) * 100);
+                  const getAttendanceColor = (percentage: number) => {
+                    if (percentage >= 90) return 'text-green-600 bg-green-50 border-green-200';
+                    if (percentage >= 75) return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+                    return 'text-red-600 bg-red-50 border-red-200';
+                  };
+                  const getAttendanceIcon = (percentage: number) => {
+                    if (percentage >= 90) return <CheckCircle className="h-4 w-4" />;
+                    if (percentage >= 75) return <AlertCircle className="h-4 w-4" />;
+                    return <XCircle className="h-4 w-4" />;
+                  };
+                  
+                  return (
+                    <div key={index} className="group relative p-4 border border-gray-200 rounded-xl hover:border-orange-200 hover:bg-gradient-to-r hover:from-orange-50 hover:to-transparent transition-all duration-200 cursor-pointer">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold text-gray-900 truncate group-hover:text-orange-700 transition-colors mb-1">
+                            {record.workshop_title}
+                          </h4>
+                          <p className="text-sm text-gray-600 mb-2">{record.class_name}</p>
+                          <div className="flex items-center space-x-2 text-xs text-gray-500">
+                            <Calendar className="h-3 w-3" />
+                            <span>{format(new Date(record.date), "MMM dd, yyyy")}</span>
+                          </div>
+                        </div>
+                        <div className={`ml-3 p-2 rounded-lg ${getAttendanceColor(attendancePercentage)}`}>
+                          {getAttendanceIcon(attendancePercentage)}
                         </div>
                       </div>
-                      <div className={`ml-3 p-2 rounded-lg ${getAttendanceColor(attendancePercentage)}`}>
-                        {getAttendanceIcon(attendancePercentage)}
+                      
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-gray-700">Attendance</span>
+                          <span className="text-lg font-bold text-gray-900">
+                            {record.present_count}/{record.total_count}
+                          </span>
+                        </div>
+                        
+                        <Progress 
+                          value={attendancePercentage} 
+                          className={`h-[4px] transition-all duration-300 ${
+                            attendancePercentage >= 90 ? '[&>div]:bg-statColors-1' : 
+                            attendancePercentage >= 75 ? '[&>div]:bg-yellow-500' : '[&>div]:bg-red-500'
+                          }`}
+                        />
+                        
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">Percentage</span>
+                          <span className={`font-semibold ${
+                            attendancePercentage >= 90 ? 'text-green-600' : 
+                            attendancePercentage >= 75 ? 'text-yellow-600' : 'text-red-600'
+                          }`}>
+                            {attendancePercentage}%
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-700">Attendance</span>
-                        <span className="text-lg font-bold text-gray-900">
-                          {record.present_count}/{record.total_count}
-                        </span>
-                      </div>
-                      
-                      <Progress 
-                        value={attendancePercentage} 
-                        className={`h-[4px] transition-all duration-300 ${
-                          attendancePercentage >= 90 ? '[&>div]:bg-statColors-1' : 
-                          attendancePercentage >= 75 ? '[&>div]:bg-yellow-500' : '[&>div]:bg-red-500'
-                        }`}
-                      />
-                      
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-gray-500">Percentage</span>
-                        <span className={`font-semibold ${
-                          attendancePercentage >= 90 ? 'text-green-600' : 
-                          attendancePercentage >= 75 ? 'text-yellow-600' : 'text-red-600'
-                        }`}>
-                          {attendancePercentage}%
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="text-center py-12 text-gray-500">
-              <div className="relative">
-                <Users className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                <div className="absolute inset-0 bg-orange-100 rounded-full opacity-20 animate-pulse"></div>
+                  );
+                })}
               </div>
-              <p className="text-lg font-medium text-gray-600 mb-2">No attendance records this week</p>
-              <p className="text-sm text-gray-400">No workshops have been tracked yet</p>
-            </div>
-          )}
+            ) : (
+              <div className="text-center py-12 text-gray-500">
+                <div className="relative">
+                  <Users className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                  <div className="absolute inset-0 bg-orange-100 rounded-full opacity-20 animate-pulse"></div>
+                </div>
+                <p className="text-lg font-medium text-gray-600 mb-2">No attendance records this week</p>
+                <p className="text-sm text-gray-400">No workshops have been tracked yet</p>
+              </div>
+            )}
+          </ScrollArea>
         </CardContent>
       </Card>
     </div>

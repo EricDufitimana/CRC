@@ -1622,12 +1622,7 @@ export default function WorkshopsManagement() {
                   </div>
                 </div>
               )}
-              
-              {!loading && filteredWorkshops.length === 0 && (
-                <div className="text-center py-8 text-gray-600">
-                  {workshops.length === 0 ? "No workshops found." : "No workshops found matching your search criteria."}
-                </div>
-              )}
+             
             </div>
           </div>
         </div>

@@ -2,13 +2,7 @@ import "../../styles/index.css";
 import { Suspense } from "react";
 import PreLoader from "@/components/Common/PreLoader";
 
-export const metadata = {
-  title: 'CRC - Career Resources Center',
-  description: 'Career Resources Center Website',
-  icons: {
-    icon: "/images/logo/logo.svg",
-  },
-}
+
 
 export default function DashboardLayout({
   children,

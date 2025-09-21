@@ -550,7 +550,7 @@ export default function StudentSetupPage() {
                     <AnimatedText 
                       animation="letters-fade-in"
                       as="div"
-                      className="text-2xl font-normal text-gray-700 font-cal-sans"
+                      className="text-2xl font-normal text-gray-500 font-cal-sans"
                       startTrigger="top bottom"
                     >
                       Welcome to CRC Platform!

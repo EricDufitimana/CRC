@@ -7,10 +7,23 @@ import { useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import Label from "@/components/form/Label";
 import { supabase } from '@/lib/supabase'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../zenith/src/components/ui/select";
 import { Input } from "../../../../zenith/src/components/ui/input";
-import { Search } from "lucide-react";
+import { Search, Check, ChevronsUpDown } from "lucide-react";
 import { Button } from "../../../../zenith/src/components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "../../../../zenith/src/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "../../../../zenith/src/components/ui/popover";
+import { cn } from "@/lib/utils";
 import { showToastError } from "@/components/toasts";
 import * as motion from "motion/react-client";
 
@@ -20,12 +33,14 @@ export default function SignUpForm() {
   const[password, setPassword] = useState("");
   const[firstName, setFirstName] = useState("");
   const[lastName, setLastName] = useState("");
+
   const[studentCode, setStudentCode] = useState("");
   const[selectedStudentId, setSelectedStudentId] = useState("");
   const[unassignedStudents, setUnassignedStudents] = useState([]);
   const[isLoadingStudents, setIsLoadingStudents] = useState(true);
   const[studentSearchQuery, setStudentSearchQuery] = useState("");
   const[isGoogleSignUpLoading, setIsGoogleSignUpLoading] = useState(false);
+  const[open, setOpen] = useState(false);
 
   // Fetch unassigned students on component mount
   useEffect(() => {
@@ -241,57 +256,74 @@ export default function SignUpForm() {
                   <Label>
                     Select Your Student Record
                   </Label>
-                  <Select value={selectedStudentId} onValueChange={setSelectedStudentId} disabled={isLoadingStudents}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder={isLoadingStudents ? "Loading students..." : "Select a student"}  />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {isLoadingStudents ? (
-                        <div className="p-4 text-center text-sm text-gray-500">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900 mx-auto mb-2"></div>
-                          Loading students...
-                        </div>
-                      ) : unassignedStudents.length === 0 ? (
-                        <div className="p-4 text-center text-sm text-gray-500">
-                          No unassigned students found
-                        </div>
-                      ) : (
-                        <>
-                          {/* Search Input */}
-                          <div className="p-2 border-b border-gray-100">
-                            <div className="relative">
-                              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                              <Input
-                                placeholder="Search by name"
-                                value={studentSearchQuery}
-                                onChange={(e) => setStudentSearchQuery(e.target.value)}
-                                className="pl-8 h-8 text-sm border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none"
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                            </div>
-                          </div>
-                          
-                          {/* Student List */}
-                          <div className="max-h-60 overflow-y-auto">
-                            {filteredStudents.length === 0 ? (
+                  <Popover open={open} onOpenChange={setOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={open}
+                        className="w-full justify-between text-gray-700"
+                        disabled={isLoadingStudents}
+                      >
+                        {selectedStudentId
+                          ? unassignedStudents.find((student) => student.id === parseInt(selectedStudentId))?.first_name + " " + unassignedStudents.find((student) => student.id === parseInt(selectedStudentId))?.last_name
+                          : isLoadingStudents ? "Loading students..." : "Select a student..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0">
+                      <Command>
+                        <CommandInput 
+                          placeholder="Search by name or student ID..." 
+                          className="h-9"
+                          value={studentSearchQuery}
+                          onValueChange={setStudentSearchQuery}
+                        />
+                        <CommandList>
+                          <CommandEmpty>
+                            {isLoadingStudents ? (
+                              <div className="p-4 text-center text-sm text-gray-500">
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900 mx-auto mb-2"></div>
+                                Loading students...
+                              </div>
+                            ) : unassignedStudents.length === 0 ? (
+                              <div className="p-4 text-center text-sm text-gray-500">
+                                No unassigned students found
+                              </div>
+                            ) : filteredStudents.length === 0 ? (
                               <div className="p-4 text-center text-sm text-gray-500">
                                 No students found matching &quot;{studentSearchQuery}&quot;
                               </div>
                             ) : (
-                              filteredStudents.map((student) => (
-                                <SelectItem key={student.id} value={student.id.toString()}>
-                                  <div className="flex flex-col">
-                                    <span className="font-normal">{student.first_name} {student.last_name}</span>
-                                  </div>
-                                </SelectItem>
-                              ))
+                              "No students found"
                             )}
-                          </div>
-                        </>
-                      )}
-                    </SelectContent>
-                  </Select>
-                  
+                          </CommandEmpty>
+                          <CommandGroup>
+                            {filteredStudents.map((student) => (
+                              <CommandItem
+                                key={student.id}
+                                value={`${student.first_name} ${student.last_name} ${student.student_id}`}
+                                onSelect={() => {
+                                  setSelectedStudentId(student.id.toString());
+                                  setOpen(false);
+                                }}
+                              >
+                                <div className="flex flex-col">
+                                  <span className="font-normal">{student.first_name} {student.last_name}</span>
+                                </div>
+                                <Check
+                                  className={cn(
+                                    "ml-auto h-4 w-4",
+                                    selectedStudentId === student.id.toString() ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
             </form>

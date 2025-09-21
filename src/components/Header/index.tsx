@@ -7,7 +7,7 @@ import { useEffect, useState, useRef } from "react";
 import { gsap } from "gsap";
 import { useSession } from "@/hooks/getSession";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { User, LogOut, Menu, X } from "lucide-react";
+import { User, LogOut, Menu, X, Loader2 } from "lucide-react";
 import { signOut } from "@/actions/signOut";
 import {
   Sheet,
@@ -92,14 +92,19 @@ const Header = () => {
   
   // Mobile sheet state
   const [sheetOpen, setSheetOpen] = useState(false);
+  
+  // Sign out loading state
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   // Handle sign out
   const handleSignOut = async () => {
     try {
+      setIsSigningOut(true);
       await signOut();
       window.location.href = '/';
     } catch (error) {
       console.error('Sign out error:', error);
+      setIsSigningOut(false);
     }
   };
 
@@ -581,10 +586,15 @@ const Header = () => {
                                 handleSignOut();
                                 setSheetOpen(false);
                               }}
-                              className="flex items-center w-full px-4 py-3 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800"
+                              disabled={isSigningOut}
+                              className="flex items-center w-full px-4 py-3 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              <LogOut className="mr-2 h-4 w-4" />
-                              Sign Out
+                              {isSigningOut ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              ) : (
+                                <LogOut className="mr-2 h-4 w-4" />
+                              )}
+                              {isSigningOut ? "Signing out..." : "Sign Out"}
                             </button>
                           </>
                         ) : (
@@ -656,10 +666,15 @@ const Header = () => {
                               handleSignOut();
                               setUserMenuOpen(false);
                             }}
-                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                            disabled={isSigningOut}
+                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            <LogOut className="mr-2 h-4 w-4" />
-                            Sign Out
+                            {isSigningOut ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <LogOut className="mr-2 h-4 w-4" />
+                            )}
+                            {isSigningOut ? "Signing out..." : "Sign Out"}
                           </button>
                         </div>
                       )}

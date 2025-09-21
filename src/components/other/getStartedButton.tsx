@@ -36,7 +36,7 @@ const GetStartedButton = () => {
       {userId ? (
           <Link
           href={adminId ? "/dashboard/admin" : "/dashboard/student"}
-          className={`${isMobile ? "w-full flex" : "px-7 py-3 inline-flex"} group items-center justify-center gap-3 bg-secondary border border-secondary text-white font-medium rounded-md shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition-all duration-200 ease-linear`}
+          className={`${isMobile ? "w-full flex py-3 p-2 text-center" : "px-7 py-3 inline-flex"} group items-center justify-center gap-3 bg-secondary border border-secondary text-white font-medium rounded-md shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition-all duration-200 ease-linear`}
           >
           <LayoutDashboard className="w-5 h-5" />
           <span>Go to Dashboard</span>
