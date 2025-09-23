@@ -18,7 +18,6 @@ export default function AdminVerificationPage() {
   const [debugInfo, setDebugInfo] = useState('');
   const [checkComplete, setCheckComplete] = useState(false);
   const [shouldShowAdminVerification, setShouldShowAdminVerification] = useState(false);
-  const [accountExists, setAccountExists] = useState(false);
   const [isContactDialogOpen, setIsContactDialogOpen] = useState(false);
   const [contactForm, setContactForm] = useState({
     name: "",
@@ -52,56 +51,8 @@ export default function AdminVerificationPage() {
           window.location.href = '/dashboard/admin';
         }, 1500);
         
-      } else if (userId) {
-        console.log('Admin verification page: Checking if user exists in students table...');
-        
-        // Check if user exists in students table
-        const studentResponse = await fetch('/api/check-user-exists', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ userId, table: 'students' })
-        });
-
-        if (!studentResponse.ok) {
-          console.error('Admin verification page: API error:', studentResponse.status);
-          setAccountExists(false);
-          setDebugInfo('Error checking account status');
-          setIsLoading(false);
-          setCheckComplete(true);
-          setShouldShowAdminVerification(true);
-          return;
-        }
-
-        const studentData = await studentResponse.json();
-        const studentExists = studentData.exists;
-        console.log('Admin verification page: Student exists:', studentExists);
-
-        if (studentExists) {
-          console.log('Admin verification page: User account exists, redirecting to student dashboard');
-          setAccountExists(true);
-          setDebugInfo(`User account found, redirecting to student dashboard...`);
-          
-          // Show redirect loader directly
-          setRedirecting(true);
-          setIsLoading(false);
-          
-          // Redirect to student dashboard
-          setTimeout(() => {
-            window.location.href = '/dashboard/student';
-          }, 1500);
-        } else {
-          console.log('Admin verification page: No user account found in database');
-          setAccountExists(false);
-          setDebugInfo('No user account found in database - account creation required');
-          setIsLoading(false);
-          setCheckComplete(true);
-          setShouldShowAdminVerification(true);
-        }
       } else {
         console.log('Admin verification page: No userId or adminId available');
-        setAccountExists(false);
         setDebugInfo('No userId or adminId available - please log in first');
         setIsLoading(false);
         setCheckComplete(true);
@@ -204,7 +155,7 @@ export default function AdminVerificationPage() {
   }
 
   // Only show admin verification page if check is complete and user should see it
-  if (checkComplete && shouldShowAdminVerification && !accountExists) {
+  if (checkComplete && shouldShowAdminVerification) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900 p-4">
         <div className="max-w-4xl w-full text-center">

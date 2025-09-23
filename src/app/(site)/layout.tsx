@@ -21,6 +21,7 @@ export default function RootLayout({
 }) {
   const[firstLoad, setFirstLoad] = useState(true);
   const pathname = usePathname();
+  const[title, setTitle] = useState("Loading...");
 
   useEffect(() => {
     // Reduce preloader time for better perceived performance
@@ -34,17 +35,17 @@ export default function RootLayout({
       document.documentElement.style.setProperty("--banner-height", "0px");
     }
   }, [pathname])
+
+  // Set page title based on pathname
+  useEffect(() => {
+    if (pathname?.includes("resources")) setTitle("Resources - Career Resourcces Center")
+    else if (pathname?.includes("previous-events")) setTitle("Previous Events - Career Resources Center")
+    else if (pathname?.includes("upcoming-events"	)) setTitle("Upcoming Events - Career Resources Center")
+    else if(pathname?.includes("workshops")) setTitle("Workshops - Career Resources Center")
+    else setTitle("Home - Career Resources Center")
+  }, [pathname])
   
   if (firstLoad) return <PreLoader />
-
-  const getTitle = () => {
-    if (pathname?.includes("resources")) return "Resources - Career Resourcces Center"
-    else if (pathname?.includes("previous-events")) return "Previous Events - Career Resources Center"
-    else if (pathname?.includes("upcoming-events"	)) return "Upcoming Events - Career Resources Center"
-    else if(pathname?.includes("workshops")) return "Workshops - Career Resources Center"
-    else return "Home - Career Resources Center"
-
-  }
 
   
 
@@ -54,7 +55,7 @@ export default function RootLayout({
       enableSystem={false}
       defaultTheme="light"
     >
-      {Head(getTitle())}
+      {Head(title)}
       {pathname === "/" && <StickyNotificationBanner />}
       <div style={{ paddingTop: "var(--banner-height, 0px)", transition: "padding-top 200ms ease" }}>
         <Header/>

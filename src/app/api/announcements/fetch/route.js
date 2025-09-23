@@ -122,7 +122,7 @@ export async function GET(request) {
       created_at: n.created_at,
       page: n.page,
     }));
-    return NextResponse.json({ announcements: serialized });
+    return NextResponse.json(serialized);
   } catch (err) {
     console.error("❌ Error in announcements/fetch API:", err);
     console.error("Error name:", err.name);

@@ -486,7 +486,7 @@ export default function StudentSetupPage() {
                       className="text-2xl font-normal text-gray-500 font-cal-sans"
                       startTrigger="top bottom"
                     >
-                      Welcome to CRC Platform!
+                      Welcome to the CRC Platform!
                     </AnimatedText>
                   </div>
                 )}
@@ -634,13 +634,8 @@ export default function StudentSetupPage() {
                             </AvatarFallback>
                           </Avatar>
                         </div>
-                        <p className="text-sm text-gray-600">
-                          {uploadedAvatarFile[0].name} selected
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          Will be uploaded when you complete setup
-                        </p>
-                      </div>
+        
+                    </div>
                     )}
                   </div>
                 ) : (

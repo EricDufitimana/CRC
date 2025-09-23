@@ -22,7 +22,11 @@ export async function GET(request) {
     });
 
     if (!student || !student.crc_class) {
-      return NextResponse.json({ error: "Student CRC class not found" }, { status: 404 });
+      return NextResponse.json({ 
+        success: true,
+        message: "No CRC class assigned to this student",
+        assignments: []
+      });
     }
 
     console.log(`Fetching assignments for student ${studentId} with CRC class: ${student.crc_class.name} (ID: ${student.crc_class.id})`);
@@ -93,7 +97,11 @@ export async function GET(request) {
       };
     });
 
-    return NextResponse.json(serialized);
+    return NextResponse.json({
+      success: true,
+      message: "Assignments retrieved successfully",
+      assignments: serialized
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });

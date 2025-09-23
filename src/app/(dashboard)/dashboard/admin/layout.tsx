@@ -47,18 +47,18 @@ export default function DashboardAdminLayout({ children }: { children: React.Rea
   const router = useRouter();
   const pathname = usePathname();
   const [searchOpen, setSearchOpen] = useState(false);
-
+  const[title, setTitle] = useState("Loading...");
   const getTitle = () => {
-    if (pathname?.includes("student-management")) return "Student Management - Admin Dashboard"
-    else if (pathname?.includes("assignments-management")) return "Assignments Management - Admin Dashboard"
-    else if (pathname?.includes("announcements-management")) return "Announcements Management - Admin Dashboard"
-    else if (pathname?.includes("events-management")) return "Events Management - Admin Dashboard"
-    else if (pathname?.includes("content-management")) return "Content Management - Admin Dashboard"
-    else if (pathname?.includes("workshops")) return "Workshops - Admin Dashboard"
-    else if (pathname?.includes("attendance")) return "Attendance - Admin Dashboard"
-    else if (pathname?.includes("crc-class-groups")) return "CRC Class Groups - Admin Dashboard"
-    else if (pathname?.includes("testing")) return "Testing - Admin Dashboard"
-    else return "Admin Dashboard - Career Resources Center"
+    if (pathname?.includes("student-management")) setTitle("Student Management - Admin Dashboard")
+    else if (pathname?.includes("assignments-management")) setTitle("Assignments Management - Admin Dashboard")
+    else if (pathname?.includes("announcements-management")) setTitle("Announcements Management - Admin Dashboard")
+    else if (pathname?.includes("events-management")) setTitle("Events Management - Admin Dashboard")
+    else if (pathname?.includes("content-management")) setTitle("Content Management - Admin Dashboard")
+    else if (pathname?.includes("workshops")) setTitle("Workshops - Admin Dashboard")
+    else if (pathname?.includes("attendance")) setTitle("Attendance - Admin Dashboard")
+    else if (pathname?.includes("crc-class-groups")) setTitle("CRC Class Groups - Admin Dashboard")
+    else if (pathname?.includes("testing")) setTitle("Testing - Admin Dashboard")
+    else setTitle("Admin Dashboard - Career Resources Center")
   }
   const [mounted, setMounted] = useState(false);
   const [contentOpen, setContentOpen] = useState(false);
@@ -156,7 +156,7 @@ export default function DashboardAdminLayout({ children }: { children: React.Rea
 
   return (
     <>
-      {Head(getTitle())}
+      {Head(title)}
       <div 
         suppressHydrationWarning={true} 
         className="min-h-screen background-blur-2xl transition-colors duration-300 bg-gray-50"

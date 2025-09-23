@@ -10,13 +10,15 @@ import { Input } from "../../../../../../zenith/src/components/ui/input";
 import { Skeleton } from "../../../../../../zenith/src/components/ui/skeleton";
 import { FileUpload } from "../../../../../../zenith/src/components/ui/file-upload";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowLeft, ClipboardCheck, Upload, AlertCircle, Search, Check, Loader2, FileText, X } from "lucide-react";
+import { ArrowLeft, ClipboardCheck, Upload, AlertCircle, Search, Check, Loader2, FileText, X, User, MessageSquare, Mail, Send } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { useUserData } from "@/hooks/useUserData";
 import { submitAssignmentHandler } from "@/actions/assignments/submitAssignmentHandler";
 import { Alert, AlertDescription, AlertTitle } from "../../../../../../zenith/src/components/ui/alert";
 import imageCompression from "browser-image-compression";
-import { showToastPromise } from "@/components/toasts";
-
+import { showToastPromise, showToastSuccess, showToastError } from "@/components/toasts";
+import { Textarea } from "../../../../../../zenith/src/components/ui/textarea";
 type AssignmentRow = {
   id: string;
   title: string;
@@ -38,6 +40,14 @@ export default function StudentAssignmentsPage() {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<AssignmentRow[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [noCrcClassMessage, setNoCrcClassMessage] = useState<string | null>(null);
+  const [isContactDialogOpen, setIsContactDialogOpen] = useState(false);
+  const [isSubmittingContact, setIsSubmittingContact] = useState(false);
+  const [contactForm, setContactForm] = useState({
+    name: "",
+    email: "",
+    message: ""
+  });
   const [googleLinks, setGoogleLinks] = useState<Record<string, string>>({});
   const [files, setFiles] = useState<Record<string, File | null>>({});
   const [fileToUpload, setFileToUpload] = useState<File | null>(null);
@@ -235,11 +245,22 @@ export default function StudentAssignmentsPage() {
     const fetchAssignments = async () => {
       try {
         setError(null);
+        setNoCrcClassMessage(null);
         setLoading(true); // Ensure loading is true when starting to fetch assignments
         const listResp = await fetch(`/api/assignments/for-student?studentId=${studentId}`);
         if (!listResp.ok) throw new Error("Failed to fetch assignments");
-        const list = (await listResp.json()) as AssignmentRow[];
-        if (!canceled) setRows(Array.isArray(list) ? list : []);
+        const response = await listResp.json();
+        
+        if (response.success) {
+          if (response.message && response.message.includes("No CRC class assigned")) {
+            setNoCrcClassMessage(response.message);
+            setRows([]);
+          } else {
+            setRows(Array.isArray(response.assignments) ? response.assignments : []);
+          }
+        } else {
+          throw new Error(response.error || "Failed to load assignments");
+        }
       } catch (e: any) {
         if (!canceled) setError(e?.message || "Failed to load assignments");
       } finally {
@@ -309,7 +330,61 @@ export default function StudentAssignmentsPage() {
       return null;
     }
   }
-  
+ 
+  const handleContactSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    setIsSubmittingContact(true);
+
+    try {
+      console.log('📤 Sending help support request:', contactForm);
+      
+      const response = await fetch('/api/send-help-message', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(contactForm),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send help request');
+      }
+
+      console.log('✅ Help support request sent successfully:', data);
+      
+      // Show success toast
+      showToastSuccess({
+        headerText: 'Help Message Sent Successfully!',
+        paragraphText: "We'll get back to you soon!",
+        direction: 'right'
+      });
+      setIsSubmittingContact(false);
+      // Reset form and close dialog on success
+      setContactForm({ name: "", email: "", message: "" });
+      
+    } catch (error) {
+      console.error('❌ Error sending help support request:', error);
+      
+      // Show error toast
+      showToastError({
+        headerText: 'Failed to Send Request',
+        paragraphText: 'Failed to send message. Please try again.',
+        direction: 'left'
+      });
+    } finally {
+      setIsSubmittingContact(false);
+    }
+  };
+
+  const handleContactFormChange = (field: string, value: string) => {
+    setContactForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  }; 
 
 
   return (
@@ -387,8 +462,31 @@ export default function StudentAssignmentsPage() {
               <p className="text-neutral-500 mb-4">Unable to load assignments without a valid student ID.</p>
               <Button onClick={() => window.location.reload()} variant="outline">Refresh Page</Button>
             </div>
-          ) : rows.length === 0 ? (
+          ) : noCrcClassMessage ? (
             <div className="h-[40vh] w-full flex flex-col items-center justify-center py-8 text-center">
+              <div className="relative w-64 h-64 mb-6">
+                <Image
+                  src="/images/dashboard/empty-assignments.png"
+                  alt="No CRC class assigned"
+                  fill
+                  className="opacity-60 object-contain"
+                />
+              </div>
+              <h3 className="text-lg font-semibold text-neutral-900 mb-2">No CRC Class Assigned</h3>
+              <p className="text-neutral-500 mb-4 max-w-md">
+                You haven't been assigned to a CRC class yet. Please contact your administrator to get assigned to a class and access your assignments.
+              </p>
+              <div className="flex gap-3">
+                <Button onClick={() => window.location.href = '/dashboard/student'} variant="outline">
+                  Back to Dashboard
+                </Button>
+                <Button onClick={() => setIsContactDialogOpen(true)} variant="default" className="bg-dark hover:bg-dark/90 text-white">
+                  Contact Support
+                </Button>
+              </div>
+            </div>
+          ) : rows.length === 0 ? (
+            <div className="h-[40vh] w-full flex flex-col items-center justify-center py-8 h-short:pt-24 text-center">
               <Image src="/images/dashboard/empty-assignments.png" alt="No assignments" width={260} height={260} className="opacity-95" />
             </div>
           ) : (
@@ -585,6 +683,95 @@ export default function StudentAssignmentsPage() {
             </div>
           )}
             </ScrollArea>
+
+        <Dialog open={isContactDialogOpen} onOpenChange={setIsContactDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              Contact Support
+            </DialogTitle>
+          </DialogHeader>
+          
+          <form onSubmit={handleContactSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Your full name"
+                  value={contactForm.name}
+                  onChange={(e) => handleContactFormChange("name", e.target.value)}
+                  className="pl-10"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="your.email@example.com"
+                  value={contactForm.email}
+                  onChange={(e) => handleContactFormChange("email", e.target.value)}
+                  className="pl-10"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="message">Message</Label>
+              <Textarea
+                id="message"
+                rows={3}
+                placeholder="Describe your issue or question..."
+                value={contactForm.message}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleContactFormChange("message", e.target.value)}
+                className="min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                required
+              />
+            </div>
+
+
+            <div className="flex gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsContactDialogOpen(false)}
+                className="flex-1"
+                disabled={isSubmittingContact}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSubmittingContact || !contactForm.name || !contactForm.email || !contactForm.message}
+                className="flex-1 bg-dark hover:bg-dark/90 text-white"
+              >
+                {isSubmittingContact ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Sending...
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Send className="h-4 w-4" />
+                    Send Message
+                  </div>
+                )}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+   
         </CardContent>
       </Card>
     </div>

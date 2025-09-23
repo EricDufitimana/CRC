@@ -101,17 +101,24 @@ const Header = () => {
     try {
       setIsSigningOut(true);
       await signOut();
+      // Close popover only after successful signout
+      setUserMenuOpen(false);
+      setSheetOpen(false);
       window.location.href = '/';
     } catch (error) {
       console.error('Sign out error:', error);
+      // Close popover even on error
+      setUserMenuOpen(false);
+      setSheetOpen(false);
+    } finally {
       setIsSigningOut(false);
     }
   };
 
-  // Close user menu when clicking outside
+  // Close user menu when clicking outside (but not during signout)
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (userMenuOpen && !(event.target as Element).closest('.user-menu-container')) {
+      if (userMenuOpen && !isSigningOut && !(event.target as Element).closest('.user-menu-container')) {
         setUserMenuOpen(false);
       }
     };
@@ -120,7 +127,7 @@ const Header = () => {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [userMenuOpen]);
+  }, [userMenuOpen, isSigningOut]);
 
   // Sticky Navbar
   const [sticky, setSticky] = useState(false);
@@ -425,7 +432,7 @@ const Header = () => {
                 <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
                   <SheetTrigger asChild>
                     <button
-                      className={`rounded-lg p-2  text-black dark:text-white mr-4 ${
+                      className={`rounded-lg p-2 text-black dark:text-white mr-4 focus:outline-none focus-visible:outline-none focus:ring-2 focus:ring-gray-500/40 hover:ring-2 hover:ring-gray-500/10 focus:border-gray-500/60 transition-all duration-200 ease-in-out ${
                         sheetOpen ? "opacity-0" : "opacity-100"
                       }`}
                       aria-label="Open mobile menu"
@@ -581,21 +588,27 @@ const Header = () => {
                                 Go to Dashboard
                               </Link>
                             </SheetClose>
-                            <button
-                              onClick={() => {
-                                handleSignOut();
-                                setSheetOpen(false);
-                              }}
-                              disabled={isSigningOut}
-                              className="flex items-center w-full px-4 py-3 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {isSigningOut ? (
+                            {isSigningOut ? (
+                              <button
+                                onClick={handleSignOut}
+                                disabled={isSigningOut}
+                                className="flex items-center w-full px-4 py-3 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              ) : (
-                                <LogOut className="mr-2 h-4 w-4" />
-                              )}
-                              {isSigningOut ? "Signing out..." : "Sign Out"}
-                            </button>
+                                Signing out...
+                              </button>
+                            ) : (
+                              <SheetClose asChild>
+                                <button
+                                  onClick={handleSignOut}
+                                  disabled={isSigningOut}
+                                  className="flex items-center w-full px-4 py-3 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  <LogOut className="mr-2 h-4 w-4" />
+                                  Sign Out
+                                </button>
+                              </SheetClose>
+                            )}
                           </>
                         ) : (
                           <>
@@ -632,7 +645,7 @@ const Header = () => {
                   <>
                     <Link
                       href={adminId ? "/dashboard/admin" : "/dashboard/student"}
-                      className={`text-white font-medium hover:opacity-70 bg-dark rounded-md text-center whitespace-nowrap shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition-all duration-200 ease-linear ${
+                      className={`text-white font-medium hover:opacity-70 bg-dark rounded-md text-center whitespace-nowrap shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition-all duration-200 ease-linear focus:outline-none focus-visible:outline-none focus:ring-2 focus:ring-gray-500/40 hover:ring-2 hover:ring-gray-500/10 focus:border-gray-500/60 ${
                         sticky && !isMobile ? "px-5 py-3 text-sm" : "px-7 py-3"
                       }`}
                     >
@@ -643,7 +656,7 @@ const Header = () => {
                     <div className="relative user-menu-container">
                       <button
                         onClick={() => setUserMenuOpen(!userMenuOpen)}
-                        className={`flex items-center justify-center rounded-full bg-gray-100 text-gray-400 font-medium transition-all duration-200 ease-linear  ${
+                        className={`flex items-center justify-center rounded-full bg-gray-100 text-gray-400 font-medium transition-all duration-200 ease-linear focus:outline-none focus-visible:outline-none focus:ring-2 focus:ring-gray-500/40 hover:ring-2 hover:ring-gray-500/10 focus:border-gray-500/60 ${
                           sticky && !isMobile ? "w-10 h-10 text-sm" : "w-12 h-12"
                         }`}
                       >
@@ -662,10 +675,7 @@ const Header = () => {
                             Dashboard
                           </Link>
                           <button
-                            onClick={() => {
-                              handleSignOut();
-                              setUserMenuOpen(false);
-                            }}
+                            onClick={handleSignOut}
                             disabled={isSigningOut}
                             className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
@@ -685,7 +695,7 @@ const Header = () => {
                   <>
                     <Link
                       href="/login"
-                      className={`text-white font-medium hover:opacity-70 bg-dark rounded-md text-center whitespace-nowrap shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition-all duration-200 ease-linear ${
+                      className={`text-white font-medium hover:opacity-70 bg-dark rounded-md text-center whitespace-nowrap shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition-all duration-200 ease-linear focus:outline-none focus-visible:outline-none focus:ring-2 focus:ring-gray-500/40 hover:ring-2 hover:ring-gray-500/10 focus:border-gray-500/60 ${
                         sticky && !isMobile ? "px-5 py-3 text-sm" : "px-7 py-3"
                       }`}
                     >
@@ -693,7 +703,7 @@ const Header = () => {
                     </Link>
                     <Link
                       href="/register"
-                      className={`rounded-md border border-dark text-dark font-medium bg-white text-center whitespace-nowrap transition-all duration-200 ease-linear ${
+                      className={`rounded-md border border-dark text-dark font-medium bg-white text-center whitespace-nowrap transition-all duration-200 ease-linear focus:outline-none focus-visible:outline-none focus:ring-2 focus:ring-gray-500/40 hover:ring-2 hover:ring-gray-500/10 focus:border-gray-500/60 ${
                         sticky && !isMobile ? "px-5 py-3 text-sm" : "px-6 py-3"
                       }`}
                     >
