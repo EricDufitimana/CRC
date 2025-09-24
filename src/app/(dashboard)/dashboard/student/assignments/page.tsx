@@ -474,7 +474,7 @@ export default function StudentAssignmentsPage() {
               </div>
               <h3 className="text-lg font-semibold text-neutral-900 mb-2">No CRC Class Assigned</h3>
               <p className="text-neutral-500 mb-4 max-w-md">
-                You haven't been assigned to a CRC class yet. Please contact your administrator to get assigned to a class and access your assignments.
+                You haven&apos;t been assigned to a CRC class yet. Please contact your administrator to get assigned to a class and access your assignments.
               </p>
               <div className="flex gap-3">
                 <Button onClick={() => window.location.href = '/dashboard/student'} variant="outline">
