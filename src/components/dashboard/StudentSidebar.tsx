@@ -256,7 +256,11 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
   const HandleSignOut = async () => {
     try {
       setIsSigningOut(true);
-      await signOut();
+      const response = await signOut();
+      if (response.success) {
+        window.location.href = '/';
+      }
+      
     } catch (error) {
       console.error("Error logging out:", error);
       // Keep loading state active since we'll redirect anyway
@@ -495,13 +499,22 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
                 ) : (
                   <div className="space-y-6">
                     {isLoadingAvatars ? (
-                      <div className="flex justify-center items-center py-12">
-                        <div className="flex space-x-2">
-                          <div className="w-3 h-3 bg-blue-400 rounded-full animate-bounce"></div>
-                          <div className="w-3 h-3 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                          <div className="w-3 h-3 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      <div className="flex flex-col justify-center items-center py-16">
+                        <div className="relative mb-6">
+                          <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin"></div>
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <Camera className="h-6 w-6 text-blue-500 animate-pulse" />
+                          </div>
                         </div>
-                        <span className="ml-3 text-sm text-gray-600">Loading avatars...</span>
+                        <div className="text-center space-y-2">
+                          <h3 className="text-lg font-semibold text-gray-900">Loading Avatars</h3>
+                          <p className="text-sm text-gray-600">Fetching your personalized avatar options...</p>
+                          <div className="flex justify-center space-x-1 mt-4">
+                            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
+                            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                          </div>
+                        </div>
                       </div>
                     ) : avatarError ? (
                       <div className="flex flex-col justify-center items-center py-12">
@@ -570,9 +583,18 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
                                       src={avatar.src} 
                                       alt={avatar.name}
                                       className="object-cover"
+                                      onLoad={() => {
+                                        // Avatar loaded successfully
+                                      }}
+                                      onError={() => {
+                                        // Handle avatar load error
+                                        console.warn('Failed to load avatar:', avatar.src);
+                                      }}
                                     />
-                                    <AvatarFallback className="bg-gradient-to-br from-gray-100 to-gray-200 text-gray-600 text-xs font-medium">
-                                      {avatar.name.charAt(0)}
+                                    <AvatarFallback className="bg-gradient-to-br from-gray-100 to-gray-200 text-gray-600 text-xs font-medium animate-pulse">
+                                      <div className="w-full h-full flex items-center justify-center">
+                                        <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+                                      </div>
                                     </AvatarFallback>
                                   </Avatar>
                                   

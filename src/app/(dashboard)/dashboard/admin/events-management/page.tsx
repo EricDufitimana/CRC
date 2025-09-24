@@ -1104,6 +1104,7 @@ export default function EventsManagement() {
                         <div data-color-mode="light">
                           <Label className="text-sm font-medium mb-1 block">Description</Label>
                           <MDEditor 
+                            id="description"
                             value={form.description} 
                             onChange={(value) => {
                               const newValue = value || "";
@@ -1125,7 +1126,8 @@ export default function EventsManagement() {
                             textareaProps={{
                               placeholder: "Enter event description with markdown support...",
                               className: `rounded-xl ${validationErrors.description ? 'border-red-300 focus:border-red-500' : ''}`,
-                              maxLength: 460
+                              maxLength: 460,
+                              name: "description"
                             }}
                           />
                           <p className="text-xs text-gray-500 mt-1">
@@ -1755,11 +1757,13 @@ export default function EventsManagement() {
                       }
                     }}
                     preview="live"
+                    id="description"
                     height={200}
                     textareaProps={{
                       placeholder: "Enter event description with markdown support...",
                       className: `rounded-xl ${editValidationErrors.description ? 'border-red-300 focus:border-red-500' : ''}`,
-                      maxLength: 460
+                      maxLength: 460,
+                      name: "description"
                     }}
                   />
                   <p className="text-xs text-gray-500 mt-1">

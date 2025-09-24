@@ -21,9 +21,23 @@ export async function submitAssignmentHandler(prevState, formData) {
     const googleDocLink = formData.get("google_doc_link");
     const file = formData.get("file");
 
+    const{data: assignmentData, error: assignmentError} = await supabase
+      .from('assignments')
+      .select('*')
+      .eq('id', assignmentId)
+      .single();
+      
+    if (assignmentError) {
+      console.error('❌ submitAssignmentHandler: Failed to fetch assignment data:', assignmentError);
+      return { success: false, message: "Failed to fetch assignment information" };
+    }
+
+    const assignmentName= assignmentData.title.toLowerCase().replace(/\s+/g, '_');
+
     console.log('🔍 submitAssignmentHandler: Extracted form data:', {
       studentId,
       assignmentId,
+      assignmentName,
       submissionStyle,
       googleDocLink: googleDocLink ? 'Present' : 'Missing',
       file: file ? {
@@ -56,6 +70,8 @@ export async function submitAssignmentHandler(prevState, formData) {
       console.error('❌ submitAssignmentHandler: Failed to fetch student data:', studentError);
       return { success: false, message: "Failed to fetch student information" };
     }
+
+    
 
     console.log('✅ submitAssignmentHandler: Student data fetched:', studentData);
     const studentName = `${studentData.first_name}_${studentData.last_name}`.replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -91,7 +107,7 @@ export async function submitAssignmentHandler(prevState, formData) {
         const ext = file.name.split('.').pop() ?? 'bin';
         const key = crypto.randomUUID();
         const currentDate = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
-        const path = `${studentName}_${studentId}/${assignmentId}/${currentDate}/${key}.${ext}`;
+        const path = `${studentName}_${studentId}/${assignmentName}/${currentDate}/${key}.${ext}`;
 
         console.log('🔍 submitAssignmentHandler: File upload details:', {
           originalName: file.name,
