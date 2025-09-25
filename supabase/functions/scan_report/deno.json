@@ -4,6 +4,11 @@
     "lib": ["deno.window"],
     "strict": true
   },
+  "imports": {
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2",
+    "pdf-parse": "npm:pdf-parse",
+    "mammoth": "npm:mammoth"
+  },
   "fmt": {
     "files": {
       "include": ["supabase/functions/"]

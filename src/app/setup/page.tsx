@@ -16,6 +16,7 @@ import { ArrowRight, User, FileText, Upload, Image as ImageIcon, Camera, ArrowLe
 import { getAvatars, AvatarData as BaseAvatarData } from "@/actions/avatars/getAvatars";
 import { getAvatarsWithSignedUrls, AvatarData } from "@/actions/avatars/getAvatarsWithSignedUrls";
 import { AnimatedText } from "@/components/animation/AnimatedText";
+import imageCompression from "browser-image-compression";
 
 // URL validation schema
 const urlSchema = z.string().url("Please enter a valid URL");
@@ -41,6 +42,26 @@ export default function StudentSetupPage() {
   const [resumeUrlError, setResumeUrlError] = useState<string | null>(null);
   const { userId, studentId, isLoading: userDataLoading } = useUserData();
   const router = useRouter();
+
+  // Image compression function
+  async function compressImage(file: File): Promise<File> {
+    if (!file) return file;
+    try {
+      console.log(`🔧 Setup: Compressing image: ${file.name} (${file.size} bytes)`);
+      const options = {
+        maxSizeMB: 2,
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+      };
+
+      const compressedFile = await imageCompression(file, options);
+      console.log(`✅ Setup: Compression complete: ${file.name} - ${(file.size / 1024 / 1024).toFixed(2)}MB → ${(compressedFile.size / 1024 / 1024).toFixed(2)}MB`);
+      return compressedFile;
+    } catch (error) {
+      console.error(`❌ Setup: Error compressing image:`, error);
+      return file; // Return original file if compression fails
+    }
+  }
 
   // Fetch student profile data when userId is available
   useEffect(() => {
@@ -607,13 +628,31 @@ export default function StudentSetupPage() {
                         multiple={false}
                         accept="image/*"
                         value={uploadedAvatarFile}
-                        onChange={(files) => {
+                        onChange={async (files) => {
                           console.log('📤 Setup: Avatar file selected:', files.length > 0 ? {
                             fileName: files[0].name,
                             fileSize: files[0].size,
                             fileType: files[0].type
                           } : 'No files');
-                          setUploadedAvatarFile(files);
+                          
+                          if (files.length > 0 && activeTab === 'upload') {
+                            console.log('🔧 Setup: Starting image compression for avatar upload...');
+                            try {
+                              const compressedImage = await compressImage(files[0]);
+                              console.log('✅ Setup: Avatar compression result:', {
+                                name: compressedImage.name,
+                                size: compressedImage.size,
+                                type: compressedImage.type
+                              });
+                              setUploadedAvatarFile([compressedImage]);
+                            } catch (error) {
+                              console.error('❌ Setup: Error compressing avatar image:', error);
+                              // Fallback to original file if compression fails
+                              setUploadedAvatarFile(files);
+                            }
+                          } else {
+                            setUploadedAvatarFile(files);
+                          }
                         }}
                         placeholder="Drop your photo here or click to upload"
                         helperText="JPEG, PNG, GIF, WebP up to 2MB"
@@ -621,22 +660,7 @@ export default function StudentSetupPage() {
                       />
                     </div>
                     
-                    {uploadedAvatarFile.length > 0 && (
-                      <div className="text-center space-y-3">
-                        <div className="flex justify-center">
-                          <Avatar className="h-16 w-16 ring-2 ring-blue-500">
-                            <AvatarImage 
-                              src={URL.createObjectURL(uploadedAvatarFile[0])} 
-                              alt="Selected avatar preview"
-                            />
-                            <AvatarFallback className="text-lg font-bold bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500 text-white">
-                              {studentData?.first_name?.charAt(0) || 'U'}
-                            </AvatarFallback>
-                          </Avatar>
-                        </div>
-        
-                    </div>
-                    )}
+           
                   </div>
                 ) : (
                   <div className="space-y-6">
