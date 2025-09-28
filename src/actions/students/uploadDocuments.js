@@ -72,15 +72,13 @@ export async function uploadStudentDocuments(prevState, formData) {
           throw new Error('File size must be less than 5MB');
         }
 
-        const ext = academicReportFile.name.split('.').pop() ?? 'pdf';
-        const key = crypto.randomUUID();
+        // Use original filename instead of random UUID
+        const originalFileName = academicReportFile.name;
         const currentDate = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
-        const path = `${studentName}_${studentId}/academic_reports/${currentDate}/${key}.${ext}`;
+        const path = `${studentName}_${studentId}/${currentDate}/${originalFileName}`;
 
         console.log('🔍 uploadStudentDocuments: Academic report upload details:', {
           originalName: academicReportFile.name,
-          extension: ext,
-          generatedKey: key,
           currentDate,
           uploadPath: path,
           fileSize: academicReportFile.size,
@@ -93,7 +91,7 @@ export async function uploadStudentDocuments(prevState, formData) {
           .upload(path, academicReportFile, {
             cacheControl: "3600",
             upsert: false,
-            contentType: academicReportFile.type || "application/pdf",
+            contentType: academicReportFile.type || "application/pdf" || "application/msword" || "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
           });
 
         if (uploadError) {
@@ -112,6 +110,45 @@ export async function uploadStudentDocuments(prevState, formData) {
         academicReportUrl = publicUrlData?.publicUrl || null;
         console.log('✅ uploadStudentDocuments: Academic report public URL generated:', academicReportUrl);
 
+        // Process the report card to extract GPA
+        console.log('🔍 uploadStudentDocuments: Processing report card to extract GPA...');
+        try {
+          const reportProcessingResponse = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/scan_report_card_ai`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
+            },
+            body: JSON.stringify({
+              filePath: path,
+              useFallback: false
+            })
+          });
+
+          if (reportProcessingResponse.ok) {
+            const reportData = await reportProcessingResponse.json();
+            console.log('📊 uploadStudentDocuments: Report processing result:', reportData);
+            
+            if (reportData.success && reportData.average !== null) {
+              console.log('✅ uploadStudentDocuments: GPA extracted successfully:', reportData.average);
+              // Store the extracted GPA for database update
+              academicReportPath = {
+                path: academicReportPath,
+                extractedGPA: reportData.average,
+                confidence: reportData.confidence,
+                reasoning: reportData.reasoning
+              };
+            } else {
+              console.log('⚠️ uploadStudentDocuments: Could not extract GPA from report card:', reportData.error || 'Unknown error');
+            }
+          } else {
+            console.log('⚠️ uploadStudentDocuments: Report processing failed with status:', reportProcessingResponse.status);
+          }
+        } catch (processingError) {
+          console.error('❌ uploadStudentDocuments: Report processing error:', processingError);
+          // Continue with upload even if processing fails
+        }
+
       } catch (uploadError) {
         console.error('❌ uploadStudentDocuments: Academic report upload error:', uploadError);
         return { success: false, message: uploadError.message || "Academic report upload failed" };
@@ -123,7 +160,18 @@ export async function uploadStudentDocuments(prevState, formData) {
     const updateData = {};
     
     if (academicReportPath) {
-      updateData.academic_report_path = academicReportPath;
+      // Handle both string path and object with extracted GPA
+      if (typeof academicReportPath === 'string') {
+        updateData.academic_report_path = academicReportPath;
+      } else if (academicReportPath.path) {
+        updateData.academic_report_path = academicReportPath.path;
+        
+        // Update GPA if extracted successfully
+        if (academicReportPath.extractedGPA !== null && academicReportPath.extractedGPA !== undefined) {
+          updateData.gpa = academicReportPath.extractedGPA;
+          console.log('✅ uploadStudentDocuments: Updating student GPA to:', academicReportPath.extractedGPA);
+        }
+      }
     }
     
     if (resumeLink && resumeLink.trim()) {
@@ -145,14 +193,25 @@ export async function uploadStudentDocuments(prevState, formData) {
     }
 
     console.log('✅ uploadStudentDocuments: Action completed successfully');
+    
+    // Prepare response data
+    const responseData = {
+      academicReportPath: typeof academicReportPath === 'string' ? academicReportPath : academicReportPath?.path,
+      academicReportUrl,
+      resumeLink: resumeLink?.trim() || null
+    };
+    
+    // Add GPA information if extracted
+    if (academicReportPath && typeof academicReportPath === 'object' && academicReportPath.extractedGPA !== null) {
+      responseData.extractedGPA = academicReportPath.extractedGPA;
+      responseData.gpaConfidence = academicReportPath.confidence;
+      responseData.gpaReasoning = academicReportPath.reasoning;
+    }
+    
     return { 
       success: true, 
       message: "Documents uploaded successfully",
-      data: {
-        academicReportPath,
-        academicReportUrl,
-        resumeLink: resumeLink?.trim() || null
-      }
+      data: responseData
     };
 
   } catch (error) {

@@ -27,6 +27,7 @@ export default function AccountCheckPage() {
   });
   const [isSubmittingContact, setIsSubmittingContact] = useState(false);
   const { userId, isLoading: userDataLoading } = useUserData();
+  const [hasCompletedSetup, setHasCompletedSetup] = useState(false);
 
   useEffect(() => {
     console.log('Account check page: useEffect triggered');
@@ -216,7 +217,7 @@ export default function AccountCheckPage() {
             Redirecting...
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            Taking you to your dashboard
+            {hasCompletedSetup ? 'Taking you to your dashboard' : 'Taking you to the setup page'}
           </p>
         </div>
       </div>

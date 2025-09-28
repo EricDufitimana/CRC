@@ -24,7 +24,11 @@ export async function GET(request) {
       });
 
       if (!student || !student.crc_class) {
-        return NextResponse.json({ error: "Student CRC class not found" }, { status: 404 });
+        console.log(`Dashboard: Student ${studentId} has no CRC class assigned - returning message`);
+        return NextResponse.json({ 
+          message: "No CRC class found for this student",
+          assignments: []
+        });
       }
 
       console.log(`Dashboard: Fetching assignments for student ${studentId} with CRC class: ${student.crc_class.name} (ID: ${student.crc_class.id})`);

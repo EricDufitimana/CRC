@@ -178,7 +178,7 @@ export default function StudentSetupPage() {
         formData.append('profile_background', selectedBackground);
 
         // Log FormData contents
-        console.log('📋 Setup: FormData contents:');
+        console.log('📋 Setup: FormData contents (Profile Update with AI Processing):');
         console.log('  student_id:', formData.get('student_id'));
         console.log('  user_id:', formData.get('user_id'));
         console.log('  avatar_path:', formData.get('avatar_path'));
@@ -186,6 +186,7 @@ export default function StudentSetupPage() {
         console.log('  academic_report:', formData.get('academic_report') ? 'File present' : 'No file');
         console.log('  resume_link:', formData.get('resume_link'));
         console.log('  profile_background:', formData.get('profile_background'));
+        console.log('📋 Setup: Update-profile API will handle AI processing of documents');
 
         console.log('🌐 Setup: Sending request to /api/students/update-profile...');
         const profileResponse = await fetch('/api/students/update-profile', {

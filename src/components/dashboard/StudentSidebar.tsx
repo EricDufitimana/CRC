@@ -329,11 +329,11 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
                   <p className="text-lg font-medium">{studentData.full_name || 'Unknown Name'}</p>
                   <p className="text-sm text-neutral-500">{studentData.email || 'No email'}</p>
                 </>
-              ) : (
+              ) : !isLoading && !userDataLoading ? (
                 <>
                   <p className="text-sm text-neutral-500">No profile data</p>
                 </>
-              )}
+              ) : null}
             </div>
           </div>
         </div>

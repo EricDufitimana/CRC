@@ -52,8 +52,9 @@ export async function updateSession(request: NextRequest) {
   const isAdminRoute = request.nextUrl.pathname.startsWith('/dashboard/admin');
   const isStudentRoute = request.nextUrl.pathname.startsWith('/dashboard/student');
   const isProtectedRoute = isAdminRoute || isStudentRoute;
+  const isSetupRoute = request.nextUrl.pathname.startsWith('/setup');
 
-  if (!user && isProtectedRoute) {
+  if (!user && isProtectedRoute && !isSetupRoute) {
     console.log('🚫 Unauthorized access attempt:', {
       pathname: request.nextUrl.pathname,
       redirectingTo: '/login',
@@ -66,7 +67,7 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  if (user && isProtectedRoute) {
+  if (user && isProtectedRoute && !isSetupRoute) {
     // Create admin client for database queries
     const adminClient = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -105,7 +106,7 @@ export async function updateSession(request: NextRequest) {
       }
 
       if (isStudentRoute) {
-        // Check if user is a student
+        // Check if user is a student and get their setup status from profiles
         const { data: student, error: studentError } = await adminClient
           .from('students')
           .select('id')
@@ -126,10 +127,48 @@ export async function updateSession(request: NextRequest) {
           return NextResponse.redirect(url)
         }
 
+        // Check setup completion status from profiles table
+        const { data: profile, error: profileError } = await adminClient
+          .from('profiles')
+          .select('has_setup')
+          .eq('user_id', user.id)
+          .single();
+
+        if (profileError || !profile) {
+          console.log('🚫 Profile not found:', {
+            pathname: request.nextUrl.pathname,
+            userId: user.id,
+            error: profileError?.message || 'Profile not found',
+            timestamp: new Date().toISOString()
+          });
+          
+          // Profile not found, redirect to setup
+          const url = request.nextUrl.clone()
+          url.pathname = '/setup'
+          return NextResponse.redirect(url)
+        }
+
+        // Check if student has completed setup
+        if (!profile.has_setup) {
+          console.log('🚫 Student setup not completed:', {
+            pathname: request.nextUrl.pathname,
+            userId: user.id,
+            studentId: student.id,
+            hasCompletedSetup: profile.has_setup,
+            timestamp: new Date().toISOString()
+          });
+          
+          // Student hasn't completed setup, redirect to setup page
+          const url = request.nextUrl.clone()
+          url.pathname = '/setup'
+          return NextResponse.redirect(url)
+        }
+
         console.log('✅ Student access granted:', {
           pathname: request.nextUrl.pathname,
           userId: user.id,
           studentId: student.id,
+          hasCompletedSetup: profile.has_setup,
           timestamp: new Date().toISOString()
         });
       }
@@ -139,6 +178,59 @@ export async function updateSession(request: NextRequest) {
       const url = request.nextUrl.clone()
       url.pathname = '/admin-verification'
       return NextResponse.redirect(url)
+    }
+  }
+
+  // Handle setup route - prevent access if setup is already completed
+  if (user && isSetupRoute) {
+    // Create admin client for database queries
+    const adminClient = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    try {
+      // Check if user is a student and get their setup status
+      const { data: student, error: studentError } = await adminClient
+        .from('students')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (student && !studentError) {
+        // Check setup completion status from profiles table
+        const { data: profile, error: profileError } = await adminClient
+          .from('profiles')
+          .select('has_setup')
+          .eq('user_id', user.id)
+          .single();
+
+        if (profile && !profileError && profile.has_setup) {
+          console.log('🚫 Setup already completed, redirecting to dashboard:', {
+            pathname: request.nextUrl.pathname,
+            userId: user.id,
+            studentId: student.id,
+            hasCompletedSetup: profile.has_setup,
+            timestamp: new Date().toISOString()
+          });
+          
+          // Setup already completed, redirect to student dashboard
+          const url = request.nextUrl.clone()
+          url.pathname = '/dashboard/student'
+          return NextResponse.redirect(url)
+        }
+
+        console.log('✅ Student accessing setup page:', {
+          pathname: request.nextUrl.pathname,
+          userId: user.id,
+          studentId: student.id,
+          hasCompletedSetup: profile?.has_setup || false,
+          timestamp: new Date().toISOString()
+        });
+      }
+    } catch (error) {
+      console.log('❌ Setup route middleware error:', error);
+      // On error, allow access to setup page
     }
   }
 

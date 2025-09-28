@@ -15,6 +15,7 @@ import { showToastPromise } from "@/components/toasts";
 
 interface StudentDocuments {
   academic_report_path: string | null;
+  academic_report_filename: string | null;
   academic_report_url: string | null;
   resume_link: string | null;
   first_name: string;
@@ -105,7 +106,7 @@ export default function StudentDocumentsPage() {
         formData.append('resume_link', resumeLink.trim());
       }
 
-      const response = await fetch('/api/students/update-profile', {
+      const response = await fetch('/api/students/upload-documents-simple', {
         method: 'POST',
         body: formData,
       });
@@ -236,7 +237,7 @@ export default function StudentDocumentsPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => setShowUploadNew(true)}
-                        className="text-xs"
+                        className="text-xs text-white bg-statColors-3 hover:bg-statColors-3/90"
                       >
                         <Upload className="h-3 w-3 mr-1" />
                         Upload New
@@ -250,9 +251,10 @@ export default function StudentDocumentsPage() {
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 mb-2">
                             <FileText className="h-4 w-4 text-neutral-500" />
-                            <span className="text-sm font-medium text-neutral-900">Academic Report</span>
-                            <span className="text-xs text-neutral-500 bg-neutral-100 px-2 py-1 rounded-full">Uploaded</span>
+                            <span className="text-sm font-medium text-neutral-900">{documents.academic_report_filename}</span>
                           </div>
+                        
+                         
                        
                         </div>
                         <div className="flex items-center gap-2">
@@ -345,6 +347,9 @@ export default function StudentDocumentsPage() {
                     </div>
                   )}
                 </div>
+                <p className="text-xs text-neutral-500">
+                  When you upload a new academic report, the new average won't update for the CRC. If you want to update the average, contact the website developer.
+                </p>
 
                 {/* Resume Link Section */}
                 <div className="space-y-4">

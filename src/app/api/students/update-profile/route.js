@@ -157,68 +157,65 @@ export async function POST(request) {
       };
     }
 
-    // Handle academic report upload
+    // Handle document uploads using the uploadDocuments action
     if (requestData.academicReportFile && requestData.academicReportFile.name) {
-      console.log('🔍 API: Processing academic report upload...');
+      console.log('🔍 API: Processing documents using uploadDocuments action...');
       
       try {
-        // Validate file type
-        const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-        if (!allowedTypes.includes(requestData.academicReportFile.type)) {
-          return NextResponse.json({ error: "Only PDF, DOC, and DOCX files are allowed for academic reports" }, { status: 400 });
+        // Import the uploadDocuments action
+        const { uploadStudentDocuments } = await import('@/actions/students/uploadDocuments');
+        
+        // Create FormData for the uploadDocuments action
+        const documentFormData = new FormData();
+        documentFormData.append('student_id', requestData.studentId);
+        documentFormData.append('user_id', requestData.userId);
+        documentFormData.append('academic_report', requestData.academicReportFile);
+        
+        if (requestData.resumeLink && requestData.resumeLink.trim()) {
+          documentFormData.append('resume_link', requestData.resumeLink.trim());
         }
 
-      // Validate file size (5MB limit for academic reports)
-        const maxSize = 5 * 1024 * 1024; // 5MB in bytes
-        if (requestData.academicReportFile.size > maxSize) {
-          return NextResponse.json({ error: "Academic report file size must be less than 5MB" }, { status: 400 });
+        console.log('🔍 API: Calling uploadStudentDocuments action...');
+        const documentResult = await uploadStudentDocuments(null, documentFormData);
+        
+        if (documentResult.success) {
+          console.log('✅ API: Document processing completed:', documentResult.data);
+          
+          // Update the results with document processing info
+          results.academicReport = {
+            success: true,
+            reportPath: documentResult.data.academicReportPath,
+            extractedGPA: documentResult.data.extractedGPA,
+            gpaConfidence: documentResult.data.gpaConfidence,
+            gpaReasoning: documentResult.data.gpaReasoning
+          };
+          
+          if (documentResult.data.resumeLink) {
+            results.resumeLink = {
+              success: true,
+              resumeLink: documentResult.data.resumeLink
+            };
+          }
+          
+          // Note: The uploadDocuments action already updates the database with the document paths and GPA
+          // So we don't need to add them to updateData here
+          
+        } else {
+          console.error('❌ API: Document processing failed:', documentResult.message);
+          return NextResponse.json({ 
+            error: `Document processing failed: ${documentResult.message}` 
+          }, { status: 500 });
         }
 
-        const studentName = `${student.first_name}_${student.last_name}`.replace(/[^a-zA-Z0-9_-]/g, '_');
-        const ext = requestData.academicReportFile.name.split('.').pop() ?? 'pdf';
-        const key = crypto.randomUUID();
-        const currentDate = new Date().toISOString().split('T')[0];
-        const path = `${studentName}_${requestData.studentId}/${currentDate}/${key}.${ext}`;
-
-        console.log('🔍 API: Academic report upload details:', {
-          originalName: requestData.academicReportFile.name,
-          extension: ext,
-          generatedKey: key,
-          currentDate,
-          uploadPath: path,
-          fileSize: requestData.academicReportFile.size,
-          fileType: requestData.academicReportFile.type
-        });
-
-        const { error: uploadError } = await supabase.storage
-          .from("reports")
-          .upload(path, requestData.academicReportFile, {
-            cacheControl: "3600",
-            upsert: false,
-            contentType: requestData.academicReportFile.type || "application/pdf",
-          });
-
-        if (uploadError) {
-          console.error('❌ API: Academic report upload failed:', uploadError);
-          return NextResponse.json({ error: uploadError.message || "Academic report upload failed" }, { status: 500 });
-        }
-
-        console.log('✅ API: Academic report uploaded successfully to path:', path);
-        updateData.academic_report_path = path;
-        results.academicReport = {
-          success: true,
-          reportPath: path
-        };
-
-      } catch (uploadError) {
-        console.error('❌ API: Academic report upload error:', uploadError);
-        return NextResponse.json({ error: uploadError.message || "Academic report upload failed" }, { status: 500 });
+      } catch (documentError) {
+        console.error('❌ API: Document processing error:', documentError);
+        return NextResponse.json({ 
+          error: `Document processing error: ${documentError.message || 'Unknown error'}` 
+        }, { status: 500 });
       }
-    }
-
-    // Handle resume link
-    if (requestData.resumeLink && requestData.resumeLink.trim()) {
-      console.log('🔍 API: Setting resume link...');
+    } else if (requestData.resumeLink && requestData.resumeLink.trim()) {
+      // Handle resume link only (no academic report)
+      console.log('🔍 API: Setting resume link only...');
       updateData.resume_link = requestData.resumeLink.trim();
       results.resumeLink = {
         success: true,

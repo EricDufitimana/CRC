@@ -41,11 +41,22 @@ export async function GET(request) {
       }
     }
 
+    // Extract filename from academic report path
+    let academic_report_filename = null;
+    if (student.academic_report_path) {
+      // Extract filename from path like "John_Doe_123/academic_reports/2024-01-15/filename.pdf"
+      const pathParts = student.academic_report_path.split('/');
+      if (pathParts.length > 0) {
+        academic_report_filename = pathParts[pathParts.length - 1]; // This is the filename
+      }
+    }
+
     return NextResponse.json({
       id: student.id,
       first_name: student.first_name,
       last_name: student.last_name,
       academic_report_path: student.academic_report_path,
+      academic_report_filename: academic_report_filename,
       academic_report_url: academic_report_url,
       resume_link: student.resume_link
     });

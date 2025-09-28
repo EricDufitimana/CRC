@@ -96,6 +96,35 @@ const nextConfig = {
       util: false,
     };
     
+    // Tesseract.js configuration for serverless environments
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      'tesseract.js': 'tesseract.js/dist/tesseract.min.js',
+    };
+    
+    // Handle Tesseract.js worker files
+    config.module.rules.push({
+      test: /tesseract\.js.*\.worker\.js$/,
+      type: 'asset/resource',
+    });
+    
+    // Optimize Tesseract.js for serverless
+    config.optimization = {
+      ...config.optimization,
+      splitChunks: {
+        ...config.optimization.splitChunks,
+        cacheGroups: {
+          ...config.optimization.splitChunks?.cacheGroups,
+          tesseract: {
+            test: /[\\/]node_modules[\\/]tesseract\.js[\\/]/,
+            name: 'tesseract',
+            chunks: 'all',
+            priority: 10,
+          },
+        },
+      },
+    };
+    
     // Handle PDF.js worker
     config.module.rules.push({
       test: /pdf\.worker\.min\.js$/,

@@ -715,7 +715,7 @@ export default function AspenDashboard() {
           const newStats = [
             { label: "Assignments Not Done", value: assignmentsNotDone, icon: ClipboardCheck, tint: "bg-emerald-100 text-emerald-700" },
             { label: "Essays Submitted", value: essaysSubmitted, icon: FileText, tint: "bg-sky-100 text-sky-700" },
-            { label: "Opportunities Applied", value: opportunitiesApplied, icon: Briefcase, tint: "bg-violet-100 text-violet-700" },
+            { label: "Opportunities Submitted", value: opportunitiesApplied, icon: Briefcase, tint: "bg-violet-100 text-violet-700" },
           ];
           console.log('📊 Updating stats with:', newStats);
           setStats(newStats);
