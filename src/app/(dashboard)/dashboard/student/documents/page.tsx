@@ -348,7 +348,7 @@ export default function StudentDocumentsPage() {
                   )}
                 </div>
                 <p className="text-xs text-neutral-500">
-                  When you upload a new academic report, the new average won't update for the CRC. If you want to update the average, contact the website developer.
+                  When you upload a new academic report, the new average won&apos;t update for the CRC. If you want to update the average, contact the website developer.
                 </p>
 
                 {/* Resume Link Section */}
