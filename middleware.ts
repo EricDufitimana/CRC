@@ -1,7 +1,13 @@
 import { type NextRequest } from 'next/server'
 import { updateSession } from '@/utils/supabase/middleware'
+import { NextResponse } from 'next/server'
 
 export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname
+  if (pathname === '/api/revalidate' || pathname.startsWith('/api/')) {
+    return NextResponse.next({ request })
+  }
+
   return await updateSession(request)
 }
 
