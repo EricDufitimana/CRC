@@ -647,7 +647,16 @@ export default function AspenDashboard() {
         setIsRecentLoading(true);
         const { client } = await import("@/sanity/lib/client");
         const { getRecentResources } = await import("@/sanity/lib/queries");
-        const data = await client.fetch(getRecentResources);
+        const data = await client.fetch(
+          getRecentResources,
+          {},
+          {
+            next: {
+              tags: ['sanity-content'],
+              revalidate: 3600
+            }
+          }
+        );
         const list: RecentResource[] = (Array.isArray(data) ? data : []).map((d: any) => ({
           id: String(d._id || ""),
           title: d.title || "",

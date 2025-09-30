@@ -157,142 +157,142 @@ export default function AdminVerificationPage() {
   // Only show admin verification page if check is complete and user should see it
   if (checkComplete && shouldShowAdminVerification) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900 p-4">
-        <div className="max-w-4xl w-full text-center">
-          {/* Large Illustration */}
-          <div className="mb-12 ml-8">
-            <div className="relative w-128 h-96 mx-auto mb-8">
-              <Image
-                src="/images/illustrations/unauthorized-access.png"
-                alt="Unauthorized Access"
-                fill
-                className="object-contain"
-              />
+      <>
+        <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900 p-4 h-short:p-0">
+          <div className="max-w-4xl w-full text-center">
+            {/* Large Illustration */}
+            <div className="mb-12 ml-8">
+              <div className="relative w-128 h-96 mx-auto mb-8">
+                <Image
+                  src="/images/illustrations/unauthorized-access.png"
+                  alt="Unauthorized Access"
+                  fill
+                  className="object-contain"
+                />
+              </div>
+            </div>
+
+            {/* Minimal Message */}
+            <div className="mb-12">
+              <h1 className="text-4xl font-bold font-cal-sans text-gray-900 dark:text-white mb-4">
+                Oops! Access Restricted
+              </h1>
+              <p className="text-md text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
+                You don&apos;t have permission to access this area. Please check your credentials or contact support if you believe this is an error.
+              </p>
+            </div>
+
+            {/* Minimal Action Buttons */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-12">
+              <Link
+                href="/login"
+                className="inline-flex items-center px-6 py-4 bg-primary text-white text-md font-medium rounded-xl shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition-all duration-300 hover:bg-primary/80 group"
+              >
+                <ArrowLeft className="w-5 h-5 mr-3 transition-transform duration-300 text-sm group-hover:-translate-x-1 group-hover:scale-110" />
+                Back to Login
+              </Link>
+              
+              <button
+                onClick={() => setIsContactDialogOpen(true)}
+                className="inline-flex items-center px-6 py-[15px] bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-md font-medium rounded-xl hover:bg-gray-200 border border-gray-300 shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition duration-200"
+              >
+                <Shield className="w-5 h-5 mr-3 text-sm" />
+                Contact Support
+              </button>
             </div>
           </div>
-
-          {/* Minimal Message */}
-          <div className="mb-12">
-            <h1 className="text-4xl font-bold font-cal-sans text-gray-900 dark:text-white mb-4">
-              Oops! Access Restricted
-            </h1>
-            <p className="text-md text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
-              You don&apos;t have permission to access this area. Please check your credentials or contact support if you believe this is an error.
-            </p>
-          </div>
-
-          {/* Minimal Action Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-12">
-            <Link
-              href="/login"
-              className="inline-flex items-center px-6 py-4 bg-primary text-white text-md font-medium rounded-xl shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition-all duration-300 hover:bg-primary/80 group"
-            >
-              <ArrowLeft className="w-5 h-5 mr-3 transition-transform duration-300 text-sm group-hover:-translate-x-1 group-hover:scale-110" />
-              Back to Login
-            </Link>
-            
-            <button
-              onClick={() => setIsContactDialogOpen(true)}
-              className="inline-flex items-center px-6 py-[15px] bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-md font-medium rounded-xl hover:bg-gray-200 border border-gray-300 shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition duration-200"
-            >
-              <Shield className="w-5 h-5 mr-3 text-sm" />
-              Contact Support
-            </button>
-          </div>
         </div>
-      </div>
+
+        {/* Contact Support Dialog */}
+        <Dialog open={isContactDialogOpen} onOpenChange={setIsContactDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5" />
+                Contact Support
+              </DialogTitle>
+            </DialogHeader>
+            
+            <form onSubmit={handleContactSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Name</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="Your full name"
+                    value={contactForm.name}
+                    onChange={(e) => handleContactFormChange("name", e.target.value)}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="your.email@example.com"
+                    value={contactForm.email}
+                    onChange={(e) => handleContactFormChange("email", e.target.value)}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="message">Message</Label>
+                <textarea
+                  id="message"
+                  placeholder="Describe your issue or question..."
+                  value={contactForm.message}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleContactFormChange("message", e.target.value)}
+                  className="min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                  required
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsContactDialogOpen(false)}
+                  className="flex-1"
+                  disabled={isSubmittingContact}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSubmittingContact || !contactForm.name || !contactForm.email || !contactForm.message}
+                  className="flex-1 bg-dark hover:bg-dark/90"
+                >
+                  {isSubmittingContact ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Sending...
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Send className="h-4 w-4" />
+                      Send Message
+                    </div>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </>
     );
   }
 
   // Return null if none of the above conditions are met (shouldn't happen)
-  return (
-    <>
-      {/* Contact Support Dialog */}
-      <Dialog open={isContactDialogOpen} onOpenChange={setIsContactDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5" />
-              Contact Support
-            </DialogTitle>
-          </DialogHeader>
-          
-          <form onSubmit={handleContactSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="Your full name"
-                  value={contactForm.name}
-                  onChange={(e) => handleContactFormChange("name", e.target.value)}
-                  className="pl-10"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="your.email@example.com"
-                  value={contactForm.email}
-                  onChange={(e) => handleContactFormChange("email", e.target.value)}
-                  className="pl-10"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="message">Message</Label>
-              <textarea
-                id="message"
-                placeholder="Describe your issue or question..."
-                value={contactForm.message}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleContactFormChange("message", e.target.value)}
-                className="min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
-                required
-              />
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsContactDialogOpen(false)}
-                className="flex-1"
-                disabled={isSubmittingContact}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={isSubmittingContact || !contactForm.name || !contactForm.email || !contactForm.message}
-                className="flex-1 bg-dark hover:bg-dark/90"
-              >
-                {isSubmittingContact ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Sending...
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Send className="h-4 w-4" />
-                    Send Message
-                  </div>
-                )}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </>
-  );
+  return null;
 }

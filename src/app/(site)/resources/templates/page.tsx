@@ -34,7 +34,16 @@ type Template = {
 };
 
 export default async function Home() {
-  const data:Template[] = await client.fetch(getTemplates);
+  const data:Template[] = await client.fetch(
+    getTemplates,
+    {},
+    {
+      next: {
+        tags: ['sanity-content'],
+        revalidate: 3600
+      }
+    }
+  );
   const filteredData = filterExpiredResources(data);
   
   return (

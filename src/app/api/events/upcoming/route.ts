@@ -7,7 +7,16 @@ export async function GET() {
       _id, _createdAt, category, date, description, event_organizer, gallery, location, title
     }`;
     
-    const events = await client.fetch(eventsQuery);
+    const events = await client.fetch(
+      eventsQuery,
+      {},
+      {
+        next: {
+          tags: ['sanity-content'],
+          revalidate: 3600
+        }
+      }
+    );
     
     return NextResponse.json({ events: events || [] });
   } catch (error) {

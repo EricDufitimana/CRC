@@ -1,5 +1,5 @@
 "use server";
-import {client} from "@/sanity/lib/client";
+import {client} from "@/lib/sanity";
 import {writeClient} from "@/sanity/lib/writeClient";
 import {uploadToCloudinary} from "@/lib/cloudinary";
 import {revalidatePath} from "next/cache";
@@ -168,7 +168,16 @@ export async function deleteImage(eventId:string, publicId:string){
       return cloudinary.uploader.destroy(publicId);
     })
     //remove from sanity
-    const event = await client.fetch(`*[_type=="events" && _id==$eventId[0]]`, {eventId})
+    const event = await client.fetch(
+      `*[_type=="events" && _id==$eventId[0]]`, 
+      {eventId},
+      {
+        next: {
+          tags: ['sanity-content'],
+          revalidate: 3600
+        }
+      }
+    )
     if(event?.gallery){
       const updatedGallery = event.gallery.filter((img:any) => img.public_id !== publicId);
       await writeClient

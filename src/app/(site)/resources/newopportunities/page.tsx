@@ -28,7 +28,16 @@ type Opportunity = {
 };
 
 export default async function Home() {
-  const data: Opportunity[] = await client.fetch(getNewOpportunities);
+  const data: Opportunity[] = await client.fetch(
+    getNewOpportunities,
+    {},
+    {
+      next: {
+        tags: ['sanity-content'],
+        revalidate: 3600
+      }
+    }
+  );
   const filteredData = filterExpiredResources(data);
   
   return (

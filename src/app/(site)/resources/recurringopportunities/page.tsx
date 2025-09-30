@@ -24,7 +24,16 @@ type Opportunity = {
 };
 
 export default async function RecurringOpportunities() {
-  const data: Opportunity[] = await client.fetch(getRecurringOpportunities);
+  const data: Opportunity[] = await client.fetch(
+    getRecurringOpportunities,
+    {},
+    {
+      next: {
+        tags: ['sanity-content'],
+        revalidate: 3600
+      }
+    }
+  );
   const filteredData = filterExpiredResources(data);
   
   return (

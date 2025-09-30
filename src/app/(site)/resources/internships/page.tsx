@@ -25,7 +25,16 @@ type Internship = {
 };
 
 export default async function Internships() {
-  const data: Internship[] = await client.fetch(getInternships);
+  const data: Internship[] = await client.fetch(
+    getInternships,
+    {},
+    {
+      next: {
+        tags: ['sanity-content'],
+        revalidate: 3600
+      }
+    }
+  );
   const filteredData = filterExpiredResources(data);
 
   return (

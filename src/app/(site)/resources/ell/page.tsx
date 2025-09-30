@@ -5,7 +5,7 @@ import Layout from "@/components/other/ResourceLayout";
 import MultipleAnnouncementsBanner from "@/components/Banner/MultipleAnnouncementsBanner";
 import { Fragment } from "react";
 import { getEnglishLanguageLearning } from "@/sanity/lib/queries";
-import { client } from "@/sanity/lib/client";
+import { client } from "@/lib/sanity";
 import { BookOpen } from "lucide-react";
 import { filterExpiredResources } from "@/utils/filterExpiredResources";
 import ConditionalHeader from "../../../../components/other/ConditionalHeader";
@@ -24,7 +24,16 @@ type EnglishResource = {
 };
 
 export default async function Home() {
-  const data: EnglishResource[] = await client.fetch(getEnglishLanguageLearning);
+  const data: EnglishResource[] = await client.fetch(
+    getEnglishLanguageLearning,
+    {},
+    {
+      next: {
+        tags: ['sanity-content'],
+        revalidate: 3600
+      }
+    }
+  );
   const filteredData = filterExpiredResources(data);
 
   return (
