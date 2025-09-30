@@ -10,8 +10,7 @@ import { layout } from "@/types/layout";
 import ResourcesNotificationBanner from "@/components/Banner/ResourcesNotificationBanner";
 import MultipleAnnouncementsBanner from "@/components/Banner/MultipleAnnouncementsBanner";
 import { Fragment, Suspense } from "react";
-import { client } from "@/sanity/lib/client";
-import { getTemplates } from "@/sanity/lib/queries";
+import { getTemplates } from "@/lib/supabase-queries";
 import GridSkeleton from "@/components/ui/GridSkeleton";
 import ResourceSkeleton from "@/components/ui/ResourceSkeleton";
 import { FileText } from "lucide-react";
@@ -24,7 +23,7 @@ export const metadata: Metadata = {
 };
 
 type Template = {
-  _id: string;
+  id: number;
   image_address?: string | null;
   title: string;
   description: string;
@@ -34,16 +33,7 @@ type Template = {
 };
 
 export default async function Home() {
-  const data:Template[] = await client.fetch(
-    getTemplates,
-    {},
-    {
-      next: {
-        tags: ['sanity-content'],
-        revalidate: 3600
-      }
-    }
-  );
+  const data:Template[] = await getTemplates();
   const filteredData = filterExpiredResources(data);
   
   return (
@@ -63,9 +53,9 @@ export default async function Home() {
 
             {filteredData && filteredData.length > 0 ? (
               filteredData.map((item, index) => (
-                <Fragment key={item._id}>
+                <Fragment key={item.id}>
                   <Layout 
-                    key={item._id}
+                    key={item.id}
                     image={item.image_address || "/images/banners/image.svg"}
                     title={item.title}
                     description={item.description}

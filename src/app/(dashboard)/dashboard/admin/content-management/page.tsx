@@ -25,14 +25,14 @@ import { useActionState } from "react";
 import { z } from "zod";
 import { Checkbox } from "../../../../../../zenith/src/components/ui/checkbox";
 import { deleteResource, updateResource, addResource, fetchResourcesByCategory } from "@/lib/action";
-type SanityResource = {
-  _id: string;
+type SupabaseResource = {
+  id: number;
   title: string;
   description: string;
   url?: string;
   secondary_url?: string;
   image_address?: string;
-  __createdAt?: string;
+  created_at?: string;
   opportunity_deadline?: string;
   category?: string;
 };
@@ -54,14 +54,14 @@ export default function ContentManagement() {
     const categoryFromUrl = searchParams?.get('category')	;
     return categoryFromUrl || "new-opportunities";
   });
-  const [resources, setResources] = useState<SanityResource[]>([]);
+  const [resources, setResources] = useState<SupabaseResource[]>([]);
   const [isAddResourceOpen, setIsAddResourceOpen] = useState(false);
   const [expandedWorkshops, setExpandedWorkshops] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
   const [resourceIdToDelete, setResourceIdToDelete] = useState<string | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [resourceToEdit, setResourceToEdit] = useState<SanityResource | null>(null);
+  const [resourceToEdit, setResourceToEdit] = useState<SupabaseResource | null>(null);
   const [editForm, setEditForm] = useState({
     title: "",
     description: "",
@@ -253,7 +253,7 @@ export default function ContentManagement() {
     setResourceIdToDelete(null);
   };
 
-  const handleEditClick = (resource: SanityResource) => {
+  const handleEditClick = (resource: SupabaseResource) => {
     setResourceToEdit(resource);
     setEditForm({
       title: resource.title,
@@ -313,9 +313,9 @@ export default function ContentManagement() {
     
     const updatePromise = (async () => {
       try {
-        console.log("Updating resource:", resourceToEdit._id, editForm);
+        console.log("Updating resource:", resourceToEdit.id, editForm);
         
-        const result = await updateResource(resourceToEdit._id, editForm);
+        const result = await updateResource(resourceToEdit.id.toString(), editForm);
         if (result.status === 'SUCCESS'){
           console.log("Resource updated successfully");
           setEditDialogOpen(false);
@@ -665,7 +665,7 @@ export default function ContentManagement() {
                       ) : (
                         // Actual data rows
                         currentResources.map((resource) => (
-                          <TableRow key={resource._id}>
+                          <TableRow key={resource.id}>
                             <TableCell className="font-medium">
                               <div className="flex text-md items-center gap-2">
                                 {resource.title}
@@ -697,7 +697,7 @@ export default function ContentManagement() {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => handleDeleteClick(resource._id)}
+                                  onClick={() => handleDeleteClick(resource.id.toString())}
                                   className="text-red-600 hover:text-red-700"
                                 >
                                   <Trash2 className="h-3 w-3" />

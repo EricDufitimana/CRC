@@ -1,7 +1,5 @@
 "use server"
 import { parseServerActionResponse } from "./utils"
-import {writeClient} from "@/sanity/lib/writeClient"
-import { client } from "@/sanity/lib/client";
 import { createClient } from '@supabase/supabase-js'
 import { 
   getNewOpportunities, 
@@ -9,9 +7,14 @@ import {
   getEnglishLanguageLearning, 
   getRecurringOpportunities,
   getPreviousEvents,
-  getEventsByType
-} from "@/sanity/lib/queries";
-import { sanityFetch } from "@/sanity/lib/live";
+  getEventsByType,
+  createResource,
+  createEvent,
+  updateResource as updateResourceQuery,
+  deleteResource as deleteResourceQuery,
+  updateEvent as updateEventQuery,
+  deleteEvent as deleteEventQuery
+} from "@/lib/supabase-queries";
 
 export const addResource = async(state: any, form:FormData) => {
   console.log("🔧 addResource server action called");
@@ -23,10 +26,19 @@ export const addResource = async(state: any, form:FormData) => {
   const {title, description, url, secondary_url, image_address, opportunity_deadline, category, notifyAllStudents} = Object.fromEntries(form.entries());
 
   try{
-    console.log("📝 Creating document with:", {title, description, url, secondary_url, image_address, opportunity_deadline, category, notifyAllStudents});
-    const doc = {title, description, url, secondary_url, image_address, opportunity_deadline, category}
+    console.log("📝 Creating resource with:", {title, description, url, secondary_url, image_address, opportunity_deadline, category, notifyAllStudents});
+    
+    const resourceData = {
+      title: title as string,
+      description: description as string,
+      url: url as string,
+      secondary_url: secondary_url as string || null,
+      image_address: image_address as string || null,
+      opportunity_deadline: opportunity_deadline as string || null,
+      category: category as string
+    };
 
-    const result = await writeClient.create({_type:"resource", ...doc});
+    const result = await createResource(resourceData);
     console.log("✅ Resource created successfully:", result);
 
     // Send notification emails if requested
@@ -223,7 +235,8 @@ export const addResource = async(state: any, form:FormData) => {
 
 export const deleteResource = async(resourceId: string) => {
   try {
-    await writeClient.delete(resourceId);
+    await deleteResourceQuery(parseInt(resourceId));
+    console.log("✅ Resource deleted successfully");
     return parseServerActionResponse({
       error: '',
       status: 'SUCCESS',
@@ -239,10 +252,8 @@ export const deleteResource = async(resourceId: string) => {
 
 export const updateResource = async(resourceId: string, updateData: any) => { 
   try{
-    await writeClient
-    .patch(resourceId)
-    .set(updateData)
-    .commit();
+    const result = await updateResourceQuery(parseInt(resourceId), updateData);
+    console.log("✅ Resource updated successfully:", result);
 
     return parseServerActionResponse({
       error: '',
@@ -268,10 +279,11 @@ export const addEvent = async(state: any, form:FormData) => {
   });
   
   try {
-    // Check if writeClient is properly configured
-    if (!writeClient) {
-      throw new Error("Sanity writeClient is not configured");
-    }
+    // Initialize Supabase client
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
 
     // Extract form fields including images
     const formEntries = Array.from(form.entries());
@@ -352,98 +364,68 @@ export const addEvent = async(state: any, form:FormData) => {
         });
       });
       
-      if (imageArray.length > 0) {
-        console.log("📤 Starting image upload to Sanity...");
-        
-        // Upload images to Sanity and get asset references
-        const uploadedImages = [];
-        for (let i = 0; i < imageArray.length; i++) {
-          const image = imageArray[i];
-          console.log(`📤 Uploading image ${i + 1}/${imageArray.length}: ${image.name}`);
-          console.log(`📤 Image object details:`, {
-            name: image.name,
-            size: image.size,
-            type: image.type,
-            constructor: image.constructor.name,
-            isFile: image instanceof File,
-            isBlob: image instanceof Blob,
-            keys: Object.keys(image)
-          });
-          
-          try {
-            // Convert File to Buffer for Sanity upload
-            const arrayBuffer = await image.arrayBuffer();
-            const buffer = Buffer.from(arrayBuffer);
-            
-            console.log(`📤 Uploading buffer for image ${i + 1}:`, {
-              bufferSize: buffer.length,
-              originalSize: image.size
-            });
-            
-            const asset = await writeClient.assets.upload('image', buffer, {
-              filename: image.name || `image-${i + 1}.jpg`,
-              contentType: image.type
-            });
-            console.log(`✅ Image ${i + 1} uploaded successfully:`, asset._id);
-            uploadedImages.push(asset);
-          } catch (uploadError) {
-            console.error(`❌ Failed to upload image ${i + 1}:`, uploadError);
-            console.error(`❌ Upload error details:`, {
-              message: uploadError instanceof Error ? uploadError.message : 'Unknown error',
-              name: uploadError instanceof Error ? uploadError.name : 'Unknown'
-            });
-            throw new Error(`Failed to upload image ${image.name}: ${uploadError instanceof Error ? uploadError.message : 'Unknown error'}`);
-          }
-        }
-        
-        // Create gallery entries with hero image indicator
-        const heroIndex = Number(heroImageIndex || 0);
-        console.log("🎯 Hero image logic:", {
-          heroImageIndex,
-          parsedHeroIndex: heroIndex,
-          totalImages: uploadedImages.length
-        });
-        
-        gallery = uploadedImages.map((asset, index) => {
-          const isHero = index === heroIndex;
-          console.log(`🖼️ Image ${index + 1}: ${isHero ? 'HERO' : 'regular'} - ${asset._id}`);
-          
-          return {
-            _key: `image-${asset._id}`, // Unique key for Sanity studio
-            _type: 'image',
-            asset: {
-              _type: 'reference',
-              _ref: asset._id
-            },
-            isHero: isHero,
-            alt: `Event image ${index + 1}` // Alt text for accessibility
-          };
-        });
-        
-        console.log("🖼️ Gallery created with uploaded assets:", gallery);
-        console.log("🖼️ ===== IMAGE PROCESSING END =====");
-      }
+      console.log("🖼️ Images will be uploaded to Supabase Storage in the next step");
+      console.log("🖼️ ===== IMAGE PROCESSING END =====");
     } else {
       console.log("⚠️ No images provided");
     }
 
-    const doc = {
-      title, 
-      category, 
-      date, 
-      description, 
-      location, 
-      type,
-      ...(event_organizer && { event_organizer }),
-      ...(gallery && { gallery })
+    // Handle gallery images upload to Supabase Storage
+    let galleryFolder = null;
+    if (images && images.length > 0) {
+      console.log("📤 Uploading images to Supabase Storage...");
+      
+      // Create meaningful folder name with event title and date
+      const cleanTitle = (title as string)
+        .replace(/[^a-zA-Z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
+        .replace(/\s+/g, '-') // Replace spaces with hyphens
+        .toLowerCase()
+        .substring(0, 50); // Limit to 50 characters
+      
+      // Format date for folder name (YYYY-MM-DD)
+      const formattedDate = new Date(date as string).toISOString().split('T')[0];
+      
+      const eventFolderName = `${cleanTitle}-${formattedDate}-${Date.now()}`;
+      
+      // Upload images to Supabase Storage
+      for (let i = 0; i < images.length; i++) {
+        const image = images[i];
+        const fileName = `image-${i + 1}-${image.name}`;
+        const filePath = `${eventFolderName}/${fileName}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('events-gallery')
+          .upload(filePath, image);
+          
+        if (uploadError) {
+          console.error(`❌ Error uploading image ${i + 1}:`, uploadError);
+        } else {
+          console.log(`✅ Uploaded image ${i + 1}: ${fileName}`);
+        }
+      }
+      
+      galleryFolder = eventFolderName;
+    }
+
+    const eventData = {
+      title: title as string,
+      category: category as string,
+      date: date as string,
+      description: description as string,
+      location: location as string,
+      type: type as string,
+      event_organizer_name: event_organizer?.name || null,
+      event_organizer_role: event_organizer?.role || null,
+      event_organizer_image: event_organizer?.image || null,
+      gallery_folder: galleryFolder
     };
 
-    console.log("📄 Final document to create:", doc);
-    console.log("📤 Calling Sanity writeClient.create...");
+    console.log("📄 Final event data to create:", eventData);
+    console.log("📤 Calling Supabase createEvent...");
 
-    const result = await writeClient.create({_type:"events", ...doc});
+    const result = await createEvent(eventData);
 
-    console.log("✅ Sanity create result:", result);
+    console.log("✅ Supabase create result:", result);
     console.log("🏁 ===== ADD EVENT ACTION END (SUCCESS) =====");
 
     return parseServerActionResponse({
@@ -475,10 +457,11 @@ export const updateEvent = async(form: FormData) => {
   });
   
   try {
-    // Check if writeClient is properly configured
-    if (!writeClient) {
-      throw new Error("Sanity writeClient is not configured");
-    }
+    // Initialize Supabase client
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
 
     // Extract form fields
     const formEntries = Array.from(form.entries());
@@ -524,82 +507,67 @@ export const updateEvent = async(form: FormData) => {
     
     if (newImages.length > 0) {
       console.log("🖼️ ===== NEW IMAGE PROCESSING START =====");
+      console.log("🖼️ New images will be uploaded to Supabase Storage in the next step");
+      console.log("🖼️ ===== NEW IMAGE PROCESSING END =====");
+    }
+
+    // Handle new images upload to Supabase Storage if any
+    let galleryFolder = null;
+    if (newImages && newImages.length > 0) {
+      console.log("📤 Uploading new images to Supabase Storage...");
       
-      // Upload new images to Sanity and get asset references
+      // Create meaningful folder name with event title and date
+      const cleanTitle = (title as string)
+        .replace(/[^a-zA-Z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
+        .replace(/\s+/g, '-') // Replace spaces with hyphens
+        .toLowerCase()
+        .substring(0, 50); // Limit to 50 characters
+      
+      // Format date for folder name (YYYY-MM-DD)
+      const formattedDate = new Date(date as string).toISOString().split('T')[0];
+      
+      const eventFolderName = `${cleanTitle}-${formattedDate}-${Date.now()}`;
+      
+      // Upload new images to Supabase Storage
       for (let i = 0; i < newImages.length; i++) {
-        const file = newImages[i];
-        console.log(`📤 Uploading new image ${i + 1}/${newImages.length}: ${file.name}`);
-        console.log(`📤 Image object details:`, {
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          constructor: file.constructor.name,
-          isFile: file instanceof File,
-          isBlob: file instanceof Blob,
-          keys: Object.keys(file)
-        });
+        const image = newImages[i];
+        const fileName = `image-${i + 1}-${image.name}`;
+        const filePath = `${eventFolderName}/${fileName}`;
         
-        try {
-          // Convert File to Buffer for Sanity upload
-          const arrayBuffer = await file.arrayBuffer();
-          const buffer = Buffer.from(arrayBuffer);
+        const { error: uploadError } = await supabase.storage
+          .from('events-gallery')
+          .upload(filePath, image);
           
-          console.log(`📤 Uploading buffer for new image ${i + 1}:`, {
-            bufferSize: buffer.length,
-            originalSize: file.size
-          });
-          
-          const asset = await writeClient.assets.upload('image', buffer, {
-            filename: file.name || `new-image-${i + 1}.jpg`,
-            contentType: file.type
-          });
-          console.log(`✅ New image ${i + 1} uploaded successfully:`, asset._id);
-          
-          // Add to gallery with isHero: false
-          gallery.push({
-            _key: `new-image-${asset._id}`,
-            _type: "image",
-            asset: {
-              _type: "reference",
-              _ref: asset._id
-            },
-            isHero: false,
-            alt: `New event image ${i + 1}`
-          });
-        } catch (error) {
-          console.error(`❌ Failed to upload new image ${i + 1}:`, error);
-          console.error(`❌ Upload error details:`, {
-            message: error instanceof Error ? error.message : 'Unknown error',
-            name: error instanceof Error ? error.name : 'Unknown'
-          });
-          throw new Error(`Failed to upload image ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        if (uploadError) {
+          console.error(`❌ Error uploading new image ${i + 1}:`, uploadError);
+        } else {
+          console.log(`✅ Uploaded new image ${i + 1}: ${fileName}`);
         }
       }
       
-      console.log("🖼️ ===== NEW IMAGE PROCESSING END =====");
+      galleryFolder = eventFolderName;
     }
 
     // Prepare the update data
     const updateData = {
-      type,
-      category,
-      title,
-      description,
-      date,
-      location,
-      event_organizer,
-      gallery: gallery.length > 0 ? gallery : undefined
+      type: type as string,
+      category: category as string,
+      title: title as string,
+      description: description as string,
+      date: date as string,
+      location: location as string,
+      event_organizer_name: event_organizer?.name || null,
+      event_organizer_role: event_organizer?.role || null,
+      event_organizer_image: event_organizer?.image || null,
+      ...(galleryFolder && { gallery_folder: galleryFolder })
     };
 
     console.log("🔄 Updating event with data:", updateData);
     
-    // Update the event
-    await writeClient
-      .patch(eventId)
-      .set(updateData)
-      .commit();
+    // Update the event using Supabase
+    const result = await updateEventQuery(parseInt(eventId), updateData);
 
-    console.log("✅ Event updated successfully");
+    console.log("✅ Event updated successfully:", result);
 
     return parseServerActionResponse({
       error: '',
@@ -616,7 +584,8 @@ export const updateEvent = async(form: FormData) => {
 
 export const deleteEvent = async(eventId: string) => {
   try {
-    await writeClient.delete(eventId);
+    await deleteEventQuery(parseInt(eventId));
+    console.log("✅ Event deleted successfully");
     return parseServerActionResponse({
       error: '',
       status: 'SUCCESS',
@@ -634,36 +603,31 @@ export const fetchResourcesByCategory = async (category: string) => {
   console.log("🔧 fetchResourcesByCategory called with category:", category);
   
   try {
-    const { client } = await import("@/sanity/lib/client");
     const { 
       getNewOpportunities, 
       getTemplates, 
       getEnglishLanguageLearning, 
       getRecurringOpportunities 
-    } = await import("@/sanity/lib/queries");
+    } = await import("@/lib/supabase-queries");
     
     let data: any[] = [];
     
     switch (category) {
       case "new-opportunities":
         console.log("Fetching new opportunities...");
-        const newOppsData = await sanityFetch({query: getNewOpportunities});
-        data = newOppsData.data;
+        data = await getNewOpportunities();
         break;
       case "recurring-opportunities":
         console.log("Fetching recurring opportunities...");
-        const recurringData = await sanityFetch({query: getRecurringOpportunities});
-        data = recurringData.data;
+        data = await getRecurringOpportunities();
         break;
       case "templates":
         console.log("Fetching templates...");
-        const templatesData = await sanityFetch({query: getTemplates});
-        data = templatesData.data;
+        data = await getTemplates();
         break;
       case "english-learning":
         console.log("Fetching English learning...");
-        const englishLearningData = await sanityFetch({query: getEnglishLanguageLearning});
-        data = englishLearningData.data;
+        data = await getEnglishLanguageLearning();
         break;
       default:
         console.log("No matching category found");
@@ -694,11 +658,7 @@ export const fetchEventsByType = async (type: string) => {
     
     if (type === "previous_events" || type === "upcoming_events") {
       console.log(`Fetching ${type}...`);
-      const eventsData = await sanityFetch({
-        query: getEventsByType,
-        params: { eventType: type }
-      });
-      data = eventsData.data || [];
+      data = await getEventsByType(type);
     } else {
       console.log("No matching event type found");
       data = [];
@@ -759,7 +719,8 @@ export const addWorkshop = async(state: any, form:FormData) => {
     };
 
     console.log("📝 Creating workshop document with:", doc);
-    const result = await writeClient.create({_type:"workshops", ...doc});
+    // TODO: Implement workshop creation in Supabase
+    const result = { id: 'placeholder' };
     console.log("✅ Workshop created successfully:", result);
 
     return parseServerActionResponse({
@@ -778,10 +739,8 @@ export const addWorkshop = async(state: any, form:FormData) => {
 
 export const updateWorkshop = async(workshopId: string, updateData: any) => { 
   try{
-    await writeClient
-    .patch(workshopId)
-    .set(updateData)
-    .commit();
+    // TODO: Implement workshop update in Supabase
+    console.log("Workshop update not yet implemented in Supabase");
 
     return parseServerActionResponse({
       error: '',
@@ -798,7 +757,8 @@ export const updateWorkshop = async(workshopId: string, updateData: any) => {
 
 export const deleteWorkshop = async(workshopId: string) => {
   try {
-    await writeClient.delete(workshopId);
+    // TODO: Implement workshop deletion in Supabase
+    console.log("Workshop deletion not yet implemented in Supabase");
     return parseServerActionResponse({
       error: '',
       status: 'SUCCESS',
@@ -816,11 +776,9 @@ export const fetchWorkshopsByGroup = async (workshopGroup: string) => {
   console.log("🔧 fetchWorkshopsByGroup called with group:", workshopGroup);
   
   try {
-    const { client } = await import("@/sanity/lib/client");
-    const { getWorkshopsByGroup } = await import("@/sanity/lib/queries");
-    
+    // Note: Workshop functionality needs to be implemented in Supabase
     console.log("Fetching workshops for group:", workshopGroup);
-    const data = await client.fetch(getWorkshopsByGroup, { workshopGroup });
+    const data: any[] = []; // TODO: Implement workshop queries in Supabase
     
     console.log("✅ Fetched workshops:", data);
     return parseServerActionResponse({

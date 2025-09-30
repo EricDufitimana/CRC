@@ -38,8 +38,8 @@ import imageCompression from "browser-image-compression";
 import { useRouter, useSearchParams } from "next/navigation";
 import { z } from "zod";
 
-type SanityEvent = {
-  _id: string;
+type SupabaseEvent = {
+  id: number;
   title: string;
   description: string;
   date: string;
@@ -99,14 +99,14 @@ export default function EventsManagement() {
     const categoryFromUrl = searchParams?.get('category');
     return categoryFromUrl || "previous-events";
   });
-  const [events, setEvents] = useState<SanityEvent[]>([]);
+  const [events, setEvents] = useState<SupabaseEvent[]>([]);
   const [isAddEventOpen, setIsAddEventOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
   const [eventIdToDelete, setEventIdToDelete] = useState<string | null>(null);
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [eventToEdit, setEventToEdit] = useState<SanityEvent | null>(null);
+  const [eventToEdit, setEventToEdit] = useState<SupabaseEvent | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [editForm, setEditForm] = useState({
     title: "",
@@ -236,7 +236,7 @@ export default function EventsManagement() {
       // Add images if any are selected
       if (selectedImages.length > 0) {
         console.log("📤 Adding images to FormData...");
-        selectedImages.forEach((file, index) => {
+        selectedImages.forEach((file, index: number) => {
           console.log(`📤 Adding image ${index + 1}: ${file.name} (${file.size} bytes)`);
           formData.append('images', file);
         });
@@ -408,10 +408,10 @@ export default function EventsManagement() {
     setEventIdToDelete(null);
   };
 
-  const handleEditClick = (event: SanityEvent) => {
+  const handleEditClick = (event: SupabaseEvent) => {
     console.log("🔧 ===== EDIT EVENT CLICKED =====");
     console.log("📋 Full Event Object:", event);
-    console.log("🆔 Event ID:", event._id);
+    console.log("🆔 Event ID:", event.id);
     console.log("📝 Event Type:", event.type);
     console.log("📅 Event Date:", event.date);
     console.log("📍 Event Location:", event.location);
@@ -424,7 +424,7 @@ export default function EventsManagement() {
     
     if (event.gallery && event.gallery.length > 0) {
       console.log("🖼️ Gallery Details:");
-      event.gallery.forEach((img, index) => {
+      event.gallery.forEach((img: any, index: number) => {
         console.log(`  Image ${index + 1}:`, {
           _key: img._key,
           _type: img._type,
@@ -503,7 +503,7 @@ export default function EventsManagement() {
         const formData = new FormData();
         
         // Add basic form fields
-        formData.append('eventId', eventToEdit._id);
+        formData.append('eventId', eventToEdit.id.toString());
         formData.append('type', editForm.type);
         formData.append('category', editForm.category);
         formData.append('title', editForm.title);
@@ -522,7 +522,7 @@ export default function EventsManagement() {
           console.log("📤 Only new image will be sent to server");
         } else {
           // For previous events or when no new images, include existing images
-          editExistingImages.forEach((img, index) => {
+          editExistingImages.forEach((img, index: number) => {
             formData.append('existingImages', JSON.stringify(img));
           });
         }
@@ -536,7 +536,7 @@ export default function EventsManagement() {
         
         console.log("🔄 Update FormData created with:");
         console.log("📝 Basic fields:", {
-          eventId: eventToEdit._id,
+          eventId: eventToEdit.id,
           type: editForm.type,
           category: editForm.category,
           title: editForm.title,
@@ -740,7 +740,7 @@ export default function EventsManagement() {
         // Add images if any are selected
         if (selectedImages.length > 0) {
           console.log("📤 Adding images to FormData...");
-          selectedImages.forEach((file, index) => {
+          selectedImages.forEach((file, index: number) => {
             console.log(`📤 Adding image ${index + 1}: ${file.name} (${file.size} bytes)`);
             formDataToSubmit.append('images', file);
           });
@@ -912,10 +912,10 @@ export default function EventsManagement() {
     return colors[category as keyof typeof colors] || colors.other;
   };
 
-  const getEventImage = (event: SanityEvent) => {
+  const getEventImage = (event: SupabaseEvent) => {
     try {
       // Check for hero image first
-      const heroImage = event.gallery?.find(img => img.isHero)?.asset;
+      const heroImage = event.gallery?.find((img: any) => img.isHero)?.asset;
       if (heroImage) {
         if (heroImage.url && heroImage.url.startsWith('http')) {
           return heroImage.url;
@@ -1467,7 +1467,7 @@ export default function EventsManagement() {
                    {events.map((event) => {
                      const eventImage = getEventImage(event);
                      return (
-                       <Card key={event._id} className="group hover:shadow-lg transition-shadow duration-300 overflow-hidden h-full flex flex-col">
+                       <Card key={event.id} className="group hover:shadow-lg transition-shadow duration-300 overflow-hidden h-full flex flex-col">
                          {/* Event Image */}
                          {eventImage && (
                            <div className="relative h-48 w-full overflow-hidden">
@@ -1499,7 +1499,7 @@ export default function EventsManagement() {
                                <Button
                                  variant="ghost"
                                  size="sm"
-                                 onClick={() => handleDeleteClick(event._id)}
+                                 onClick={() => handleDeleteClick(event.id.toString())}
                                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
                                >
                                  <Trash2 className="h-4 w-4" />

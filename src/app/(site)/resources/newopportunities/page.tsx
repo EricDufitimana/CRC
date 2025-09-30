@@ -5,8 +5,7 @@ import ResourcesNotificationBanner from "@/components/Banner/ResourcesNotificati
 import MultipleAnnouncementsBanner from "@/components/Banner/MultipleAnnouncementsBanner";
 import Layout from "@/components/other/ResourceLayout";
 import { Fragment } from "react";
-import { getNewOpportunities } from "@/sanity/lib/queries";
-import { client } from "@/sanity/lib/client";
+import { getNewOpportunities } from "@/lib/supabase-queries";
 import { Sparkles } from "lucide-react";
 import { filterExpiredResources } from "@/utils/filterExpiredResources";
 import ConditionalHeader from "../../../../components/other/ConditionalHeader";
@@ -19,7 +18,7 @@ export const metadata: Metadata = {
 
 
 type Opportunity = {
-  _id: string;
+  id: number;
   image_address?: string | null;
   title: string;
   description: string;
@@ -28,16 +27,7 @@ type Opportunity = {
 };
 
 export default async function Home() {
-  const data: Opportunity[] = await client.fetch(
-    getNewOpportunities,
-    {},
-    {
-      next: {
-        tags: ['sanity-content'],
-        revalidate: 3600
-      }
-    }
-  );
+  const data: Opportunity[] = await getNewOpportunities();
   const filteredData = filterExpiredResources(data);
   
   return (
@@ -60,7 +50,7 @@ export default async function Home() {
           <div className="content border border-gray-700 rounded-md p-8 w-[1100px] max-w-[90%] mx-auto">
           {filteredData && filteredData.length > 0 ? (
             filteredData.map((item, index) => (
-              <Fragment key={item._id}>
+              <Fragment key={item.id}>
                 <Layout
                   image={item.image_address || "/images/banners/image.svg"}
                   title={item.title}

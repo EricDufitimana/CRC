@@ -4,8 +4,7 @@ import { Metadata } from "next";
 import Layout from "@/components/other/ResourceLayout";
 import MultipleAnnouncementsBanner from "@/components/Banner/MultipleAnnouncementsBanner";
 import { Fragment } from "react";
-import { getInternships } from "@/sanity/lib/queries";
-import { client } from "@/sanity/lib/client";
+import { getInternships } from "@/lib/supabase-queries";
 import { Briefcase } from "lucide-react";
 import { filterExpiredResources } from "@/utils/filterExpiredResources";
 import ConditionalHeader from "../../../../components/other/ConditionalHeader";
@@ -16,7 +15,7 @@ export const metadata: Metadata = {
 };
 
 type Internship = {
-  _id: string;
+  id: number;
   image_address?: string | null;
   title: string;
   description: string;
@@ -25,16 +24,7 @@ type Internship = {
 };
 
 export default async function Internships() {
-  const data: Internship[] = await client.fetch(
-    getInternships,
-    {},
-    {
-      next: {
-        tags: ['sanity-content'],
-        revalidate: 3600
-      }
-    }
-  );
+  const data: Internship[] = await getInternships();
   const filteredData = filterExpiredResources(data);
 
   return (
@@ -57,7 +47,7 @@ export default async function Internships() {
           <div className="content border border-gray-700 rounded-md p-8 w-[1100px] max-w-[90%] mx-auto">
             {filteredData && filteredData.length > 0 ? (
               filteredData.map((item, index) => (
-                <Fragment key={item._id}>
+                <Fragment key={item.id}>
                   <Layout 
                     image={item.image_address || "/images/banners/image.svg"}
                     title={item.title}

@@ -1,22 +1,9 @@
 import { NextResponse } from 'next/server';
-import { client } from '@/sanity/lib/client';
+import { getPreviousEvents } from '@/lib/supabase-queries';
 
 export async function GET() {
   try {
-    const eventsQuery = `*[_type=="events" && type=="previous_events"] | order(_createdAt desc){
-      _id, _createdAt, category, date, description, event_organizer, gallery, location, title
-    }`;
-    
-    const events = await client.fetch(
-      eventsQuery,
-      {},
-      {
-        next: {
-          tags: ['sanity-content'],
-          revalidate: 3600
-        }
-      }
-    );
+    const events = await getPreviousEvents();
     
     return NextResponse.json({ events: events || [] });
   } catch (error) {
