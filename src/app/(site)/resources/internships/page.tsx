@@ -9,10 +9,7 @@ import { Briefcase } from "lucide-react";
 import { filterExpiredResources } from "@/utils/filterExpiredResources";
 import ConditionalHeader from "../../../../components/other/ConditionalHeader";
 
-export const metadata: Metadata = {
-  title: "Internships - CRC",
-  description: "Explore internship opportunities available through the Career Resources Center",
-};
+
 
 type Internship = {
   id: number;
