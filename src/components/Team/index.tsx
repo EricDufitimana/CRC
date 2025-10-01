@@ -32,7 +32,7 @@ const teamData: TeamType[] = [
   },
   {
     id: 4,
-    name: "Claire Stage",
+    name: "Claire Shea",
     designation: "CRC Fellow",
     image: "https://media.licdn.com/dms/image/v2/D5603AQFvcRPnOIIL3g/profile-displayphoto-shrink_200_200/profile-displayphoto-shrink_200_200/0/1672016649539?e=2147483647&v=beta&t=f5PCXrV6KIGZVD6xa6pGar632xzFksb2p0f3xJLk_yU",
     linkedinLink: "https://www.linkedin.com/in/claire-m-shea",
