@@ -17,10 +17,7 @@ import { FileText } from "lucide-react";
 import { filterExpiredResources } from "@/utils/filterExpiredResources";
 import ConditionalHeader from "../../../../components/other/ConditionalHeader";
 
-export const metadata: Metadata = {
-  title: "CRC ",
-  description: "Career Resources Center Website",
-};
+
 
 type Template = {
   id: number;
