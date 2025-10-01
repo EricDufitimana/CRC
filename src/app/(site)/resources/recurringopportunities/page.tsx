@@ -8,10 +8,6 @@ import { RotateCcw } from "lucide-react";
 import { filterExpiredResources } from "@/utils/filterExpiredResources";
 import ConditionalHeader from "../../../../components/other/ConditionalHeader";
 
-export const metadata: Metadata = {
-  title: "Recurring Opportunities - CRC",
-  description: "Explore ongoing and recurring opportunities available through the Career Resources Center",
-};
 
 type Opportunity = {
   id: number;
