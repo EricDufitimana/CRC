@@ -8,10 +8,7 @@ import { getEnglishLanguageLearning } from "@/lib/supabase-queries";
 import { BookOpen } from "lucide-react";
 import { filterExpiredResources } from "@/utils/filterExpiredResources";
 import ConditionalHeader from "../../../../components/other/ConditionalHeader";
-export const metadata: Metadata = {
-  title: "CRC ",
-  description: "Career Resources Center Website",
-};
+
 
 type EnglishResource = {
   id: number;
