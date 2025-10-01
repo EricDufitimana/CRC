@@ -37,7 +37,13 @@ export default function RootLayout({
 
   // Set page title based on pathname
   const getTitle = () => {
-    if (pathname?.includes("resources")) return "Resources - Career Resourcces Center"
+    if (pathname?.includes("newopportunities")) return "New Opportunities - Career Resourcces Center"
+    else if (pathname?.includes("recurringopportunities")) return "Recurring Opportunities - Career Resourcces Center"
+    else if (pathname?.includes("templates")) return "Templates - Career Resourcces Center"
+    else if (pathname?.includes("crp")) return "CRP - Career Resourcces Center"
+    else if (pathname?.includes("internships")) return "Internships - Career Resourcces Center"
+    else if (pathname?.includes("ell")) return "English Language Learning - Career Resourcces Center"
+    else if (pathname?.includes("approved")) return "Approved Universities - Career Resourcces Center"
     else if (pathname?.includes("previous-events")) return "Previous Events - Career Resources Center"
     else if (pathname?.includes("upcoming-events"	)) return "Upcoming Events - Career Resources Center"
     else if(pathname?.includes("workshops")) return "Workshops - Career Resources Center"
