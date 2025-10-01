@@ -11,10 +11,7 @@ import HeaderLayout from "@/components/other/headerLayout";
 import ResourcesNotificationBanner from "@/components/Banner/ResourcesNotificationBanner";
 import { Fragment } from "react";
 
-export const metadata: Metadata = {
-  title: "CRC ",
-  description: "Career Resources Center Website",
-};
+
 
 
 export default function Home() {
