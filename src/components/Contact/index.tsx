@@ -125,9 +125,7 @@ const Contact = () => {
                     <p className="text-base text-body-color dark:text-dark-6">
                       crc@asyv.org
                     </p>
-                    <p className="mt-1 text-base text-body-color dark:text-dark-6">
-                      kaboyo@asyv.org
-                    </p>
+
                   </div>
                   </AnimateOnScroll>
                 </div>
