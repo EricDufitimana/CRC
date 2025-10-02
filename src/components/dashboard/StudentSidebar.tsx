@@ -557,7 +557,7 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
                             
                             {/* Avatar Grid - Bigger */}
                             <div className="grid grid-cols-4 gap-3 max-w-md mx-auto">
-                              {fetchedAvatars.map((avatar) => (
+                              {fetchedAvatars.map((avatar, index) => (
                                 <button
                                   key={avatar.id}
                                   onClick={() => {
@@ -609,14 +609,7 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
                                     </div>
                                   )}
                                   
-                                  {/* Folder indicator for organization */}
-                                  {avatar.folder && (
-                                    <div className="absolute top-0.5 left-0.5 bg-white/80 backdrop-blur-sm rounded-full px-1 py-0.5">
-                                      <span className="text-xs font-medium text-gray-600">
-                                        {avatar.folder}
-                                      </span>
-                                    </div>
-                                  )}
+                         
                                 </button>
                               ))}
                             </div>

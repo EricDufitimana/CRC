@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, User, FileText, Upload, Image as ImageIcon, Camera, ArrowLeft, Link, Loader2 } from "lucide-react";
 import { getAvatars, AvatarData as BaseAvatarData } from "@/actions/avatars/getAvatars";
 import { getAvatarsWithSignedUrls, AvatarData } from "@/actions/avatars/getAvatarsWithSignedUrls";
+import { useAvatarFetch } from "@/hooks/useAvatarFetch";
 import { AnimatedText } from "@/components/animation/AnimatedText";
 import imageCompression from "browser-image-compression";
 
@@ -30,8 +31,14 @@ export default function StudentSetupPage() {
   const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null);
   const [selectedAvatarPath, setSelectedAvatarPath] = useState<string | null>(null);
   const [selectedBackground, setSelectedBackground] = useState<string>('statColors-1');
-  const [fetchedAvatars, setFetchedAvatars] = useState<(AvatarData | BaseAvatarData)[]>([]);
-  const [isLoadingAvatars, setIsLoadingAvatars] = useState(false);
+  
+  // Use the useAvatarFetch hook
+  const { 
+    avatars: fetchedAvatars, 
+    isLoading: isLoadingAvatars, 
+    error: avatarError,
+    fetchAvatars 
+  } = useAvatarFetch();
   const [academicReportFile, setAcademicReportFile] = useState<File[]>([]);
   const [resumeLink, setResumeLink] = useState<string>('');
   const [isUploading, setIsUploading] = useState(false);
@@ -252,46 +259,10 @@ export default function StudentSetupPage() {
   };
 
 
-  // Fetch avatars from server action with signed URLs
-  const fetchAvatarsFromServer = async () => {
-    setIsLoadingAvatars(true);
-    try {
-      // Try to get avatars with signed URLs first
-      const result = await getAvatarsWithSignedUrls();
-      if (result.success && result.avatars.length > 0) {
-        console.log('✅ Using avatars with signed URLs:', result.avatars.length);
-        setFetchedAvatars(result.avatars);
-      } else {
-        console.log('⚠️ Signed URLs failed, falling back to public URLs');
-        // Fallback to public URLs if signed URLs fail
-        const fallbackResult = await getAvatars();
-        if (fallbackResult.success) {
-          setFetchedAvatars(fallbackResult.avatars);
-        } else {
-          console.error('Error fetching avatars:', fallbackResult.error);
-          // Keep fallback avatars if server fetch fails
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching avatars:', error);
-      // Try fallback method
-      try {
-        const fallbackResult = await getAvatars();
-        if (fallbackResult.success) {
-          setFetchedAvatars(fallbackResult.avatars);
-        }
-      } catch (fallbackError) {
-        console.error('Fallback avatar fetch also failed:', fallbackError);
-      }
-    } finally {
-      setIsLoadingAvatars(false);
-    }
-  };
-
   // Fetch avatars when component mounts
   useEffect(() => {
-    fetchAvatarsFromServer();
-  }, []);
+    fetchAvatars();
+  }, [fetchAvatars]);
 
   // Sequential animation timing for step 0
   useEffect(() => {
@@ -505,7 +476,7 @@ export default function StudentSetupPage() {
                     <AnimatedText 
                       animation="letters-fade-in"
                       as="div"
-                      className="text-2xl font-normal text-gray-500 font-cal-sans"
+                    className="text-xl font-light text-gray-500 "
                       startTrigger="top bottom"
                     >
                       Welcome to the CRC Platform!
@@ -702,11 +673,11 @@ export default function StudentSetupPage() {
                             
                             {/* Avatar Grid - Bigger */}
                             <div className="grid grid-cols-4 gap-3 max-w-md mx-auto">
-                              {avatarsToShow.map((avatar) => (
+                              {avatarsToShow.map((avatar, index) => (
                                 <button
                                   key={avatar.id}
                                   onClick={() => {
-                                    const filePath = 'filePath' in avatar && avatar.filePath ? avatar.filePath : `default/${avatar.folder}/${avatar.name.toLowerCase().replace(/\s+/g, '-')}.png`;
+                                    const filePath = 'filePath' in avatar && avatar.filePath ? avatar.filePath : `default/${avatar.folder}/${'fileName' in avatar ? avatar.fileName : avatar.name.toLowerCase().replace(/\s+/g, '-')}.png`;
                                     console.log('🖼️ Setup: Avatar selected:', { 
                                       id: avatar.id, 
                                       src: avatar.src, 
@@ -753,15 +724,7 @@ export default function StudentSetupPage() {
                                       </div>
                                     </div>
                                   )}
-                                  
-                                  {/* Folder indicator for organization */}
-                                  {avatar.folder && (
-                                    <div className="absolute top-0.5 left-0.5 bg-white/80 backdrop-blur-sm rounded-full px-1 py-0.5">
-                                      <span className="text-xs font-medium text-gray-600">
-                                        {avatar.folder}
-                                      </span>
-                                    </div>
-                                  )}
+                                 
                                 </button>
                               ))}
                             </div>
