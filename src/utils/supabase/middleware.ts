@@ -51,7 +51,8 @@ export async function updateSession(request: NextRequest) {
   // Check if user is trying to access protected routes
   const isAdminRoute = request.nextUrl.pathname.startsWith('/dashboard/admin');
   const isStudentRoute = request.nextUrl.pathname.startsWith('/dashboard/student');
-  const isProtectedRoute = isAdminRoute || isStudentRoute;
+  const isCreateAdminRoute = request.nextUrl.pathname === '/create-admin';
+  const isProtectedRoute = isAdminRoute || isStudentRoute || isCreateAdminRoute;
   const isSetupRoute = request.nextUrl.pathname.startsWith('/setup');
 
   if (!user && isProtectedRoute && !isSetupRoute) {
@@ -75,6 +76,31 @@ export async function updateSession(request: NextRequest) {
     );
 
     try {
+      // Check admin creation access for create-admin route
+      if (isCreateAdminRoute) {
+        const ALLOWED_USER_ID = "de333332-1435-4fd5-a128-0337b5078888";
+        
+        if (user.id !== ALLOWED_USER_ID) {
+          console.log('🚫 Admin creation access denied:', {
+            pathname: request.nextUrl.pathname,
+            userId: user.id,
+            allowedUserId: ALLOWED_USER_ID,
+            timestamp: new Date().toISOString()
+          });
+          
+          // User is not authorized to create admins, redirect to unauthorized page
+          const url = request.nextUrl.clone()
+          url.pathname = '/unauthorized'
+          return NextResponse.redirect(url)
+        }
+
+        console.log('✅ Admin creation access granted:', {
+          pathname: request.nextUrl.pathname,
+          userId: user.id,
+          timestamp: new Date().toISOString()
+        });
+      }
+
       if (isAdminRoute) {
         // Check if user is an admin
         const { data: admin, error: adminError } = await adminClient
