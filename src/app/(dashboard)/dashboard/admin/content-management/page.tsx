@@ -25,6 +25,8 @@ import { useActionState } from "react";
 import { z } from "zod";
 import { Checkbox } from "../../../../../../zenith/src/components/ui/checkbox";
 import { deleteResource, updateResource, addResource, fetchResourcesByCategory } from "@/lib/action";
+import { subscribeToAllResourcesForAdmin } from "@/lib/supabase-queries";
+import { useAdminRealtimeData } from "@/hooks/useAdminRealtimeData";
 type SupabaseResource = {
   id: number;
   title: string;
@@ -54,10 +56,8 @@ export default function ContentManagement() {
     const categoryFromUrl = searchParams?.get('category')	;
     return categoryFromUrl || "new-opportunities";
   });
-  const [resources, setResources] = useState<SupabaseResource[]>([]);
   const [isAddResourceOpen, setIsAddResourceOpen] = useState(false);
   const [expandedWorkshops, setExpandedWorkshops] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
   const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
   const [resourceIdToDelete, setResourceIdToDelete] = useState<string | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -87,6 +87,13 @@ export default function ContentManagement() {
   ];
   const canAddResource = validResourceCategories.includes(selectedCategory);
 
+  // Use realtime data hook
+  const { data: resources, loading, error, refetch } = useAdminRealtimeData<SupabaseResource>({
+    fetchFunction: fetchResourcesByCategory,
+    subscribeFunction: subscribeToAllResourcesForAdmin,
+    category: selectedCategory,
+  });
+
   // Helper to get type based on selectedCategory
   const resourceType = "resource";
 
@@ -110,8 +117,7 @@ export default function ContentManagement() {
       const result = await deleteResource(id);
       if (result.status === 'SUCCESS') {
         console.log("Resource deleted successfully");
-        // Refresh the data after successful deletion
-        await fetchDataForCategory(selectedCategory);
+        // Data will be automatically updated via realtime subscription
         return { success: true };
       } else {
         throw new Error(result.error || "Failed to delete resource");
@@ -160,8 +166,7 @@ export default function ContentManagement() {
 
         if(result.status === "SUCCESS"){
           setIsAddResourceOpen(false);
-          // Refresh the data after successful creation
-          await fetchDataForCategory(selectedCategory);
+          // Data will be automatically updated via realtime subscription
           return { success: true };
         }
         throw new Error(result.error || "Failed to add resource");
@@ -320,8 +325,7 @@ export default function ContentManagement() {
           console.log("Resource updated successfully");
           setEditDialogOpen(false);
           setResourceToEdit(null);
-          // Refresh the data after successful update
-          await fetchDataForCategory(selectedCategory);
+          // Data will be automatically updated via realtime subscription
           return { success: true };
         } else {
           throw new Error(result.error || "Failed to update resource");
@@ -358,24 +362,6 @@ export default function ContentManagement() {
     setEditFieldErrors({});
   };
 
-  const fetchDataForCategory = async (category: string) => {
-    setLoading(true);
-    try {
-      const result = await fetchResourcesByCategory(category);
-      
-      if (result.status === 'ERROR') {
-        console.error("Error from server action:", result.error);
-        setResources([]);
-      } else {
-        setResources(result.data);
-      }
-    } catch (error) {
-      console.error("Error calling server action:", error);
-      setResources([]);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Update URL when category changes
   const updateCategoryInUrl = (category: string) => {
@@ -390,10 +376,9 @@ export default function ContentManagement() {
     updateCategoryInUrl(category);
   };
 
-  // Fetch data when category changes
+  // Reset to first page when category changes
   useEffect(() => {
-    fetchDataForCategory(selectedCategory);
-    setCurrentPage(1); // Reset to first page when category changes
+    setCurrentPage(1);
   }, [selectedCategory]);
 
   // Calculate pagination

@@ -1,4 +1,6 @@
 
+"use client";
+
 import ScrollUp from "@/components/Common/ScrollUp";
 
 import { getAllPosts } from "@/utils/markdown";
@@ -10,12 +12,13 @@ import { layout } from "@/types/layout";
 import ResourcesNotificationBanner from "@/components/Banner/ResourcesNotificationBanner";
 import MultipleAnnouncementsBanner from "@/components/Banner/MultipleAnnouncementsBanner";
 import { Fragment, Suspense } from "react";
-import { getTemplates } from "@/lib/supabase-queries";
+import { getTemplates, subscribeToTemplates } from "@/lib/supabase-queries";
 import GridSkeleton from "@/components/ui/GridSkeleton";
 import ResourceSkeleton from "@/components/ui/ResourceSkeleton";
 import { FileText } from "lucide-react";
 import { filterExpiredResources } from "@/utils/filterExpiredResources";
 import ConditionalHeader from "../../../../components/other/ConditionalHeader";
+import { useRealtimeData } from "@/hooks/useRealTimeData";
 
 
 
@@ -29,9 +32,12 @@ type Template = {
   opportunity_deadline?:string;
 };
 
-export default async function Home() {
-  const data:Template[] = await getTemplates();
-  const filteredData = filterExpiredResources(data);
+export default function Home() {
+  const { data, loading, error, refetch } = useRealtimeData<Template>({
+    fetchFunction: getTemplates,
+    subscribeFunction: subscribeToTemplates,
+    filterFunction: filterExpiredResources,
+  });
   
   return (
     <main>
@@ -44,12 +50,32 @@ export default async function Home() {
       />
       <div className="space-y-8">
         <MultipleAnnouncementsBanner page="templates" theme="amber" maxAnnouncements={3} containerWidth="w-[1120px]" />
-        <Suspense fallback={<ResourceSkeleton count={5} />}>
-          <div className=" flex justify-center pb-12">
-            <div className="content border border-gray-700 rounded-md p-8 w-[1100px] max-w-[90%] mx-auto">
+        <div className=" flex justify-center pb-12">
+          <div className="content border border-gray-700 rounded-md p-8 w-[1100px] max-w-[90%] mx-auto">
+            {loading && (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+                <p className="mt-4 text-gray-600">Loading templates...</p>
+              </div>
+            )}
+            
+            {error && (
+              <div className="text-center py-12">
+                <div className="text-red-500 mb-4">
+                  <p className="text-lg font-medium">Error loading templates</p>
+                  <p className="text-sm">{error.message}</p>
+                </div>
+                <button 
+                  onClick={refetch}
+                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                >
+                  Try Again
+                </button>
+              </div>
+            )}
 
-            {filteredData && filteredData.length > 0 ? (
-              filteredData.map((item, index) => (
+            {!loading && !error && data && data.length > 0 ? (
+              data.map((item, index) => (
                 <Fragment key={item.id}>
                   <Layout 
                     key={item.id}
@@ -73,7 +99,7 @@ export default async function Home() {
                   )}
                 </Fragment>
               ))
-            ) : (
+            ) : !loading && !error ? (
               <div className="text-center text-gray-500 py-12">
                 <div className="mb-6">
                   <div className="relative">
@@ -83,10 +109,9 @@ export default async function Home() {
                 <h3 className="text-lg font-medium text-gray-600 mb-2">No templates available</h3>
                 <p className="text-gray-500 max-w-md mx-auto">We&apos;re working on adding helpful document templates and samples. Check back soon for resources to jumpstart your projects.</p>
               </div>
-            )}
-            </div>
+            ) : null}
           </div>
-        </Suspense>
+        </div>
       </div>
 
 

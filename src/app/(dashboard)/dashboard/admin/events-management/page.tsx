@@ -31,6 +31,8 @@ import Image from "next/image";
 import { FileUpload } from "../../../../../../zenith/src/components/ui/file-upload";
 import MDEditor from '@uiw/react-md-editor';
 import { addEvent, updateEvent, deleteEvent, fetchEventsByType } from "@/lib/action";
+import { subscribeToAllEventsForAdmin } from "@/lib/supabase-queries";
+import { useAdminRealtimeData } from "@/hooks/useAdminRealtimeData";
 import { showToastSuccess, showToastError, showToastPromise } from "@/components/toasts";
 
 import { Loader2 } from "lucide-react";
@@ -99,9 +101,7 @@ export default function EventsManagement() {
     const categoryFromUrl = searchParams?.get('category');
     return categoryFromUrl || "previous-events";
   });
-  const [events, setEvents] = useState<SupabaseEvent[]>([]);
   const [isAddEventOpen, setIsAddEventOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
   const [eventIdToDelete, setEventIdToDelete] = useState<string | null>(null);
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
@@ -148,6 +148,16 @@ export default function EventsManagement() {
   // Form error states
   const [formError, setFormError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
+
+  // Use realtime data hook
+  const { data: events, loading, error, refetch } = useAdminRealtimeData<SupabaseEvent>({
+    fetchFunction: async (category: string) => {
+      const eventType = category === "previous-events" ? "previous_events" : "upcoming_events";
+      return await fetchEventsByType(eventType);
+    },
+    subscribeFunction: subscribeToAllEventsForAdmin,
+    category: selectedCategory,
+  });
 
   // Step management
   const [currentStep, setCurrentStep] = useState(1);
@@ -266,8 +276,7 @@ export default function EventsManagement() {
         // Reset form
         resetForm();
         
-        // Refresh events
-        fetchEvents(selectedCategory === "previous-events" ? "previous_events" : "upcoming_events");
+        // Data will be automatically updated via realtime subscription
       }
       
       return result;
@@ -380,7 +389,7 @@ export default function EventsManagement() {
         const result = await deleteEvent(eventIdToDelete);
         if (result.status === "SUCCESS") {
           console.log("Event deleted successfully");
-          await fetchEvents(selectedCategory);
+          // Data will be automatically updated via realtime subscription
           return { success: true };
         } else {
           throw new Error(result.error || "Failed to delete event");
@@ -552,7 +561,7 @@ export default function EventsManagement() {
         if (result.status === "SUCCESS") {
           setEditDialogOpen(false);
           setEventToEdit(null);
-          fetchEvents(selectedCategory);
+          // Data will be automatically updated via realtime subscription
           return { success: true };
         } else {
           throw new Error(result.error || "Failed to update event");
@@ -761,8 +770,7 @@ export default function EventsManagement() {
           // Reset form
           resetForm();
           
-          // Refresh events silently to avoid loading state flash
-          fetchEvents(selectedCategory === "previous-events" ? "previous_events" : "upcoming_events", false);
+          // Data will be automatically updated via realtime subscription
           
           return { success: true };
         } else {
@@ -807,35 +815,6 @@ export default function EventsManagement() {
     });
   };
 
-  const fetchEvents = async (type: string, showLoadingState: boolean = true) => {
-    if (showLoadingState) {
-      setLoading(true);
-    }
-    try {
-      // Convert category format to event type format
-      const eventType = type === "previous-events" ? "previous_events" : "upcoming_events";
-      
-      console.log(`🔄 fetchEvents called with type: "${type}" at ${new Date().toISOString()}`);
-      console.log(`🔄 Converted to eventType: "${eventType}"`);
-      console.log(`🔄 Fetching ${eventType} using sanityFetch...`);
-      const result = await fetchEventsByType(eventType);
-      
-      if (result.status === "SUCCESS") {
-        console.log(`✅ Fetched ${eventType}:`, result.data);
-        setEvents(result.data || []);
-      } else {
-        console.error(`❌ Error fetching ${eventType}:`, result.error);
-        setEvents([]);
-      }
-    } catch (error) {
-      console.error("Error fetching events:", error);
-      setEvents([]);
-    } finally {
-      if (showLoadingState) {
-        setLoading(false);
-      }
-    }
-  };
 
   // Update URL when category changes
   const updateCategoryInUrl = (category: string) => {
@@ -850,22 +829,7 @@ export default function EventsManagement() {
     updateCategoryInUrl(category);
   };
 
-  // Fetch data when category changes
-  useEffect(() => {
-    fetchEvents(selectedCategory);
-  }, [selectedCategory]);
-
-  // Force refresh data when component mounts or when add event dialog closes
-  useEffect(() => {
-    if (!isAddEventOpen) {
-      // Small delay to ensure server action has completed
-      const timer = setTimeout(() => {
-        // Silent refresh to avoid loading state flash
-        fetchEvents(selectedCategory, false);
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [isAddEventOpen, selectedCategory]);
+  // Data is automatically managed by the realtime hook
 
   // Monitor eventState changes for form submission results
   useEffect(() => {

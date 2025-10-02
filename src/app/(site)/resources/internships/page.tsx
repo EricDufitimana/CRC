@@ -1,13 +1,16 @@
 
+"use client";
+
 import ScrollUp from "@/components/Common/ScrollUp";
 import { Metadata } from "next";
 import Layout from "@/components/other/ResourceLayout";
 import MultipleAnnouncementsBanner from "@/components/Banner/MultipleAnnouncementsBanner";
 import { Fragment } from "react";
-import { getInternships } from "@/lib/supabase-queries";
+import { getInternships, subscribeToInternships } from "@/lib/supabase-queries";
 import { Briefcase } from "lucide-react";
 import { filterExpiredResources } from "@/utils/filterExpiredResources";
 import ConditionalHeader from "../../../../components/other/ConditionalHeader";
+import { useRealtimeData } from "@/hooks/useRealTimeData";
 
 
 
@@ -20,9 +23,12 @@ type Internship = {
   opportunity_deadline?: string;
 };
 
-export default async function Internships() {
-  const data: Internship[] = await getInternships();
-  const filteredData = filterExpiredResources(data);
+export default function Internships() {
+  const { data, loading, error, refetch } = useRealtimeData<Internship>({
+    fetchFunction: getInternships,
+    subscribeFunction: subscribeToInternships,
+    filterFunction: filterExpiredResources,
+  });
 
   return (
     <main>
@@ -42,8 +48,30 @@ export default async function Internships() {
         />
         <div className="flex justify-center pb-12">
           <div className="content border border-gray-700 rounded-md p-8 w-[1100px] max-w-[90%] mx-auto">
-            {filteredData && filteredData.length > 0 ? (
-              filteredData.map((item, index) => (
+            {loading && (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+                <p className="mt-4 text-gray-600">Loading internships...</p>
+              </div>
+            )}
+            
+            {error && (
+              <div className="text-center py-12">
+                <div className="text-red-500 mb-4">
+                  <p className="text-lg font-medium">Error loading internships</p>
+                  <p className="text-sm">{error.message}</p>
+                </div>
+                <button 
+                  onClick={refetch}
+                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                >
+                  Try Again
+                </button>
+              </div>
+            )}
+            
+            {!loading && !error && data && data.length > 0 ? (
+              data.map((item, index) => (
                 <Fragment key={item.id}>
                   <Layout 
                     image={item.image_address || "/images/banners/image.svg"}
@@ -63,7 +91,7 @@ export default async function Internships() {
                   )}
                 </Fragment>
               ))
-            ) : (
+            ) : !loading && !error ? (
               <div className="text-center text-gray-500 py-12">
                 <div className="mb-6">
                   <div className="relative">
@@ -73,7 +101,7 @@ export default async function Internships() {
                 <h3 className="text-lg font-medium text-gray-600 mb-2">No internships available</h3>
                 <p className="text-gray-500 max-w-md mx-auto">We&apos;re constantly seeking new internship opportunities for our students. Check back regularly for new openings and partnerships.</p>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       </div>

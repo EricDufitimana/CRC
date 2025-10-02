@@ -235,7 +235,7 @@ export const addResource = async(state: any, form:FormData) => {
 
 export const deleteResource = async(resourceId: string) => {
   try {
-    await deleteResourceQuery(parseInt(resourceId));
+    await deleteResourceQuery(resourceId);
     console.log("✅ Resource deleted successfully");
     return parseServerActionResponse({
       error: '',
@@ -252,7 +252,7 @@ export const deleteResource = async(resourceId: string) => {
 
 export const updateResource = async(resourceId: string, updateData: any) => { 
   try{
-    const result = await updateResourceQuery(parseInt(resourceId), updateData);
+    const result = await updateResourceQuery(resourceId, updateData);
     console.log("✅ Resource updated successfully:", result);
 
     return parseServerActionResponse({
@@ -565,7 +565,7 @@ export const updateEvent = async(form: FormData) => {
     console.log("🔄 Updating event with data:", updateData);
     
     // Update the event using Supabase
-    const result = await updateEventQuery(parseInt(eventId), updateData);
+    const result = await updateEventQuery(eventId, updateData);
 
     console.log("✅ Event updated successfully:", result);
 
@@ -584,7 +584,7 @@ export const updateEvent = async(form: FormData) => {
 
 export const deleteEvent = async(eventId: string) => {
   try {
-    await deleteEventQuery(parseInt(eventId));
+    await deleteEventQuery(eventId);
     console.log("✅ Event deleted successfully");
     return parseServerActionResponse({
       error: '',
