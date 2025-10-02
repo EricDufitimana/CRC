@@ -35,54 +35,99 @@ export default function AuthCallback() {
         const user = data.session.user;
         console.log('User authenticated:', user.id);
 
-        // Get the student code from localStorage
-        const studentCode = localStorage.getItem('pendingStudentCode');
-        localStorage.removeItem('pendingStudentCode'); // Clean up
+        // Check for pending admin data first
+        const pendingAdminData = localStorage.getItem('pendingAdminData');
+        localStorage.removeItem('pendingAdminData'); // Clean up
 
-        if (studentCode) {
-          console.log('Student code found:', studentCode);
+        if (pendingAdminData) {
+          console.log('Admin data found:', pendingAdminData);
           
-          // Call our custom callback API to create student record
-          const response = await fetch('/api/auth/callback', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              user_id: user.id,
-              student_code: studentCode
-            })
-          });
+          try {
+            const adminData = JSON.parse(pendingAdminData);
+            
+            // Call our custom callback API to create admin record
+            const response = await fetch('/api/auth/callback', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                user_id: user.id,
+                admin_data: adminData
+              })
+            });
 
-          if (response.ok) {
-            console.log('Student account created/updated successfully');
-            router.push('/login?message=google_signup_success');
-          } else {
-            const errorData = await response.json();
-            console.error('Error creating student:', errorData);
-            
-            // Extract error details properly
-            let errorDetails = 'Unknown error occurred';
-            if (errorData.details) {
-              errorDetails = errorData.details;
-            } else if (errorData.message) {
-              errorDetails = errorData.message;
-            }
-            
-            // Handle specific error codes
-            if (errorData.code === 'STUDENT_NOT_FOUND') {
-              router.push(`/login?error=student_not_found&details=${encodeURIComponent(errorDetails)}`);
-            } else if (errorData.code === 'ALREADY_REGISTERED') {
-              router.push(`/login?error=already_registered&details=${encodeURIComponent(errorDetails)}`);
-            } else if (errorData.code === 'CONFLICT') {
-              router.push(`/login?error=student_conflict&details=${encodeURIComponent(errorDetails)}`);
+            if (response.ok) {
+              console.log('Admin account created successfully');
+              router.push('/login?message=admin_created_success');
             } else {
-              router.push(`/login?error=student_update_failed&details=${encodeURIComponent(errorDetails)}`);
+              const errorData = await response.json();
+              console.error('Error creating admin:', errorData);
+              
+              // Extract error details properly
+              let errorDetails = 'Unknown error occurred';
+              if (errorData.details) {
+                errorDetails = errorData.details;
+              } else if (errorData.message) {
+                errorDetails = errorData.message;
+              }
+              
+              router.push(`/login?error=admin_creation_failed&details=${encodeURIComponent(errorDetails)}`);
             }
+          } catch (parseError) {
+            console.error('Error parsing admin data:', parseError);
+            router.push('/login?error=admin_data_parse_failed');
           }
         } else {
-          console.log('No student code found, redirecting to login');
-          router.push('/login?message=google_signup_success');
+          // Check for student code (existing functionality)
+          const studentCode = localStorage.getItem('pendingStudentCode');
+          localStorage.removeItem('pendingStudentCode'); // Clean up
+
+          if (studentCode) {
+            console.log('Student code found:', studentCode);
+            
+            // Call our custom callback API to create student record
+            const response = await fetch('/api/auth/callback', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                user_id: user.id,
+                student_code: studentCode
+              })
+            });
+
+            if (response.ok) {
+              console.log('Student account created/updated successfully');
+              router.push('/login?message=google_signup_success');
+            } else {
+              const errorData = await response.json();
+              console.error('Error creating student:', errorData);
+              
+              // Extract error details properly
+              let errorDetails = 'Unknown error occurred';
+              if (errorData.details) {
+                errorDetails = errorData.details;
+              } else if (errorData.message) {
+                errorDetails = errorData.message;
+              }
+              
+              // Handle specific error codes
+              if (errorData.code === 'STUDENT_NOT_FOUND') {
+                router.push(`/login?error=student_not_found&details=${encodeURIComponent(errorDetails)}`);
+              } else if (errorData.code === 'ALREADY_REGISTERED') {
+                router.push(`/login?error=already_registered&details=${encodeURIComponent(errorDetails)}`);
+              } else if (errorData.code === 'CONFLICT') {
+                router.push(`/login?error=student_conflict&details=${encodeURIComponent(errorDetails)}`);
+              } else {
+                router.push(`/login?error=student_update_failed&details=${encodeURIComponent(errorDetails)}`);
+              }
+            }
+          } else {
+            console.log('No pending data found, redirecting to login');
+            router.push('/login?message=google_signup_success');
+          }
         }
 
       } catch (error) {

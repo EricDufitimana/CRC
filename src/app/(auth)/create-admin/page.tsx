@@ -2,14 +2,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from "../../../../zenith/src/components/ui/button";
-import { Input } from "../../../../zenith/src/components/ui/input";
-import { Label } from "../../../../zenith/src/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../../zenith/src/components/ui/card";
+import Link from "next/link";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../zenith/src/components/ui/select";
 import { showToastSuccess, showToastError } from "@/components/toasts";
-import { Shield, UserPlus, ArrowLeft } from "lucide-react";
-import { createAdmin } from "@/actions/admin/createAdmin";
+import { Shield, ChevronLeft } from "lucide-react";
+import Label from "@/components/form/Label";
+import { supabase } from '@/lib/supabase';
 
 const honorifics = [
   "Mr.", "Mrs.", "Ms.", "Dr.", "Prof.", "Rev.", "Sir", "Dame"
@@ -21,12 +19,11 @@ const roles = [
 ];
 
 export default function CreateAdmin() {
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleSignUpLoading, setIsGoogleSignUpLoading] = useState(false);
   const [formData, setFormData] = useState({
     honorific: "",
     firstName: "",
     lastName: "",
-    email: "",
     role: "admin"
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -44,222 +41,202 @@ export default function CreateAdmin() {
 
     if (!formData.firstName.trim()) newErrors.firstName = "First name is required";
     if (!formData.lastName.trim()) newErrors.lastName = "Last name is required";
-    if (!formData.email.trim()) {
-      newErrors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Please enter a valid email address";
-    }
     if (!formData.role) newErrors.role = "Role is required";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const handleGoogleSignUp = async () => {
     if (!validateForm()) return;
-
-    setIsSubmitting(true);
-
+    
     try {
-      const result = await createAdmin(formData);
-
-      if (result.success) {
-        showToastSuccess({
-          headerText: "Admin Created Successfully",
-          paragraphText: result.message || "Admin has been created successfully.",
-          direction: "right"
-        });
-
-        // Reset form
-        setFormData({
-          honorific: "",
-          firstName: "",
-          lastName: "",
-          email: "",
-          role: "admin"
-        });
-      } else {
-        showToastError({
-          headerText: "Failed to Create Admin",
-          paragraphText: result.error || "An unexpected error occurred.",
-          direction: "right"
-        });
-      }
-
-    } catch (error) {
-      console.error('Error creating admin:', error);
-      showToastError({
-        headerText: "Failed to Create Admin",
-        paragraphText: "An unexpected error occurred.",
-        direction: "right"
+      setIsGoogleSignUpLoading(true);
+      console.log('Initiating Google OAuth for admin creation with data:', formData);
+      
+      // Store admin data in localStorage for the callback to access
+      localStorage.setItem('pendingAdminData', JSON.stringify(formData));
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
+        }
       });
-    } finally {
-      setIsSubmitting(false);
+      
+      if (error) {
+        console.error("Google OAuth error:", error);
+        showToastError({
+          headerText: "Google Signup Error",
+          paragraphText: error.message
+        });
+        setIsGoogleSignUpLoading(false);
+      } else {
+        console.log("Google OAuth initiated successfully");
+        // The user will be redirected to Google for authentication
+      }
+    } catch (error) {
+      console.error("Google OAuth failed:", error);
+      showToastError({
+        headerText: "Google OAuth Failed",
+        paragraphText: error instanceof Error ? error.message : "An unexpected error occurred"
+      });
+      setIsGoogleSignUpLoading(false);
     }
   };
 
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-2xl mx-auto px-4">
-        {/* Header */}
-        <div className="mb-8">
-          <Button
-            variant="ghost"
-            onClick={() => router.back()}
-            className="mb-6"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-          <div className="flex items-center gap-3 mb-2">
-            <Shield className="h-8 w-8 text-blue-600" />
-            <h1 className="text-3xl font-bold text-gray-900">Create New Admin</h1>
+    <div className="flex flex-col flex-1 w-full overflow-y-auto lg:w-1/2 no-scrollbar py-4">
+      <div className="w-full max-w-md mx-auto mb-5 sm:pt-10">
+        <Link
+          href="/"
+          className="inline-flex items-center text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+        >
+          <ChevronLeft className="size-5" />
+          Back to Landing Page
+        </Link>
+      </div>
+      <div className="flex flex-col justify-center flex-1 w-full max-w-md mx-auto">
+        <div>
+          <div className="mb-5 sm:mb-8">
+            <h1 className="mb-2 font-semibold text-gray-800 text-little-sm dark:text-white/90 sm:text-title-md">
+              Create New Admin
+            </h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Fill in the admin details and sign up with Google
+            </p>
           </div>
-          <p className="text-gray-600">
-            Add a new administrator to the system. They will receive login credentials via email.
-          </p>
-        </div>
-
-        {/* Form */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <UserPlus className="h-5 w-5" />
-              Admin Information
-            </CardTitle>
-            <CardDescription>
-              Fill in the details for the new administrator.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Honorific and Role */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="honorific">Honorific</Label>
-                  <Select
-                    value={formData.honorific}
-                    onValueChange={(value: string) => handleInputChange('honorific', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select honorific" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {honorifics.map((honorific) => (
-                        <SelectItem key={honorific} value={honorific}>
-                          {honorific}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="role">Role *</Label>
-                  <Select
-                    value={formData.role}
-                    onValueChange={(value: string) => handleInputChange('role', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {roles.map((role) => (
-                        <SelectItem key={role.value} value={role.value}>
-                          {role.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.role && (
-                    <p className="text-sm text-red-600">{errors.role}</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Name Fields */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name *</Label>
-                  <Input
-                    id="firstName"
-                    type="text"
-                    value={formData.firstName}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('firstName', e.target.value)}
-                    placeholder="Enter first name"
-                    className={errors.firstName ? 'border-red-500' : ''}
-                  />
-                  {errors.firstName && (
-                    <p className="text-sm text-red-600">{errors.firstName}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name *</Label>
-                  <Input
-                    id="lastName"
-                    type="text"
-                    value={formData.lastName}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('lastName', e.target.value)}
-                    placeholder="Enter last name"
-                    className={errors.lastName ? 'border-red-500' : ''}
-                  />
-                  {errors.lastName && (
-                    <p className="text-sm text-red-600">{errors.lastName}</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Email */}
+          
+          <div className="space-y-5">
+            {/* Honorific and Role */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('email', e.target.value)}
-                  placeholder="Enter email address"
-                  className={errors.email ? 'border-red-500' : ''}
-                />
-                {errors.email && (
-                  <p className="text-sm text-red-600">{errors.email}</p>
-                )}
-                <p className="text-sm text-gray-500">
-                  The admin will receive login credentials at this email address.
-                </p>
+                <Label>Honorific</Label>
+                <Select
+                  value={formData.honorific}
+                  onValueChange={(value: string) => handleInputChange('honorific', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select honorific" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {honorifics.map((honorific) => (
+                      <SelectItem key={honorific} value={honorific}>
+                        {honorific}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              {/* Submit Buttons */}
-              <div className="flex justify-end gap-4 pt-6 border-t">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => router.back()}
-                  disabled={isSubmitting}
+              <div className="space-y-2">
+                <Label>Role *</Label>
+                <Select
+                  value={formData.role}
+                  onValueChange={(value: string) => handleInputChange('role', value)}
                 >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="min-w-[120px]"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Creating...
-                    </>
-                  ) : (
-                    'Create Admin'
-                  )}
-                </Button>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roles.map((role) => (
+                      <SelectItem key={role.value} value={role.value}>
+                        {role.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.role && (
+                  <p className="text-sm text-red-600">{errors.role}</p>
+                )}
               </div>
-            </form>
-          </CardContent>
-        </Card>
+            </div>
+
+            {/* Name Fields */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>First Name *</Label>
+                <input
+                  type="text"
+                  value={formData.firstName}
+                  onChange={(e) => handleInputChange('firstName', e.target.value)}
+                  placeholder="Enter first name"
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 ${
+                    errors.firstName ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                />
+                {errors.firstName && (
+                  <p className="text-sm text-red-600">{errors.firstName}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label>Last Name *</Label>
+                <input
+                  type="text"
+                  value={formData.lastName}
+                  onChange={(e) => handleInputChange('lastName', e.target.value)}
+                  placeholder="Enter last name"
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 ${
+                    errors.lastName ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                />
+                {errors.lastName && (
+                  <p className="text-sm text-red-600">{errors.lastName}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Google Signup Button */}
+            <div className="pt-2">
+              <button 
+                onClick={handleGoogleSignUp}
+                disabled={isGoogleSignUpLoading}
+                className="inline-flex items-center justify-center gap-3 py-3 text-sm font-normal text-gray-700 transition-colors bg-gray-100 rounded-lg hover:bg-gray-200 hover:text-gray-800 w-full disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isGoogleSignUpLoading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-gray-400 border-t-gray-600 rounded-full animate-spin"></div>
+                    <span>Creating admin with Google...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 20 20"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M18.7511 10.1944C18.7511 9.47495 18.6915 8.94995 18.5626 8.40552H10.1797V11.6527H15.1003C15.0011 12.4597 14.4654 13.675 13.2749 14.4916L13.2582 14.6003L15.9087 16.6126L16.0924 16.6305C17.7788 15.1041 18.7511 12.8583 18.7511 10.1944Z"
+                        fill="#4285F4"
+                      />
+                      <path
+                        d="M10.1788 18.75C12.5895 18.75 14.6133 17.9722 16.0915 16.6305L13.274 14.4916C12.5201 15.0068 11.5081 15.3666 10.1788 15.3666C7.81773 15.3666 5.81379 13.8402 5.09944 11.7305L4.99473 11.7392L2.23868 13.8295L2.20264 13.9277C3.67087 16.786 6.68674 18.75 10.1788 18.75Z"
+                        fill="#34A853"
+                      />
+                      <path
+                        d="M5.10014 11.7305C4.91165 11.186 4.80257 10.6027 4.80257 9.99992C4.80257 9.3971 4.91165 8.81379 5.09022 8.26935L5.08523 8.1534L2.29464 6.02954L2.20333 6.0721C1.5982 7.25823 1.25098 8.5902 1.25098 9.99992C1.25098 11.4096 1.5982 12.7415 2.20333 13.9277L5.10014 11.7305Z"
+                        fill="#FBBC05"
+                      />
+                      <path
+                        d="M10.1789 4.63331C11.8554 4.63331 12.9864 5.34303 13.6312 5.93612L16.1511 3.525C14.6035 2.11528 12.5895 1.25 10.1789 1.25C6.68676 1.25 3.67088 3.21387 2.20264 6.07218L5.08953 8.26943C5.81381 6.15972 7.81776 4.63331 10.1789 4.63331Z"
+                        fill="#EB4335"
+                      />
+                    </svg>
+                    <span>Create Admin with Google</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

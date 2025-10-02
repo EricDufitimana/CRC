@@ -49,7 +49,7 @@ export async function POST(request) {
     const body = await request.json();
     console.log('Request body:', body);
     
-    const { user_id, student_code } = body;
+    const { user_id, student_code, admin_data } = body;
 
     if (!user_id) {
       console.error('No user_id provided');
@@ -88,6 +88,75 @@ export async function POST(request) {
 
     console.log('User found:', user.user.id);
     console.log('User metadata:', user.user.user_metadata);
+
+    // Handle admin creation if admin_data is provided
+    if (admin_data) {
+      console.log('Creating admin with data:', admin_data);
+      
+      try {
+        // Create admin record
+        const { data: adminRecord, error: adminError } = await supabase
+          .from('admin')
+          .insert({
+            user_id: user.user.id,
+            honorific: admin_data.honorific || null,
+            first_name: admin_data.firstName,
+            last_name: admin_data.lastName,
+            role: admin_data.role,
+            email: user.user.email
+          })
+          .select()
+          .single();
+
+        if (adminError) {
+          console.error('Error creating admin:', adminError);
+          return NextResponse.json({ 
+            error: 'Admin creation failed', 
+            message: adminError.message,
+            details: adminError.details || adminError.message,
+            code: 'ADMIN_CREATION_FAILED'
+          }, { status: 500 });
+        }
+
+        console.log('Admin created successfully:', adminRecord.id);
+        
+        // Create profile for the admin
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            user_id: user.user.id,
+            Names: `${admin_data.honorific ? admin_data.honorific + ' ' : ''}${admin_data.firstName} ${admin_data.lastName}`,
+            role: admin_data.role,
+            email: user.user.email,
+            is_new_user: true,
+            has_setup: false,
+            welcome_email_sent: false
+          })
+          .select()
+          .single();
+
+        if (profileError) {
+          console.warn('Profile creation failed for admin:', profileError);
+          // Don't fail the entire process for profile creation
+        } else {
+          console.log('Profile created successfully for admin:', profile.id);
+        }
+
+        return NextResponse.json({ 
+          message: 'Admin created successfully', 
+          admin: adminRecord 
+        });
+
+      } catch (error) {
+        console.error('Error in admin creation process:', error);
+        return NextResponse.json({ 
+          error: 'Admin creation failed', 
+          message: error.message,
+          details: error.details || error.message,
+          code: 'ADMIN_CREATION_ERROR'
+        }, { status: 500 });
+      }
+    }
 
     // Create profile for the new user with retry logic
     let profile, profileError;

@@ -30,6 +30,13 @@ export default function SignInForm() {
         paragraphText: "Your account is ready. You can now sign in with Google."
       });
       toastShownRef.current = true;
+    } else if (message === 'admin_created_success') {
+      console.log('Showing success toast for admin creation');
+      showToastSuccess({
+        headerText: "Admin created successfully!",
+        paragraphText: "The new admin account has been created and is ready to use."
+      });
+      toastShownRef.current = true;
     } else if (message === 'already_registered') {
       console.log('Showing success toast for existing account');
       showToastSuccess({
@@ -59,6 +66,12 @@ export default function SignInForm() {
           break;
         case 'callback_failed':
           errorMessage = "Registration callback failed. Please try again.";
+          break;
+        case 'admin_creation_failed':
+          errorMessage = errorDetails || "Admin creation failed. Please try again.";
+          break;
+        case 'admin_data_parse_failed':
+          errorMessage = "Invalid admin data. Please try again.";
           break;
         default:
           errorMessage = "Registration failed. Please try again.";
