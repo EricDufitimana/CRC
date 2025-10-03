@@ -27,6 +27,44 @@ export default function AdminVerificationPage() {
   const [isSubmittingContact, setIsSubmittingContact] = useState(false);
   const { userId, adminId, isLoading: userDataLoading } = useUserData();
 
+  const checkSpecificAdmin = async () => {
+    try {
+      if (!userId) {
+        console.log('No userId available');
+        return false;
+      }
+
+      // Call the check-super-admin API with userId as query parameter
+      const response = await fetch(`/api/check-super-admin?userId=${userId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        console.log('Specific admin user detected, redirecting...');
+        setDebugInfo(`Authorized admin user detected (ID: ${userId}), redirecting...`);
+        setRedirecting(true);
+        setIsLoading(false);
+        
+        // Redirect to admin dashboard after a short delay
+        setTimeout(() => {
+          window.location.href = '/dashboard/admin';
+        }, 1500);
+        
+        return true;
+      } else {
+        const data = await response.json();
+        console.log('User is not the specific admin:', data.message);
+        return false;
+      }
+    } catch (error) {
+      console.error('Error checking specific admin:', error);
+      return false;
+    }
+  };
+
   useEffect(() => {
     console.log('Admin verification page: useEffect triggered');
     console.log('userId:', userId);
@@ -37,7 +75,14 @@ export default function AdminVerificationPage() {
     const timer = setTimeout(async () => {
       console.log('Admin verification page: Timer completed, checking authorization...');
       
-      // Check if user should be redirected
+      // First check if user is the specific admin
+      const isSpecificAdmin = await checkSpecificAdmin();
+      
+      if (isSpecificAdmin) {
+        return; // Already handled in checkSpecificAdmin
+      }
+      
+      // Check if user should be redirected (existing logic)
       if (adminId) {
         console.log('Admin verification page: User is admin, should redirect to admin dashboard');
         setDebugInfo(`Admin user detected (ID: ${adminId}), redirecting...`);

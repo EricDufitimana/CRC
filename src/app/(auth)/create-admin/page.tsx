@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from "next/link";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../zenith/src/components/ui/select";
+import { Input } from "../../../../zenith/src/components/ui/input";
 import { showToastSuccess, showToastError } from "@/components/toasts";
 import { Shield, ChevronLeft } from "lucide-react";
 import Label from "@/components/form/Label";
@@ -136,21 +137,13 @@ export default function CreateAdmin() {
 
               <div className="space-y-2">
                 <Label>Role *</Label>
-                <Select
+                <Input
+                  type="text"
                   value={formData.role}
-                  onValueChange={(value: string) => handleInputChange('role', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {roles.map((role) => (
-                      <SelectItem key={role.value} value={role.value}>
-                        {role.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('role', e.target.value)}
+                  placeholder="Enter role (e.g., CRC Fellow)"
+                  className={errors.role ? 'border-red-500' : ''}
+                />
                 {errors.role && (
                   <p className="text-sm text-red-600">{errors.role}</p>
                 )}
@@ -161,12 +154,12 @@ export default function CreateAdmin() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>First Name *</Label>
-                <input
+                <Input
                   type="text"
                   value={formData.firstName}
-                  onChange={(e) => handleInputChange('firstName', e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('firstName', e.target.value)}
                   placeholder="Enter first name"
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 ${
+                  className={`w-full px-3 py-2 border rounded-md  ${
                     errors.firstName ? 'border-red-500' : 'border-gray-300'
                   }`}
                 />
@@ -177,12 +170,12 @@ export default function CreateAdmin() {
 
               <div className="space-y-2">
                 <Label>Last Name *</Label>
-                <input
+                <Input
                   type="text"
                   value={formData.lastName}
-                  onChange={(e) => handleInputChange('lastName', e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('lastName', e.target.value)}
                   placeholder="Enter last name"
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 ${
+                  className={`w-full px-3 py-2 border rounded-md  ${
                     errors.lastName ? 'border-red-500' : 'border-gray-300'
                   }`}
                 />
