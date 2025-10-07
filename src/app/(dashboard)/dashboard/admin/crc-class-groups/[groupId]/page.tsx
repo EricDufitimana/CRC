@@ -10,7 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Checkbox } from "../../../../../../../zenith/src/components/ui/checkbox";
 import { Users, Plus, X, Check, ChevronDown, Loader2, ArrowLeft, AlertTriangle, Edit } from "lucide-react";
 import { updateClassName } from "@/actions/crc-classes/updateClassName";
-import { showToastSuccess, showToastError, showToastPromise } from "@/components/toasts";
+import { showToastSuccess, showToastError } from "@/components/toasts";
 
 type Member = { id: string; student: { id: string; first_name: string | null; last_name: string | null; email: string | null } };
 
@@ -76,31 +76,29 @@ export default function CrcClassGroupDetailPage() {
 
     setIsSavingName(true);
     
-    const updatePromise = (async () => {
+    try {
       const result = await updateClassName(groupId, editingName.trim());
       
       if (result.success) {
         // Update local state
         setGroup((prev: any) => prev ? { ...prev, name: editingName.trim() } : prev);
         setIsEditingName(false);
+        
+        showToastSuccess({
+          headerText: 'Success',
+          paragraphText: 'Class name updated successfully',
+          direction: 'right'
+        });
+      } else {
+        throw new Error(result.message || 'Failed to update class name');
       }
-      return result;
-    })();
-
-    showToastPromise({
-      promise: updatePromise,
-      loadingText: 'Updating class name...',
-      successText: 'Class name updated successfully',
-      successHeaderText: 'Success',
-      errorText: 'Failed to update class name',
-      errorHeaderText: 'Error',
-      direction: 'right'
-    });
-
-    try {
-      await updatePromise;
     } catch (error: any) {
       console.error("Error updating class name:", error);
+      showToastError({
+        headerText: 'Error',
+        paragraphText: 'Failed to update class name',
+        direction: 'right'
+      });
     } finally {
       setIsSavingName(false);
     }
@@ -121,24 +119,32 @@ export default function CrcClassGroupDetailPage() {
       studentsWithClassId: studentsWithClassId.length,
       studentsWithoutClassId: studentsWithoutClassId.length,
       sampleStudentWithClass: studentsWithClassId[0],
-      sampleStudentWithoutClass: studentsWithoutClassId[0]
+      sampleStudentWithoutClass: studentsWithoutClassId[0],
+      classGradeGroup: group?.grade_group
     });
+    
+    // The grade_group is already in enum format (e.g., "Enrichment_Year")
+    // so we can use it directly to match against student.grade
+    const matchingGrade = group?.grade_group || null;
     
     const memberIds = new Set((group?.students || []).map((s: any) => String(s.id)));
     const q = availableQuery.trim().toLowerCase();
+    
     const filtered = students.filter((s) => {
       const id = String(s.id);
       // Exclude if already in this group
       if (memberIds.has(id)) return false;
       // ONLY include students with null or undefined crc_class_id
       if (s.crc_class_id !== null && s.crc_class_id !== undefined) return false;
+      // Filter by grade group if the class has one set
+      if (matchingGrade && s.grade !== matchingGrade) return false;
       if (!q) return true;
       const name = `${s.first_name || ""} ${s.last_name || ""}`.trim().toLowerCase();
       const className = `${s.grade || ""} ${s.major_short || ""}`.trim().toLowerCase();
       return [name, className].some((v) => v.toLowerCase().includes(q));
     });
     
-    console.log("Available students filtered:", filtered.length);
+    console.log("Available students filtered:", filtered.length, "Grade group filter:", matchingGrade);
     return filtered;
   }, [students, group, availableQuery]);
 
@@ -224,7 +230,7 @@ export default function CrcClassGroupDetailPage() {
     if (selected.length === 0) return;
     setIsAssigning(true);
     
-    const assignPromise = (async () => {
+    try {
       // Check for conflicts first
       const canAssign = await checkForConflicts(selected);
       if (!canAssign) {
@@ -234,6 +240,7 @@ export default function CrcClassGroupDetailPage() {
       
       // Save selected IDs before clearing
       const selectedIds = [...selected];
+      const selectedCount = selectedIds.length;
       const selectedStudentsData = students.filter(s => selectedIds.includes(String(s.id)));
       
       // Add to group immediately
@@ -263,23 +270,18 @@ export default function CrcClassGroupDetailPage() {
         throw new Error("Failed to assign students");
       }
       
-      return { success: true, count: selectedIds.length };
-    })();
-
-    showToastPromise({
-      promise: assignPromise,
-      loadingText: 'Adding students to class...',
-      successText: `${selected.length} student(s) have been added to the class.`,
-      successHeaderText: 'Students Added Successfully',
-      errorText: 'Failed to add students to class. Please try again.',
-      errorHeaderText: 'Student Assignment Failed',
-      direction: 'right'
-    });
-
-    try {
-      await assignPromise;
+      showToastSuccess({
+        headerText: 'Students Added Successfully',
+        paragraphText: `${selectedCount} student(s) have been added to the class.`,
+        direction: 'right'
+      });
     } catch (error) {
       console.error("Error assigning students:", error);
+      showToastError({
+        headerText: 'Student Assignment Failed',
+        paragraphText: 'Failed to add students to class. Please try again.',
+        direction: 'right'
+      });
       // On error, refetch to restore correct state
       fetchGroup();
       fetchStudents();
@@ -326,9 +328,10 @@ export default function CrcClassGroupDetailPage() {
     if (selectedToRemove.length === 0) return;
     setIsRemoving(true);
     
-    const removePromise = (async () => {
+    try {
       // Save IDs before clearing
       const idsToRemove = [...selectedToRemove];
+      const removeCount = idsToRemove.length;
       
       // Optimistically update local state
       setGroup((prevGroup: any) => {
@@ -357,23 +360,18 @@ export default function CrcClassGroupDetailPage() {
         throw new Error("Failed to remove students");
       }
       
-      return { success: true, count: idsToRemove.length };
-    })();
-
-    showToastPromise({
-      promise: removePromise,
-      loadingText: 'Removing students from class...',
-      successText: `${selectedToRemove.length} student(s) have been removed from the class.`,
-      successHeaderText: 'Students Removed Successfully',
-      errorText: 'Failed to remove students from class. Please try again.',
-      errorHeaderText: 'Student Removal Failed',
-      direction: 'right'
-    });
-
-    try {
-      await removePromise;
+      showToastSuccess({
+        headerText: 'Students Removed Successfully',
+        paragraphText: `${removeCount} student(s) have been removed from the class.`,
+        direction: 'right'
+      });
     } catch (error) {
       console.error("Error removing students:", error);
+      showToastError({
+        headerText: 'Student Removal Failed',
+        paragraphText: 'Failed to remove students from class. Please try again.',
+        direction: 'right'
+      });
       // On error, refetch to restore correct state
       fetchGroup();
       fetchStudents();
@@ -516,7 +514,14 @@ export default function CrcClassGroupDetailPage() {
                   </Button>
                 </div>
               )}
-              <p className="text-neutral-600">Created by {group.created_by_name}</p>
+              <div className="flex items-center gap-3 mt-1">
+                <p className="text-neutral-600">Created by {group.created_by_name}</p>
+                {group.grade_group && (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    {group.grade_group}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -617,7 +622,14 @@ export default function CrcClassGroupDetailPage() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="rounded-lg border p-3">
-            <div className="text-xs text-neutral-500 mb-2">Available Students</div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-xs text-neutral-500">Available Students</div>
+              {group?.grade_group && (
+                <div className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                  Filtered: {group.grade_group} only
+                </div>
+              )}
+            </div>
             <Input 
               placeholder="Search available students..." 
               value={availableQuery} 

@@ -37,6 +37,7 @@ export async function GET(request, { params }) {
     const serialized = {
       id: crcClass.id.toString(),
       name: crcClass.name,
+      grade_group: crcClass.grade_group,
       created_by_name: `${crcClass.admin.first_name} ${crcClass.admin.last_name}`.trim(),
       created_at: crcClass.created_at,
       students: crcClass.students.map(s => ({

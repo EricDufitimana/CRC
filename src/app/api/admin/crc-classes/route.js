@@ -14,6 +14,7 @@ export async function GET() {
     const serialized = classes.map((c) => ({
       id: c.id.toString(),
       name: c.name,
+      grade_group: c.grade_group,
       created_by: c.created_by_id.toString(),
       created_by_name: `${c.admin.first_name} ${c.admin.last_name}`.trim(),
       created_at: c.created_at,
@@ -30,7 +31,7 @@ export async function GET() {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { name, created_by, student_ids } = body || {};
+    const { name, created_by, student_ids, grade_group } = body || {};
 
     if (!name || !created_by) {
       return NextResponse.json({ error: "Missing required fields: name and created_by" }, { status: 400 });
@@ -40,6 +41,7 @@ export async function POST(request) {
     const created = await prisma.crc_class.create({
       data: {
         name: String(name).trim(),
+        grade_group: grade_group || null,
         created_by_id: BigInt(created_by),
       },
       include: {
@@ -59,6 +61,7 @@ export async function POST(request) {
       class: {
         id: created.id.toString(),
         name: created.name,
+        grade_group: created.grade_group,
         created_by: created.created_by_id.toString(),
         created_by_name: `${created.admin.first_name} ${created.admin.last_name}`.trim(),
         created_at: created.created_at,
@@ -73,17 +76,25 @@ export async function POST(request) {
 export async function PUT(request) {
   try {
     const body = await request.json();
-    const { id, name, student_ids_to_add, student_ids_to_remove } = body || {};
+    const { id, name, grade_group, student_ids_to_add, student_ids_to_remove } = body || {};
 
     if (!id) {
       return NextResponse.json({ error: "Missing required field: id" }, { status: 400 });
     }
 
-    // Update class name if provided
+    // Update class name and/or grade_group if provided
+    const updateData = {};
     if (name) {
+      updateData.name = String(name).trim();
+    }
+    if (grade_group !== undefined) {
+      updateData.grade_group = grade_group || null;
+    }
+    
+    if (Object.keys(updateData).length > 0) {
       await prisma.crc_class.update({
         where: { id: BigInt(id) },
-        data: { name: String(name).trim() },
+        data: updateData,
       });
     }
 
