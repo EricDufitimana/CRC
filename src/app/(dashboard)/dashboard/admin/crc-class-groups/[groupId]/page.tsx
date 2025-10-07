@@ -49,6 +49,7 @@ export default function CrcClassGroupDetailPage() {
 
   const fetchStudents = async () => {
     try {
+      // Fetch all students first to get the data
       const res = await fetch("/api/fetch-students");
       const json = await res.json();
       if (res.ok) {
@@ -62,6 +63,13 @@ export default function CrcClassGroupDetailPage() {
   };
 
   useEffect(() => { if (groupId) { fetchGroup(); fetchStudents(); } }, [groupId]);
+  
+  // Refetch students when group data is loaded (to apply grade filter)
+  useEffect(() => {
+    if (group) {
+      fetchStudents();
+    }
+  }, [group?.grade_group]);
 
   const startEditingName = () => {
     setEditingName(group?.name || "");
@@ -110,25 +118,9 @@ export default function CrcClassGroupDetailPage() {
   };
 
   const availableStudents = useMemo(() => {
-    // Debug: Check what crc_class_id values look like
-    const studentsWithClassId = students.filter(s => s.crc_class_id !== null && s.crc_class_id !== undefined);
-    const studentsWithoutClassId = students.filter(s => s.crc_class_id === null || s.crc_class_id === undefined);
-    
-    console.log("DEBUG - Students data:", {
-      totalStudents: students.length,
-      studentsWithClassId: studentsWithClassId.length,
-      studentsWithoutClassId: studentsWithoutClassId.length,
-      sampleStudentWithClass: studentsWithClassId[0],
-      sampleStudentWithoutClass: studentsWithoutClassId[0],
-      classGradeGroup: group?.grade_group
-    });
-    
-    // The grade_group is already in enum format (e.g., "Enrichment_Year")
-    // so we can use it directly to match against student.grade
-    const matchingGrade = group?.grade_group || null;
-    
     const memberIds = new Set((group?.students || []).map((s: any) => String(s.id)));
     const q = availableQuery.trim().toLowerCase();
+    const matchingGrade = group?.grade_group || null;
     
     const filtered = students.filter((s) => {
       const id = String(s.id);
@@ -136,15 +128,25 @@ export default function CrcClassGroupDetailPage() {
       if (memberIds.has(id)) return false;
       // ONLY include students with null or undefined crc_class_id
       if (s.crc_class_id !== null && s.crc_class_id !== undefined) return false;
-      // Filter by grade group if the class has one set
-      if (matchingGrade && s.grade !== matchingGrade) return false;
+      // Filter by grade group - MUST match if grade_group is set
+      if (matchingGrade && s.grade !== matchingGrade) {
+        console.log(`Filtering out student ${s.first_name} ${s.last_name}: grade ${s.grade} doesn't match ${matchingGrade}`);
+        return false;
+      }
       if (!q) return true;
       const name = `${s.first_name || ""} ${s.last_name || ""}`.trim().toLowerCase();
       const className = `${s.grade || ""} ${s.major_short || ""}`.trim().toLowerCase();
       return [name, className].some((v) => v.toLowerCase().includes(q));
     });
     
-    console.log("Available students filtered:", filtered.length, "Grade group filter:", matchingGrade);
+    console.log("Filtering results:", {
+      totalStudents: students.length,
+      classGradeGroup: matchingGrade,
+      studentsWithMatchingGrade: students.filter(s => s.grade === matchingGrade).length,
+      studentsWithoutClass: students.filter(s => s.crc_class_id === null || s.crc_class_id === undefined).length,
+      filteredAvailable: filtered.length
+    });
+    
     return filtered;
   }, [students, group, availableQuery]);
 
