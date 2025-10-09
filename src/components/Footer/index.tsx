@@ -67,7 +67,7 @@ const Footer = () => {
   const isMobile = useIsMobile();
   
   return (
-    <footer className="relative overflow-hidden pt-20 lg:pt-[100px]">
+    <footer className="relative overflow-hidden bg-slate-900 pt-20 lg:pt-[100px]">
       <div className="absolute inset-0 -z-10">
         <svg
           className="h-full w-full"
@@ -189,7 +189,7 @@ const Footer = () => {
                   <li key={item.label}>
                     <Link
                       href={item.link}
-                      className="inline-block text-base text-white opacity-80 transition-all hover:opacity-100 hover:text-[#518C66] "
+                      className="inline-block text-base text-white opacity-80 transition-all hover:opacity-100 hover:text-white "
                     >
                       {item.label}
                     </Link>
@@ -209,7 +209,7 @@ const Footer = () => {
                   <li key={item.label}>
                     <Link
                       href={item.link}
-                      className="inline-block text-base text-white opacity-80 transition-all hover:opacity-100 hover:text-[#518C66] "
+                      className="inline-block text-base text-white opacity-80 transition-all hover:opacity-100 hover:text-white "
                     >
                       {item.label}
                     </Link>
@@ -229,7 +229,7 @@ const Footer = () => {
                   <li key={item.label}>
                     <Link
                       href={item.link}
-                      className="inline-block text-base text-white opacity-80 transition-all hover:opacity-100 hover:text-[#518C66] "
+                      className="inline-block text-base text-white opacity-80 transition-all hover:opacity-100 hover:text-white "
                     >
                       {item.label}
                     </Link>
@@ -249,7 +249,7 @@ const Footer = () => {
                   <svg className="mr-3 mt-1 h-5 w-5 text-[#518C66]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
-                  <Link href="mailto:crc@asyv.org" className="text-base text-white opacity-80 transition-all hover:opacity-100 hover:text-[#518C66]">
+                  <Link href="mailto:crc@asyv.org" className="text-base text-white opacity-80 transition-all hover:opacity-100 hover:text-white">
                     crc@asyv.org
                   </Link>
                 </li>

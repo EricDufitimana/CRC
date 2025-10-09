@@ -117,6 +117,23 @@ export default function CrcClassGroupDetailPage() {
     setEditingName("");
   };
 
+  // Total available students in the grade group (before search filter)
+  const totalAvailableInGrade = useMemo(() => {
+    const memberIds = new Set((group?.students || []).map((s: any) => String(s.id)));
+    const matchingGrade = group?.grade_group || null;
+    
+    return students.filter((s) => {
+      const id = String(s.id);
+      // Exclude if already in this group
+      if (memberIds.has(id)) return false;
+      // ONLY include students with null or undefined crc_class_id
+      if (s.crc_class_id !== null && s.crc_class_id !== undefined) return false;
+      // Filter by grade group - MUST match if grade_group is set
+      if (matchingGrade && s.grade !== matchingGrade) return false;
+      return true;
+    }).length;
+  }, [students, group]);
+
   const availableStudents = useMemo(() => {
     const memberIds = new Set((group?.students || []).map((s: any) => String(s.id)));
     const q = availableQuery.trim().toLowerCase();
@@ -643,9 +660,10 @@ export default function CrcClassGroupDetailPage() {
                 <div className="text-center py-4 text-gray-500 text-sm">
                   {availableQuery ? 'No students found matching your search.' : 
                    students.length === 0 ? 'Loading students...' : 
+                   group?.grade_group ? `No ${group.grade_group} students available to assign.` :
                    'No students available to assign.'}
                   <div className="text-xs mt-1">
-                    Total students: {students.length}, Class members: {group?.students?.length || 0}
+                    {group?.grade_group ? `${group.grade_group} students ` : 'Total students '}available: {totalAvailableInGrade}
                   </div>
                 </div>
               ) : (
@@ -674,9 +692,9 @@ export default function CrcClassGroupDetailPage() {
                   <div className="w-1.5 h-1.5 bg-blue-400 rounded-full"></div>
                   <span className="text-blue-600 font-medium">
                     {availableQuery ? (
-                      <>Showing {availableStudents.length} of {students.filter(s => s.crc_class_id === null || s.crc_class_id === undefined).length} available</>
+                      <>Showing {availableStudents.length} of {totalAvailableInGrade} available</>
                     ) : (
-                      <>{students.filter(s => s.crc_class_id === null || s.crc_class_id === undefined).length} available</>
+                      <>{totalAvailableInGrade} available</>
                     )}
                   </span>
                 </div>

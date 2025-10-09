@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../../../lib/prisma";
 
+// Helper function to replace underscores with spaces
+function formatEnumValue(value) {
+  if (!value) return null;
+  return value.replace(/_/g, ' ');
+}
+
 export async function GET(request, { params }) {
   try {
     const classId = params.classId;
@@ -37,7 +43,7 @@ export async function GET(request, { params }) {
     const serialized = {
       id: crcClass.id.toString(),
       name: crcClass.name,
-      grade_group: crcClass.grade_group,
+      grade_group: formatEnumValue(crcClass.grade_group),
       created_by_name: `${crcClass.admin.first_name} ${crcClass.admin.last_name}`.trim(),
       created_at: crcClass.created_at,
       students: crcClass.students.map(s => ({
@@ -47,7 +53,7 @@ export async function GET(request, { params }) {
         first_name: s.first_name,
         last_name: s.last_name,
         email: s.email,
-        grade: s.grade,
+        grade: formatEnumValue(s.grade),
         major_short: s.major_short,
         gpa: s.gpa,
       }))

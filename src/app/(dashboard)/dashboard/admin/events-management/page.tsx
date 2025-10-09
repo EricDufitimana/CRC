@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useActionState, useTransition, startTransition } from "react";
+import { useState, useEffect, useActionState, useTransition, startTransition, useCallback } from "react";
 import { Button } from "../../../../../../zenith/src/components/ui/button";
 import { Input } from "../../../../../../zenith/src/components/ui/input";
 import { Label } from "../../../../../../zenith/src/components/ui/label";
@@ -149,12 +149,15 @@ export default function EventsManagement() {
   const [formError, setFormError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
 
+  // Memoize fetchFunction to prevent unnecessary re-renders
+  const fetchFunction = useCallback(async (category: string) => {
+    const eventType = category === "previous-events" ? "previous_events" : "upcoming_events";
+    return await fetchEventsByType(eventType);
+  }, []);
+
   // Use realtime data hook
   const { data: events, loading, error, refetch } = useAdminRealtimeData<SupabaseEvent>({
-    fetchFunction: async (category: string) => {
-      const eventType = category === "previous-events" ? "previous_events" : "upcoming_events";
-      return await fetchEventsByType(eventType);
-    },
+    fetchFunction,
     subscribeFunction: subscribeToAllEventsForAdmin,
     category: selectedCategory,
   });
