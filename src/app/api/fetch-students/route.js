@@ -32,6 +32,9 @@ export async function GET(request){
         major_short: student.major_short ? student.major_short : null,
         gpa: student.gpa,
         crc_class_id: student.crc_class_id ? student.crc_class_id.toString() : null,
+        academic_report_path: student.academic_report_path,
+        resume_link: student.resume_link,
+        gender: formatEnumValue(student.gender),
       };
     });
 

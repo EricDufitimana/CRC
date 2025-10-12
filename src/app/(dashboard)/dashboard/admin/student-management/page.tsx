@@ -30,10 +30,13 @@ export default function StudentManagement() {
     grade: [] as string[], 
     major: [] as string[], 
     gpa: [] as string[], 
-    crcClass: [] as string[] 
+    crcClass: [] as string[],
+    gender: [] as string[]
   });
   const [students, setStudents] = useState<any[]>([]);
+  const [crcClasses, setCrcClasses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingReportId, setLoadingReportId] = useState<string | null>(null);
   const [emailContent, setEmailContent] = useState("");
   const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
   
@@ -74,7 +77,11 @@ export default function StudentManagement() {
     const crcClassMatch = filters.crcClass.length === 0 || 
       (student.crc_class && filters.crcClass.includes(student.crc_class));
 
-    return searchMatch && gradeMatch && majorMatch && gpaMatch && crcClassMatch;
+    // Gender filtering
+    const genderMatch = filters.gender.length === 0 || 
+      (student.gender && filters.gender.includes(student.gender));
+
+    return searchMatch && gradeMatch && majorMatch && gpaMatch && crcClassMatch && genderMatch;
   });
 
   // Pagination logic
@@ -122,6 +129,15 @@ export default function StudentManagement() {
       crcClass: prev.crcClass.includes(crcClass) 
         ? prev.crcClass.filter(c => c !== crcClass)
         : [...prev.crcClass, crcClass]
+    }));
+  };
+
+  const handleGenderToggle = (gender: string) => {
+    setFilters(prev => ({
+      ...prev,
+      gender: prev.gender.includes(gender) 
+        ? prev.gender.filter(g => g !== gender)
+        : [...prev.gender, gender]
     }));
   };
 
@@ -202,25 +218,107 @@ export default function StudentManagement() {
     return "bg-gray-200 text-gray-700";
   };
 
+  // Handle viewing student report
+  const handleViewReport = async (studentId: string, studentName: string) => {
+    try {
+      // Set loading state for this specific student
+      setLoadingReportId(studentId);
+      
+      // Check if student has a report path
+      const student = students.find(s => s.id === studentId);
+      if (!student?.academic_report_path) {
+        showToastError({
+          headerText: "No Report Available",
+          paragraphText: `${studentName} has not uploaded an academic report yet.`,
+          direction: 'right'
+        });
+        return;
+      }
+
+      // Fetch the signed URL for the report
+      const response = await fetch(`/api/students/documents?studentId=${studentId}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch report");
+      }
+
+      const data = await response.json();
+      if (data.academic_report_url) {
+        // Open report in new tab
+        window.open(data.academic_report_url, '_blank');
+      } else {
+        showToastError({
+          headerText: "Report Not Available",
+          paragraphText: `Unable to access ${studentName}'s academic report.`,
+          direction: 'right'
+        });
+      }
+    } catch (error) {
+      console.error('Error viewing report:', error);
+      showToastError({
+        headerText: "Error Loading Report",
+        paragraphText: `Failed to load ${studentName}'s academic report. Please try again.`,
+        direction: 'right'
+      });
+    } finally {
+      // Clear loading state
+      setLoadingReportId(null);
+    }
+  };
+
+  // Handle viewing student resume
+  const handleViewResume = (studentId: string, studentName: string) => {
+    // Check if student has a resume link
+    const student = students.find(s => s.id === studentId);
+    if (!student?.resume_link) {
+      showToastError({
+      headerText: "No Resume Available",
+        paragraphText: `${studentName} has not provided a resume link yet.`,
+        direction: 'right'
+      });
+      return;
+    }
+
+    // Open resume link in new tab
+    window.open(student.resume_link, '_blank');
+  };
+
   useEffect(() => {
-    const fetchStudents = async () => {
+    const fetchData = async () => {
       try{
         setLoading(true);
-        const response = await fetch("/api/fetch-students");
-        if(!response.ok){
+        
+        // Fetch students and CRC classes in parallel
+        const [studentsResponse, crcClassesResponse] = await Promise.all([
+          fetch("/api/fetch-students"),
+          fetch("/api/admin/crc-classes")
+        ]);
+        
+        if(!studentsResponse.ok){
           console.log("Failed to fetch students");
           return;
         }
-        const data = await response.json();
-        setStudents(data);
+        
+        if(!crcClassesResponse.ok){
+          console.log("Failed to fetch CRC classes");
+          return;
+        }
+        
+        const [studentsData, crcClassesData] = await Promise.all([
+          studentsResponse.json(),
+          crcClassesResponse.json()
+        ]);
+        
+        setStudents(studentsData);
+        setCrcClasses(crcClassesData.classes || []);
       } catch (error) {
-        console.error("Error fetching students:", error);
+        console.error("Error fetching data:", error);
       } finally {
         setLoading(false);
       }
     }
-        fetchStudents()
+    fetchData()
   }, []);
+
 
   const handleSendEmail = async (formData: FormData) => {
     console.log('[EMAIL] Starting bulk email process...');
@@ -443,7 +541,7 @@ export default function StudentManagement() {
           </div>
           
           {/* Filters Row - Responsive Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" className="w-full gap-2 justify-between bg-white/80 border-gray-300/80 hover:bg-white/90 dark:bg-gray-800/80 dark:border-gray-600/80 dark:hover:bg-gray-700/90">
@@ -627,6 +725,66 @@ export default function StudentManagement() {
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" className="w-full gap-2 justify-between bg-white/80 border-gray-300/80 dark:bg-gray-800/80 dark:border-gray-600/80">
+                  <span className="hidden sm:inline">Gender</span>
+                  <span className="sm:hidden">Gender</span>
+                  {filters.gender.length > 0 && (
+                    <Badge variant="outline" className="ml-1">
+                      {filters.gender.length}
+                    </Badge>
+                  )}
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-4">
+                <div className="space-y-3">
+                  <h4 className="font-semibold">Select Gender</h4>
+                  
+                  {/* Selected Gender Display */}
+                  {filters.gender.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {filters.gender.map(gender => (
+                        <Badge key={gender} variant="outline" className="gap-1">
+                          {gender}
+                          <button
+                            onClick={() => handleGenderToggle(gender)}
+                            className="ml-1 hover:bg-gray-200 rounded-full w-4 h-4 flex items-center justify-center"
+                          >
+                            ×
+                          </button>
+                        </Badge>
+                      ))}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setFilters(prev => ({ ...prev, gender: [] }))}
+                        className="h-6 px-2 text-xs"
+                      >
+                        Clear All
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {/* Gender Options */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {Array.from(new Set(students.map(s => s.gender).filter(Boolean))).map(gender => (
+                      <Button
+                        key={gender}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleGenderToggle(gender)}
+                        className={`justify-start cursor-pointer ${filters.gender.includes(gender) ? 'bg-black text-white border-black hover:bg-black hover:text-white' : 'hover:bg-transparent'}`}
+                      >
+                        {gender.charAt(0).toUpperCase() + gender.slice(1)}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full gap-2 justify-between bg-white/80 border-gray-300/80 dark:bg-gray-800/80 dark:border-gray-600/80">
                   <span className="hidden sm:inline">CRC Class</span>
                   <span className="sm:hidden">CRC</span>
                   {filters.crcClass.length > 0 && (
@@ -668,15 +826,15 @@ export default function StudentManagement() {
                   
                   {/* CRC Class Options */}
                   <div className="grid grid-cols-1 gap-2">
-                    {["Fall 2024", "Spring 2024", "Summer 2024", "Fall 2023", "Spring 2023"].map(crcClass => (
+                    {crcClasses.map(crcClass => (
                       <Button
-                        key={crcClass}
+                        key={crcClass.id}
                         variant="outline"
                         size="sm"
-                        onClick={() => handleCrcClassToggle(crcClass)}
-                        className={`justify-start cursor-pointer ${filters.crcClass.includes(crcClass) ? 'bg-black text-white border-black hover:bg-black hover:text-white' : 'hover:bg-transparent'}`}
+                        onClick={() => handleCrcClassToggle(crcClass.name)}
+                        className={`justify-start cursor-pointer ${filters.crcClass.includes(crcClass.name) ? 'bg-black text-white border-black hover:bg-black hover:text-white' : 'hover:bg-transparent'}`}
                       >
-                        {crcClass}
+                        {crcClass.name}
                       </Button>
                     ))}
                   </div>
@@ -889,11 +1047,26 @@ export default function StudentManagement() {
                     </TableCell>
                     <TableCell className="bg-white/80 dark:bg-gray-800/80 rounded-2xl">
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm" className="gap-1 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
-                          <FileText className="h-3 w-3" />
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="gap-1 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                          onClick={() => handleViewReport(student.id, student.full_name)}
+                          disabled={loadingReportId === student.id}
+                        >
+                          {loadingReportId === student.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <FileText className="h-3 w-3" />
+                          )}
                           Report
                         </Button>
-                        <Button variant="outline" size="sm" className="gap-1 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="gap-1 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                          onClick={() => handleViewResume(student.id, student.full_name)}
+                        >
                           <Eye className="h-3 w-3" />
                           Resume
                         </Button>
