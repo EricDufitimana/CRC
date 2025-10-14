@@ -269,8 +269,7 @@ export default function WorkshopsManagement() {
         paragraphText: errorMessage,
         direction: 'right'
       });
-      
-      return { ...prevstate, error: errorMessage, status: "ERROR" };
+            return { ...prevstate, error: errorMessage, status: "ERROR" };
     }
   };
 
@@ -454,9 +453,9 @@ export default function WorkshopsManagement() {
     
     // Debug: Log all FormData entries
     console.log("🔧 FormData entries:");
-    for (let [key, value] of formData.entries()) {
+    Array.from(formData.entries()).forEach(([key, value]) => {
       console.log(`  ${key}:`, value);
-    }
+    });
     
     // Use startTransition to properly call the action
     startTransition(() => {
