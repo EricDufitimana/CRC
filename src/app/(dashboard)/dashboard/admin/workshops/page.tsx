@@ -75,7 +75,6 @@ const workshopGroups = [
     icon: Users,
     submenu: [
       { id: "senior_5_group_a_b", label: "Group A+B" },
-      { id: "senior_5_customer_care", label: "Customer Care" },
     ]
   },
   { 
@@ -103,9 +102,12 @@ export default function WorkshopsManagement() {
   const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
   const [workshops, setWorkshops] = useState<SupabaseWorkshop[]>([]);
   const [allWorkshops, setAllWorkshops] = useState<SupabaseWorkshop[]>([]);
+  const [crcClasses, setCrcClasses] = useState<any[]>([]);
+  const [crcClassesLoading, setCrcClassesLoading] = useState(false);
   const [isAddWorkshopOpen, setIsAddWorkshopOpen] = useState(false);
   const [isAddAssignmentOpen, setIsAddAssignmentOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [workshopsLoading, setWorkshopsLoading] = useState(false);
   const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
   const [workshopIdToDelete, setWorkshopIdToDelete] = useState<string | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -182,68 +184,93 @@ export default function WorkshopsManagement() {
   const handleDeleteWorkshop = async(id: string) => {
     setDeletingWorkshopId(id);
     
-    const deletePromise = (async () => {
-      try {
-        const result = await deleteWorkshopAction(id);
-        if (result.success) {
-          console.log("Workshop deleted successfully");
-          await fetchDataForGroup(selectedGroup);
-          return { success: true };
-        } else {
-          throw new Error(result.error || "Failed to delete workshop");
-        }
-      } finally {
-        setDeletingWorkshopId(null);
+    try {
+      const result = await deleteWorkshopAction(id);
+      if (result.success) {
+        console.log("Workshop deleted successfully");
+        await fetchDataForGroup(selectedGroup);
+        
+        // Show success toast
+        showToastSuccess({
+          headerText: 'Workshop Deleted Successfully',
+          paragraphText: 'The workshop has been removed',
+          direction: 'right'
+        });
+      } else {
+        // Show error toast with specific error message
+        showToastError({
+          headerText: 'Failed To Delete Workshop',
+          paragraphText: result.error || "Failed to delete workshop",
+          direction: 'right'
+        });
       }
-    })();
-
-    showToastPromise({
-      promise: deletePromise,
-      loadingText: 'Deleting workshop...',
-      successText: 'The workshop has been removed',
-      successHeaderText: 'Workshop Deleted Successfully',
-      errorText: 'We couldn\'t delete the workshop. Please try again or contact support.',
-      errorHeaderText: 'Failed To Delete Workshop',
-      direction: 'right'
-    });
+    } catch (error) {
+      console.error("Error in handleDeleteWorkshop:", error);
+      
+      // Show error toast with specific error message
+      const errorMessage = error instanceof Error ? error.message : "Failed to delete workshop";
+      showToastError({
+        headerText: 'Failed To Delete Workshop',
+        paragraphText: errorMessage,
+        direction: 'right'
+      });
+    } finally {
+      setDeletingWorkshopId(null);
+    }
   }
 
   const handleAddWorkshop = async (prevstate: any | undefined, formDataParam: FormData) => {
     console.log("🔧 handleAddWorkshop called");
     
-    const addPromise = (async () => {
-      try {
-        const result = await createWorkshopAction(prevstate, formDataParam);
-        
-        if (result.status === "SUCCESS") {
-          await fetchDataForGroup(selectedGroup);
-          return { success: true };
-        } else {
-          throw new Error(result.error || "Failed to add workshop");
-        }
-      } catch (error) {
-        console.error("Error in handleAddWorkshop:", error);
-        throw new Error("Failed to add workshop. Please try again.");
-      }
-    })();
-
-    // Call showToastPromise and return the promise result for useActionState
-    showToastPromise({
-      promise: addPromise,
-      loadingText: 'Creating workshop...',
-      successText: 'The workshop has been added to the system',
-      successHeaderText: 'Workshop Created Successfully',
-      errorText: 'We couldn\'t create the workshop. Please try again or contact support.',
-      errorHeaderText: 'Failed To Create Workshop',
-      direction: 'right'
-    });
-
-    // Return the promise result for useActionState
     try {
-      const result = await addPromise;
-      return { ...prevstate, error: "", status: "SUCCESS" };
+      const result = await createWorkshopAction(prevstate, formDataParam);
+      
+      if (result.status === "SUCCESS") {
+        await fetchDataForGroup(selectedGroup);
+        
+        // Close dialog and clear form data
+        setIsAddWorkshopOpen(false);
+        setForm({ 
+          title: "", 
+          description: "", 
+          presentation_pdf_url: "", 
+          workshop_date: "", 
+          workshop_group: "",
+        });
+        setSelectedFile(null);
+        setIsUploading(false);
+        setFormError("");
+        
+        // Show success toast
+        showToastSuccess({
+          headerText: 'Workshop Created Successfully',
+          paragraphText: 'The workshop has been added to the system',
+          direction: 'right'
+        });
+        
+        return { ...prevstate, error: "", status: "SUCCESS" };
+      } else {
+        // Show error toast with specific error message
+        showToastError({
+          headerText: 'Failed To Create Workshop',
+          paragraphText: result.error || "Failed to add workshop",
+          direction: 'right'
+        });
+        
+        return { ...prevstate, error: result.error || "Failed to add workshop", status: "ERROR" };
+      }
     } catch (error) {
-      return { ...prevstate, error: error instanceof Error ? error.message : "Failed to add workshop", status: "ERROR" };
+      console.error("Error in handleAddWorkshop:", error);
+      
+      // Show error toast with specific error message
+      const errorMessage = error instanceof Error ? error.message : "Failed to add workshop";
+      showToastError({
+        headerText: 'Failed To Create Workshop',
+        paragraphText: errorMessage,
+        direction: 'right'
+      });
+      
+      return { ...prevstate, error: errorMessage, status: "ERROR" };
     }
   };
 
@@ -279,6 +306,7 @@ export default function WorkshopsManagement() {
   // Reset form when dialog opens
   useEffect(() => {
     if (isAddWorkshopOpen) {
+      console.log("🔧 Dialog opened - resetting form");
       setForm({ 
         title: "", 
         description: "", 
@@ -312,7 +340,6 @@ export default function WorkshopsManagement() {
       'ey': 'EY',
       'senior_4': 'Senior 4',
       'senior_5_group_a_b': 'Senior 5 Group A+B',
-      'senior_5_customer_care': 'Senior 5 Customer Care',
       'senior_6_group_a_b': 'Senior 6 Group A+B',
       'senior_6_group_c': 'Senior 6 Group C',
       'senior_6_group_d': 'Senior 6 Group D',
@@ -369,6 +396,8 @@ export default function WorkshopsManagement() {
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, files } = e.target as HTMLInputElement;
     
+    console.log("🔧 handleFormChange called with:", { name, value });
+    
     if (name === "presentation_file" && files && files[0]) {
       const file = files[0];
       if (file.type !== 'application/pdf') {
@@ -388,12 +417,28 @@ export default function WorkshopsManagement() {
     
     if (name === "title" && value.length > TITLE_MAX) return;
     if (name === "description" && value.length > DESC_MAX) return;
-    setForm(prev => ({ ...prev, [name]: value }));
+    
+    console.log("🔧 Setting form state - name:", name, "value:", value);
+    setForm(prev => {
+      const newForm = { ...prev, [name]: value };
+      console.log("🔧 New form state:", newForm);
+      return newForm;
+    });
     setFieldErrors(prev => ({ ...prev, [name]: [] }));
   };
 
   const handleCreateWorkshopSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    console.log("🔧 Form submission - Current form state:", form);
+    console.log("🔧 Selected workshop_group:", form.workshop_group);
+    
+    // Validate that workshop_group is selected
+    if (!form.workshop_group) {
+      console.error("❌ No workshop group selected!");
+      setFormError("Please select a CRC class");
+      return;
+    }
     
     const formData = new FormData();
     formData.append("title", form.title);
@@ -405,6 +450,12 @@ export default function WorkshopsManagement() {
     // Add file if selected
     if (selectedFile) {
       formData.append("presentation_file", selectedFile);
+    }
+    
+    // Debug: Log all FormData entries
+    console.log("🔧 FormData entries:");
+    for (let [key, value] of formData.entries()) {
+      console.log(`  ${key}:`, value);
     }
     
     // Use startTransition to properly call the action
@@ -522,9 +573,6 @@ export default function WorkshopsManagement() {
       // Check for Senior 5 groups
       else if (crcClassNames.some(name => name.includes('S5 Group A+B'))) {
         workshopGroup = 'senior_5_group_a_b';
-      }
-      else if (crcClassNames.some(name => name.includes('S5 Customer Care'))) {
-        workshopGroup = 'senior_5_customer_care';
       }
       // Check for Senior 6 groups
       else if (crcClassNames.some(name => name.includes('S6 Group A+B'))) {
@@ -813,24 +861,27 @@ export default function WorkshopsManagement() {
 
   const fetchDataForGroup = async (group: string) => {
     setLoading(true);
+    setWorkshopsLoading(true);
+    setCrcClassesLoading(true);
     try {
-      console.log("Fetching data for group:", group);
+      // Fetch both workshops and CRC classes in parallel
+      const [allWorkshopsData, crcClassesResponse] = await Promise.all([
+        fetchWorkshopsFromAPI(),
+        fetch("/api/admin/crc-classes")
+      ]);
       
-      const allWorkshopsData = await fetchWorkshopsFromAPI();
       setAllWorkshops(allWorkshopsData); // Store all workshops
       
-      // Define the CRC class names for each group
-      const groupMappings: Record<string, string[]> = {
-        'ey': ['EY A', 'EY B', 'EY C', 'EY D'],
-        'senior_4': ['S4MPC + S4MEG', 'S4MCE', 'S4HGL + S4PCB'],
-        'senior_5_group_a_b': ['S5 Group A+B'],
-        'senior_5_customer_care': ['S5 Customer Care'],
-        'senior_6_group_a_b': ['S6 Group A+B'],
-        'senior_6_group_c': ['S6 Group C'],
-        'senior_6_group_d': ['S6 Group D']
-      };
+      // Parse CRC classes response
+      const crcClassesData = await crcClassesResponse.json();
+      const classesToSet = crcClassesData.classes || [];
+      setCrcClasses(classesToSet);
       
-      const targetClassNames = groupMappings[group] || [];
+      // Get all CRC class names directly
+      const allCrcClassNames = crcClassesData.classes?.map((c: any) => c.name) || [];
+      
+      // For now, show all workshops since we're not filtering by groups anymore
+      const targetClassNames = allCrcClassNames;
       
       // Filter workshops by the selected group using the new crc_classes structure
       const filteredWorkshops = allWorkshopsData.filter((workshop: any) => {
@@ -839,31 +890,23 @@ export default function WorkshopsManagement() {
         }
         
         // Check if any of the workshop's CRC classes match the target group
-        return workshop.crc_classes.some((crcClass: any) => 
+        const hasMatchingClass = workshop.crc_classes.some((crcClass: any) => 
           targetClassNames.includes(crcClass.name)
         );
+        
+        return hasMatchingClass;
       });
-      
-      console.log("Filtered workshops for group:", group, filteredWorkshops);
-      
-      // Debug: Check assignments for each workshop
-      console.log("🔄 === WORKSHOP DATA REFRESH ===");
-      filteredWorkshops.forEach((workshop: any) => {
-        console.log(`🔍 Workshop ${workshop.id} (${workshop.title}):`, {
-          hasAssignment: workshop.has_assignment,
-          assignmentsCount: workshop.assignments?.length || 0,
-          assignments: workshop.assignments
-        });
-      });
-      console.log("🔄 === END WORKSHOP DATA REFRESH ===");
       
       setWorkshops(filteredWorkshops);
     } catch (error) {
-      console.error("Error fetching workshops:", error);
+      console.error("❌ Error in fetchDataForGroup:", error);
       setWorkshops([]);
       setAllWorkshops([]);
+      setCrcClasses([]);
     } finally {
       setLoading(false);
+      setWorkshopsLoading(false);
+      setCrcClassesLoading(false);
     }
   };
 
@@ -886,7 +929,7 @@ export default function WorkshopsManagement() {
         const allWorkshopsData = await fetchWorkshopsFromAPI();
         setAllWorkshops(allWorkshopsData);
       } catch (error) {
-        console.error("Error loading all workshops:", error);
+        console.error("❌ Error loading all workshops:", error);
         setAllWorkshops([]);
       }
     };
@@ -897,6 +940,63 @@ export default function WorkshopsManagement() {
   useEffect(() => {
     fetchDataForGroup(selectedGroup);
   }, [selectedGroup]);
+
+  // Monitor CRC classes state changes
+  useEffect(() => {
+    // CRC classes state updated
+  }, [crcClasses, crcClassesLoading]);
+
+  // Monitor form state changes
+  useEffect(() => {
+    console.log("🔧 Form state changed:", form);
+  }, [form]);
+
+  // Group CRC classes by grade groups using the grade_group enum
+  const getGroupedCrcClasses = () => {
+    const grouped: { [key: string]: any[] } = {};
+    
+    crcClasses.forEach(crcClass => {
+      // Use the grade_group field from the database
+      const gradeGroup = crcClass.grade_group || 'Other';
+      
+      if (!grouped[gradeGroup]) {
+        grouped[gradeGroup] = [];
+      }
+      grouped[gradeGroup].push(crcClass);
+    });
+    
+    return grouped;
+  };
+
+  // Get dropdown options based on grade group type
+  const getDropdownOptions = () => {
+    const grouped = getGroupedCrcClasses();
+    const options: any[] = [];
+    
+    Object.entries(grouped).forEach(([gradeGroup, classes]) => {
+      // For "Enrichment Year" and "Senior 4", show as single combined options
+      if (gradeGroup === 'Enrichment Year' || gradeGroup === 'Senior 4') {
+        options.push({
+          type: 'combined',
+          gradeGroup,
+          classes,
+          value: gradeGroup, // Use grade group name as value
+          label: gradeGroup
+        });
+      } else {
+        // For others (Senior 5, Senior 6), show individual classes under grade group
+        options.push({
+          type: 'grouped',
+          gradeGroup,
+          classes,
+          value: null, // No direct value for group header
+          label: gradeGroup
+        });
+      }
+    });
+    
+    return options;
+  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -1077,27 +1177,63 @@ export default function WorkshopsManagement() {
                         </div>
                       </div>
                       <div>
-                        <Label className="text-sm font-medium mb-1 block">Workshop Group</Label>
+                        <Label className="text-sm font-medium mb-1 block">CRC Class</Label>
                         <Select 
                           value={form.workshop_group} 
                           onValueChange={(value) => {
+                            console.log("🔧 Select onValueChange - Selected value:", value);
+                            console.log("🔧 Current form.workshop_group before change:", form.workshop_group);
                             const event = { target: { name: 'workshop_group', value } } as any;
                             handleFormChange(event);
+                            console.log("🔧 After handleFormChange - form.workshop_group:", form.workshop_group);
                           }}
                         >
                           <SelectTrigger className="w-full rounded-xl">
-                            <SelectValue placeholder="Select a group" />
+                            <SelectValue placeholder="Select a CRC class" />
                           </SelectTrigger>
                           <SelectContent>
-                            {getFlattenedWorkshopGroups().map((group) => (
-                              <SelectItem 
-                                key={group.id} 
-                                value={group.id}
-                                disabled={group.label.includes("(Select subgroup)")}
-                              >
-                                {group.label}
-                              </SelectItem>
-                            ))}
+                            {crcClassesLoading ? (
+                              <div className="flex items-center justify-center py-2">
+                                <Loader2 className="h-4 w-4 animate-spin mr-2 text-gray-500" />
+                                <span className="text-sm text-gray-500">Loading CRC classes...</span>
+                              </div>
+                            ) : crcClasses.length === 0 ? (
+                              <div className="text-center py-2 text-gray-500 text-sm">
+                                No CRC classes found
+                              </div>
+                            ) : (
+                              getDropdownOptions().map((option) => (
+                                <div key={option.gradeGroup}>
+                                  {option.type === 'combined' ? (
+                                    // Combined option for Enrichment Year and Senior 4
+                                    <SelectItem 
+                                      key={option.gradeGroup} 
+                                      value={option.value}
+                                    >
+                                      {option.label}
+                                    </SelectItem>
+                                  ) : (
+                                    // Grouped option for Senior 5, Senior 6, etc.
+                                    <>
+                                      {/* Grade Group Header */}
+                                      <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                                        {option.gradeGroup}
+                                      </div>
+                                      {/* Individual Classes */}
+                                      {option.classes.map((crcClass: any) => (
+                                        <SelectItem 
+                                          key={crcClass.id} 
+                                          value={crcClass.name}
+                                          className="pl-6"
+                                        >
+                                          {crcClass.name}
+                                        </SelectItem>
+                                      ))}
+                                    </>
+                                  )}
+                                </div>
+                              ))
+                            )}
                           </SelectContent>
                         </Select>
                         {fieldErrors.workshop_group && fieldErrors.workshop_group.length > 0 && (
@@ -1186,10 +1322,10 @@ export default function WorkshopsManagement() {
                         Cancel
                       </Button>
                       <Button type="submit" disabled={isPending || isUploading} className="bg-green-600 hover:bg-green-600/80 rounded-xl text-white shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,128,0,0.4)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_4px_rgba(0,128,0,0.1)] transition duration-200">
-                        {isPending || isUploading ? (
+                        {isPending ? (
                           <div className="flex items-center gap-2">
                             <Loader2 className="h-4 w-4 animate-spin" />
-                            {isUploading ? "Uploading..." : "Creating..."}
+                            Creating...
                           </div>
                         ) : (
                           "Add Workshop"
@@ -1232,15 +1368,48 @@ export default function WorkshopsManagement() {
                             <SelectValue placeholder="Select a class" />
                           </SelectTrigger>
                           <SelectContent>
-                            {getFlattenedWorkshopGroups().map((group) => (
-                              <SelectItem 
-                                key={group.id} 
-                                value={group.id}
-                                disabled={group.label.includes("(Select subgroup)")}
-                              >
-                                {group.label}
-                              </SelectItem>
-                            ))}
+                            {crcClassesLoading ? (
+                              <div className="flex items-center justify-center py-2">
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                <span className="text-sm text-gray-500">Loading CRC classes...</span>
+                              </div>
+                            ) : crcClasses.length === 0 ? (
+                              <div className="text-center py-2 text-gray-500 text-sm">
+                                No CRC classes found
+                              </div>
+                            ) : (
+                              getDropdownOptions().map((option) => (
+                                <div key={option.gradeGroup}>
+                                  {option.type === 'combined' ? (
+                                    // Combined option for Enrichment Year and Senior 4
+                                    <SelectItem 
+                                      key={option.gradeGroup} 
+                                      value={option.value}
+                                    >
+                                      {option.label}
+                                    </SelectItem>
+                                  ) : (
+                                    // Grouped option for Senior 5, Senior 6, etc.
+                                    <>
+                                      {/* Grade Group Header */}
+                                      <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                                        {option.gradeGroup}
+                                      </div>
+                                      {/* Individual Classes */}
+                                      {option.classes.map((crcClass: any) => (
+                                        <SelectItem 
+                                          key={crcClass.id} 
+                                          value={crcClass.name}
+                                          className="pl-6"
+                                        >
+                                          {crcClass.name}
+                                        </SelectItem>
+                                      ))}
+                                    </>
+                                  )}
+                                </div>
+                              ))
+                            )}
                           </SelectContent>
                         </Select>
                       </div>
@@ -1265,18 +1434,8 @@ export default function WorkshopsManagement() {
                                 
                                 if (!assignmentForm.crc_class) return true;
                                 
-                                // Define the CRC class names for each group
-                                const groupMappings: Record<string, string[]> = {
-                                  'ey': ['EY A', 'EY B', 'EY C', 'EY D'],
-                                  'senior_4': ['S4MPC + S4MEG', 'S4MCE', 'S4HGL + S4PCB'],
-                                  'senior_5_group_a_b': ['S5 Group A+B'],
-                                  'senior_5_customer_care': ['S5 Customer Care'],
-                                  'senior_6_group_a_b': ['S6 Group A+B'],
-                                  'senior_6_group_c': ['S6 Group C'],
-                                  'senior_6_group_d': ['S6 Group D']
-                                };
-                                
-                                const targetClassNames = groupMappings[assignmentForm.crc_class] || [];
+                                // Use the selected CRC class directly
+                                const targetClassNames = assignmentForm.crc_class ? [assignmentForm.crc_class] : [];
                                 
                                 // Check if the workshop has CRC classes that match the selected group
                                 return workshop.crc_classes && workshop.crc_classes.some(crcClass => 
@@ -1293,18 +1452,8 @@ export default function WorkshopsManagement() {
                                 // First filter: only show workshops without assignments
                                 if (workshop.has_assignment) return false;
                                 
-                                // Define the CRC class names for each group
-                                const groupMappings: Record<string, string[]> = {
-                                  'ey': ['EY A', 'EY B', 'EY C', 'EY D'],
-                                  'senior_4': ['S4MPC + S4MEG', 'S4MCE', 'S4HGL + S4PCB'],
-                                  'senior_5_group_a_b': ['S5 Group A+B'],
-                                  'senior_5_customer_care': ['S5 Customer Care'],
-                                  'senior_6_group_a_b': ['S6 Group A+B'],
-                                  'senior_6_group_c': ['S6 Group C'],
-                                  'senior_6_group_d': ['S6 Group D']
-                                };
-                                
-                                const targetClassNames = groupMappings[assignmentForm.crc_class] || [];
+                                // Use the selected CRC class directly
+                                const targetClassNames = assignmentForm.crc_class ? [assignmentForm.crc_class] : [];
                                 
                                 // Check if the workshop has CRC classes that match the selected group
                                 return workshop.crc_classes && workshop.crc_classes.some(crcClass => 
@@ -1478,10 +1627,19 @@ export default function WorkshopsManagement() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {paginatedWorkshops.length === 0 ? (
+                        {workshopsLoading ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center py-8">
+                              <div className="flex items-center justify-center gap-2">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <span className="text-gray-500">Loading workshops...</span>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ) : paginatedWorkshops.length === 0 ? (
                           <TableRow>
                             <TableCell colSpan={5} className="text-center py-8 text-gray-500">
-                              No workshops found for {groupLabelFor(selectedGroup).toLowerCase()}
+                              No workshops found
                             </TableCell>
                           </TableRow>
                         ) : (
@@ -1647,24 +1805,49 @@ export default function WorkshopsManagement() {
                 />
               </div>
               <div>
-                <Label htmlFor="edit-group">Workshop Group</Label>
-                <select
-                  id="edit-group"
-                  name="workshop_group"
-                  value={editForm.workshop_group}
-                  onChange={handleEditFormChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                <Label htmlFor="edit-group">CRC Class</Label>
+                <Select 
+                  value={editForm.workshop_group} 
+                  onValueChange={(value) => {
+                    const event = { target: { name: 'workshop_group', value } } as any;
+                    handleEditFormChange(event);
+                  }}
                 >
-                  {getFlattenedWorkshopGroups().map((group) => (
-                    <option 
-                      key={group.id} 
-                      value={group.id}
-                      disabled={group.label.includes("(Select subgroup)")}
-                    >
-                      {group.label}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a CRC class" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {crcClassesLoading ? (
+                      <div className="flex items-center justify-center py-2">
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        <span className="text-sm text-gray-500">Loading CRC classes...</span>
+                      </div>
+                    ) : crcClasses.length === 0 ? (
+                      <div className="text-center py-2 text-gray-500 text-sm">
+                        No CRC classes found
+                      </div>
+                    ) : (
+                      Object.entries(getGroupedCrcClasses()).map(([gradeGroup, classes]) => (
+                        <div key={gradeGroup}>
+                          {/* Grade Group Header */}
+                          <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                            {gradeGroup}
+                          </div>
+                          {/* Individual Classes */}
+                          {classes.map((crcClass: any) => (
+                            <SelectItem 
+                              key={crcClass.id} 
+                              value={crcClass.name}
+                              className="pl-6"
+                            >
+                              {crcClass.name}
+                            </SelectItem>
+                          ))}
+                        </div>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div>
@@ -1732,10 +1915,10 @@ export default function WorkshopsManagement() {
               disabled={isUpdating || isEditUploading}
               className="bg-green-600 hover:bg-green-700 text-white shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,128,0,0.4)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_4px_rgba(0,128,0,0.1)] transition duration-200"
             >
-              {isUpdating || isEditUploading ? (
+              {isUpdating ? (
                 <div className="flex items-center justify-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  {isEditUploading ? "Uploading..." : "Updating..."}
+                  Updating...
                 </div>
               ) : (
                 "Update Workshop"

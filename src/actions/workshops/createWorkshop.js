@@ -10,17 +10,7 @@ const workshopSchema = z.object({
   description: z.string().min(1, "Description is required").max(500, "Description must be less than 500 characters"),
   presentation_pdf_url: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   workshop_date: z.string().min(1, "Workshop date is required"),
-  workshop_group: z.enum([
-    'ey',
-    'senior_4',
-    'senior_5_group_a_b',
-    'senior_5_customer_care',
-    'senior_6_group_a_b',
-    'senior_6_group_c',
-    'senior_6_group_d'
-  ], {
-    errorMap: () => ({ message: "Please select a valid workshop group" })
-  }),
+  workshop_group: z.string().min(1, "CRC class is required"),
 });
 
 export async function createWorkshopAction(prevState, formData) {
@@ -35,6 +25,14 @@ export async function createWorkshopAction(prevState, formData) {
       workshop_date: formData.get("workshop_date"),
       workshop_group: formData.get("workshop_group"),
     };
+
+    // Debug: Log all FormData entries
+    console.log("🔧 All FormData entries in action:");
+    for (let [key, value] of formData.entries()) {
+      console.log(`  ${key}:`, value);
+    }
+    
+    console.log("🔧 Extracted formValue:", formValue);
 
     // Get file if uploaded
     const file = formData.get("presentation_file");
@@ -56,34 +54,49 @@ export async function createWorkshopAction(prevState, formData) {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    // Define the CRC class names for each group
-    const groupMappings = {
-      'ey': ['EY A', 'EY B', 'EY C', 'EY D'],
-      'senior_4': ['S4MPC + S4MEG', 'S4MCE', 'S4HGL + S4PCB'],
-      'senior_5_group_a_b': ['S5 Group A+B'],
-      'senior_5_customer_care': ['S5 Customer Care'],
-      'senior_6_group_a_b': ['S6 Group A+B'],
-      'senior_6_group_c': ['S6 Group C'],
-      'senior_6_group_d': ['S6 Group D']
-    };
+    // Get CRC classes based on the selected value
+    const selectedValue = validatedData.workshop_group;
+    let crcClasses = [];
+    
+    // Check if the selected value is a grade group name (Enrichment Year, Senior 4)
+    if (selectedValue === 'Enrichment Year' || selectedValue === 'Senior 4') {
+      // For grade groups, get all classes in that grade group
+      console.log("🔍 Fetching all classes for grade group:", selectedValue);
+      
+      const { data: gradeGroupClasses, error: gradeGroupError } = await supabase
+        .from('crc_class')
+        .select('id, name, grade_group')
+        .eq('grade_group', selectedValue);
 
-    const targetClassNames = groupMappings[validatedData.workshop_group];
-    if (!targetClassNames || targetClassNames.length === 0) {
-      throw new Error(`Invalid workshop group: ${validatedData.workshop_group}`);
-    }
+      if (gradeGroupError) {
+        throw new Error(`Failed to fetch CRC classes for grade group: ${gradeGroupError.message}`);
+      }
 
-    // Get CRC class IDs for the workshop group
-    const { data: crcClasses, error: crcError } = await supabase
-      .from('crc_class')
-      .select('id')
-      .in('name', targetClassNames);
+      if (!gradeGroupClasses || gradeGroupClasses.length === 0) {
+        throw new Error(`No CRC classes found for grade group: ${selectedValue}`);
+      }
 
-    if (crcError) {
-      throw new Error(`Failed to fetch CRC classes: ${crcError.message}`);
-    }
+      crcClasses = gradeGroupClasses;
+      console.log("📋 Found CRC classes for grade group:", crcClasses.map(c => c.name));
+    } else {
+      // For individual class names, get that specific class
+      console.log("🔍 Fetching specific class:", selectedValue);
+      
+      const { data: specificClass, error: specificError } = await supabase
+        .from('crc_class')
+        .select('id, name, grade_group')
+        .eq('name', selectedValue);
 
-    if (!crcClasses || crcClasses.length === 0) {
-      throw new Error(`No CRC classes found for group: ${validatedData.workshop_group}`);
+      if (specificError) {
+        throw new Error(`Failed to fetch CRC class: ${specificError.message}`);
+      }
+
+      if (!specificClass || specificClass.length === 0) {
+        throw new Error(`CRC class not found: ${selectedValue}`);
+      }
+
+      crcClasses = specificClass;
+      console.log("📋 Found specific CRC class:", crcClasses.map(c => c.name));
     }
 
     let presentationUrl = validatedData.presentation_pdf_url?.trim() || null;
@@ -166,11 +179,13 @@ export async function createWorkshopAction(prevState, formData) {
       throw new Error(error.message || 'Failed to create workshop');
     }
 
-    // Create workshop-to-CRC-class relationships
+    // Create workshop-to-CRC-class relationships for all classes in the grade group
     const workshopToCrcData = crcClasses.map(crcClass => ({
       workshop_id: result.id,
       crc_class_id: crcClass.id
     }));
+
+    console.log("🔗 Creating relationships for", crcClasses.length, "CRC classes");
 
     const { error: relationshipError } = await supabase
       .from('workshop_to_crc_class')
