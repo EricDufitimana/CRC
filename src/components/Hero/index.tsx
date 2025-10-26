@@ -7,10 +7,12 @@ import GetStartedButton from "../other/getStartedButton";
 import { AnimatedText } from "../animation/AnimatedText";
 import { ExtrudingComponent } from "../animation/ExtrudingComponent";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsTablet } from "@/hooks/use-tablet";
 
 
 const Hero = () => {
   const isMobile = useIsMobile();
+  const isTablet = useIsTablet();
   useEffect(() => {
     console.log('Width:', window.innerWidth);
     console.log('Height:', window.innerHeight);
@@ -57,82 +59,99 @@ const Hero = () => {
                 </AnimatedText>
               </div>
               <div className={`hero-image-container relative ${isMobile ? "hidden" : ""}`}>
-                {/* Hero image with extrude effect */}
-                <ExtrudingComponent
-                  delay={0.2}
-                  springBounce={0.2}
-                  duration={0.6}
-                  scaleFrom={0.8}
-                  scaleTo={1}
-                  autoPlay={true}
-                >
+                {isTablet ? (
+                  /* Tablet view - single tablet-hero image */
                   <Image 
-                    src={"/images/hero/heroImage-4.svg"}
-                    alt = "illustration"
-                    width = {500}
-                    height = {500}
+                    src={"/images/hero/tablet-hero.svg"}
+                    alt="tablet illustration"
+                    width={500}
+                    height={500}
                     priority
                     quality={85}
-                    sizes="(max-width: 768px) 100vw, 500px"
+                    sizes="(max-width: 1024px) 100vw, 500px"
                     className="relative bottom-[90px] object-cover"
-                    // style={{
-                    //   animation: 'subtle-float 3s ease-in-out infinite',
-                    //   animationDelay: '1s'
-                    // }}
                   />
-                </ExtrudingComponent>
-                
-                {/* SVG Overlay Elements with fade-in animations */}
-                {/* Orange X */}
-               
-               
-                {/* Star */}
-                <div 
-                  className="absolute top-[300px] left-[330px] w-28 h-28 opacity-0"
-                  style={{
-                    animation: 'fadeIn 0.8s ease-out forwards',
-                    animationDelay: '1.4s'
-                  }}
-                >
-                  <Image
-                    src="/images/hero/star.svg"
-                    alt="Star"
-                    fill
-                    className="object-contain"
-                  />
-                </div>
-                
-                {/* Up Lines */}
-                <div 
-                  className="absolute bottom-[250px] right-[-90px] w-24 h-24 opacity-0"
-                  style={{
-                    animation: 'fadeIn 0.8s ease-out forwards',
-                    animationDelay: '1.6s'
-                  }}
-                >
-                  <Image
-                    src="/images/hero/up-lines.svg"
-                    alt="Up Lines"
-                    fill
-                    className="object-contain"
-                  />
-                </div>
-                
-                {/* Wavy Lines */}
-                <div 
-                  className="absolute top-[-80px] left-[-5px] w-64 h-64 opacity-0"
-                  style={{
-                    animation: 'fadeIn 0.8s ease-out forwards',
-                    animationDelay: '1.8s'
-                  }}
-                >
-                  <Image
-                    src="/images/hero/wavy-lines.svg"
-                    alt="Wavy Lines"
-                    fill
-                    className="object-contain"
-                  />
-                </div>
+                ) : (
+                  /* Desktop view - full extruding component with all images */
+                  <>
+                    {/* Hero image with extrude effect */}
+                    <ExtrudingComponent
+                      delay={0.2}
+                      springBounce={0.2}
+                      duration={0.6}
+                      scaleFrom={0.8}
+                      scaleTo={1}
+                      autoPlay={true}
+                    >
+                      <Image 
+                        src={"/images/hero/heroImage-4.svg"}
+                        alt = "illustration"
+                        width = {500}
+                        height = {500}
+                        priority
+                        quality={85}
+                        sizes="(max-width: 768px) 100vw, 500px"
+                        className="relative bottom-[90px] object-cover"
+                        // style={{
+                        //   animation: 'subtle-float 3s ease-in-out infinite',
+                        //   animationDelay: '1s'
+                        // }}
+                      />
+                    </ExtrudingComponent>
+                    
+                    {/* SVG Overlay Elements with fade-in animations */}
+                    {/* Orange X */}
+                   
+                   
+                    {/* Star */}
+                    <div 
+                      className="absolute top-[300px] left-[330px] w-28 h-28 opacity-0"
+                      style={{
+                        animation: 'fadeIn 0.8s ease-out forwards',
+                        animationDelay: '1.4s'
+                      }}
+                    >
+                      <Image
+                        src="/images/hero/star.svg"
+                        alt="Star"
+                        fill
+                        className="object-contain"
+                      />
+                    </div>
+                    
+                    {/* Up Lines */}
+                    <div 
+                      className="absolute bottom-[250px] right-[-90px] w-24 h-24 opacity-0"
+                      style={{
+                        animation: 'fadeIn 0.8s ease-out forwards',
+                        animationDelay: '1.6s'
+                      }}
+                    >
+                      <Image
+                        src="/images/hero/up-lines.svg"
+                        alt="Up Lines"
+                        fill
+                        className="object-contain"
+                      />
+                    </div>
+                    
+                    {/* Wavy Lines */}
+                    <div 
+                      className="absolute top-[-80px] left-[-5px] w-64 h-64 opacity-0"
+                      style={{
+                        animation: 'fadeIn 0.8s ease-out forwards',
+                        animationDelay: '1.8s'
+                      }}
+                    >
+                      <Image
+                        src="/images/hero/wavy-lines.svg"
+                        alt="Wavy Lines"
+                        fill
+                        className="object-contain"
+                      />
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>

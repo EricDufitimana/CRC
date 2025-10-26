@@ -75,6 +75,7 @@
     "framer-motion": "^12.22.0",
     "geist": "^1.5.1",
     "gray-matter": "^4.0.3",
+    "groq-sdk": "^0.34.0",
     "gsap": "^3.13.0",
     "input-otp": "^1.2.4",
     "lexical": "^0.34.0",

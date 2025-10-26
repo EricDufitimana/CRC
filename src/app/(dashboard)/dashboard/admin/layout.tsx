@@ -47,6 +47,11 @@ export default function DashboardAdminLayout({ children }: { children: React.Rea
   const router = useRouter();
   const pathname = usePathname();
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Array<{ name: string; route: string; description: string }>>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [rateLimitInfo, setRateLimitInfo] = useState<{ remaining: number; resetIn: number } | null>(null);
+  const [rateLimitMessage, setRateLimitMessage] = useState<string>('');
   const getTitle = () => {
     if (pathname?.includes("student-management")) return "Student Management - Admin Dashboard"
     else if (pathname?.includes("assignments-management")) return "Assignments Management - Admin Dashboard"
@@ -90,7 +95,44 @@ export default function DashboardAdminLayout({ children }: { children: React.Rea
     setMounted(true);
   }, []);
 
-  // Fetch admin profile data when adminId is available
+  // Debounced AI search
+  useEffect(() => {
+    const searchWithAI = async () => {
+      if (!searchOpen) return;
+      
+      setIsSearching(true);
+      setRateLimitMessage('');
+      try {
+        const response = await fetch('/api/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: searchQuery }),
+        });
+        const data = await response.json();
+        setSearchResults(data.results || []);
+        setRateLimitInfo(data.rateLimit || null);
+        
+        if (data.rateLimited) {
+          setRateLimitMessage(data.message);
+        }
+      } catch (error) {
+        console.error('Search failed:', error);
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+
+    const timeoutId = setTimeout(searchWithAI, 300); // Debounce 300ms
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, searchOpen]);
+
+  const handleSearchSelect = (route: string) => {
+    router.push(route);
+    setSearchOpen(false);
+    setSearchQuery('');
+    setRateLimitMessage('');
+  };
   useEffect(() => {
     const fetchAdminProfile = async () => {
       if (!adminId) return;
@@ -163,7 +205,7 @@ export default function DashboardAdminLayout({ children }: { children: React.Rea
           {/* Sidebar as background foundation */}
           <div className="fixed left-0 top-0 bottom-0 w-60 backdrop-blur-2xl flex flex-col z-10 transition-colors duration-300 bg-gray-50 border-gray-200/30">
             {/* Navigation */}
-            <nav className="flex-1 p-6 space-y-2">
+            <nav className="flex-1 p-6 space-y-2 overflow-y-auto overflow-x-hidden relative scrollbar-hide">
               {/* Dashboard */}
               <Button
                 variant="ghost"
@@ -218,7 +260,8 @@ export default function DashboardAdminLayout({ children }: { children: React.Rea
               </Button>
               <div className="relative pl-4">
                 <div className={`absolute left-2 top-0 bottom-[-8px] w-px transition-opacity duration-300 bg-gray-300/60 ${classesOpen ? 'opacity-100' : 'opacity-0'}`} />
-                <div className={`space-y-1 overflow-hidden transition-all duration-300 ease-out ${classesOpen ? 'max-h-28 opacity-100 translate-y-0' : 'max-h-0 opacity-0 -translate-y-1'}`}>
+                <div className={`space-y-1 overflow-hidden transition-all duration-300 ease-out relative ${classesOpen ? 'max-h-28 opacity-100 translate-y-0' : 'max-h-0 opacity-0 -translate-y-1'}`}>
+                  {/* Enhanced fade-out gradient overlay - only affects bottom */}
                   <Button
                     variant="ghost"
                     onClick={() => router.push('/dashboard/admin/attendance')}
@@ -259,7 +302,8 @@ export default function DashboardAdminLayout({ children }: { children: React.Rea
               </Button>
               <div className="relative pl-4">
                 <div className={`absolute left-2 top-0 bottom-[-8px] w-px transition-opacity duration-300 bg-gray-300/60 ${contentOpen ? 'opacity-100' : 'opacity-0'}`} />
-                <div className={`space-y-1 overflow-hidden transition-all duration-300 ease-out ${contentOpen ? 'max-h-48 opacity-100 translate-y-0' : 'max-h-0 opacity-0 -translate-y-1'}`}>
+                <div className={`space-y-1 overflow-hidden transition-all duration-300 ease-out relative ${contentOpen ? 'max-h-48 opacity-100 translate-y-0' : 'max-h-0 opacity-0 -translate-y-1'}`}>
+                  {/* Enhanced fade-out gradient overlay - only affects bottom */}
                   <Button
                     variant="ghost"
                     onClick={() => router.push('/dashboard/admin/content-management')}
@@ -322,7 +366,8 @@ export default function DashboardAdminLayout({ children }: { children: React.Rea
               </Button>
               <div className="relative pl-4">
                 <div className={`absolute left-2 top-0 bottom-[-8px] w-px transition-opacity duration-300 bg-gray-300/60 ${requestsOpen ? 'opacity-100' : 'opacity-0'}`} />
-                <div className={`space-y-1 overflow-hidden transition-all duration-300 ease-out ${requestsOpen ? 'max-h-28 opacity-100 translate-y-0' : 'max-h-0 opacity-0 -translate-y-1'}`}>
+                <div className={`space-y-1 overflow-hidden transition-all duration-300 ease-out relative ${requestsOpen ? 'max-h-28 opacity-100 translate-y-0' : 'max-h-0 opacity-0 -translate-y-1'}`}>
+                  {/* Enhanced fade-out gradient overlay - only affects bottom */}
                   <Button
                     variant="ghost"
                     onClick={() => router.push('/dashboard/admin/essay-requests')}
@@ -352,8 +397,10 @@ export default function DashboardAdminLayout({ children }: { children: React.Rea
             </nav>
 
             {/* Footer */}
-            <div className="p-6 space-y-3 border-t transition-colors duration-300 border-gray-200/30">
-              {/* Search */}
+            <div className="p-6 space-y-3 border-t transition-colors duration-300 border-gray-200/30 relative z-20 bg-gray-50">
+              {/* Fade-in gradient overlay at top of footer */}
+              <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-gray-50 via-gray-50/90 via-gray-50/60 via-gray-50/30 to-transparent pointer-events-none -translate-y-full" />
+                          {/* Search */}
               <Button
                 variant="ghost"
                 onClick={() => setSearchOpen(true)}
@@ -421,31 +468,44 @@ export default function DashboardAdminLayout({ children }: { children: React.Rea
 
           {/* Command Dialog for Search */}
           <CommandDialog open={searchOpen} onOpenChange={setSearchOpen}>
-            <CommandInput placeholder="Search students, essays, or settings..." />
+            <CommandInput 
+              placeholder="Search pages... (e.g., 'where to see grades', 'student info', 'add homework')" 
+              value={searchQuery}
+              onValueChange={setSearchQuery}
+            />
             <CommandList>
-              <CommandEmpty>No results found.</CommandEmpty>
-              <CommandGroup heading="Quick Actions">
-                <CommandItem>
-                  <span>Dashboard</span>
-                </CommandItem>
-                <CommandItem>
-                  <span>Students</span>
-                </CommandItem>
-                <CommandItem>
-                  <span>Essays</span>
-                </CommandItem>
-              </CommandGroup>
-              <CommandGroup heading="Students">
-                <CommandItem>
-                  <span>Sarah Chen - Computer Science</span>
-                </CommandItem>
-                <CommandItem>
-                  <span>Michael Johnson - Mathematics</span>
-                </CommandItem>
-                <CommandItem>
-                  <span>Emily Davis - English Literature</span>
-                </CommandItem>
-              </CommandGroup>
+              {rateLimitMessage && (
+                <div className="px-4 py-3 text-sm text-orange-600 bg-orange-50 border-b border-orange-100">
+                  ⚠️ {rateLimitMessage}
+                </div>
+              )}
+              {rateLimitInfo && rateLimitInfo.remaining <= 5 && rateLimitInfo.remaining > 0 && (
+                <div className="px-4 py-2 text-xs text-gray-500 border-b border-gray-100">
+                  {rateLimitInfo.remaining} searches remaining (resets in {rateLimitInfo.resetIn}s)
+                </div>
+              )}
+              {isSearching ? (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                </div>
+              ) : searchResults.length === 0 ? (
+                <CommandEmpty>No results found.</CommandEmpty>
+              ) : (
+                <CommandGroup heading="Pages">
+                  {searchResults.map((item) => (
+                    <CommandItem
+                      key={item.route}
+                      onSelect={() => handleSearchSelect(item.route)}
+                      className="cursor-pointer"
+                    >
+                      <div className="flex flex-col">
+                        <span className="font-medium">{item.name}</span>
+                        <span className="text-xs text-gray-500">{item.description}</span>
+                      </div>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              )}
             </CommandList>
           </CommandDialog>
 

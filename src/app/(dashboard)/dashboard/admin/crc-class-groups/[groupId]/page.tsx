@@ -8,7 +8,8 @@ import { Skeleton } from "../../../../../../../zenith/src/components/ui/skeleton
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../../../../../../zenith/src/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "../../../../../../../zenith/src/components/ui/alert-dialog";
 import { Checkbox } from "../../../../../../../zenith/src/components/ui/checkbox";
-import { Users, Plus, X, Check, ChevronDown, Loader2, ArrowLeft, AlertTriangle, Edit } from "lucide-react";
+import { FileUpload } from "../../../../../../../zenith/src/components/ui/file-upload";
+import { Users, Plus, X, Check, ChevronDown, Loader2, ArrowLeft, AlertTriangle, Edit, Upload } from "lucide-react";
 import { updateClassName } from "@/actions/crc-classes/updateClassName";
 import { showToastSuccess, showToastError } from "@/components/toasts";
 
@@ -34,6 +35,12 @@ export default function CrcClassGroupDetailPage() {
   const [isEditingName, setIsEditingName] = useState(false);
   const [editingName, setEditingName] = useState("");
   const [isSavingName, setIsSavingName] = useState(false);
+
+  // Bulk import state
+  const [bulkImportFile, setBulkImportFile] = useState<File[]>([]);
+  const [isBulkImporting, setIsBulkImporting] = useState(false);
+  const [bulkImportResult, setBulkImportResult] = useState<any>(null);
+  const [bulkImportError, setBulkImportError] = useState<string | null>(null);
 
   const fetchGroup = async () => {
     setLoading(true);
@@ -74,6 +81,61 @@ export default function CrcClassGroupDetailPage() {
   const startEditingName = () => {
     setEditingName(group?.name || "");
     setIsEditingName(true);
+  };
+
+  const handleBulkImport = async () => {
+    if (bulkImportFile.length === 0) {
+      setBulkImportError("Please select a file first");
+      return;
+    }
+
+    setIsBulkImporting(true);
+    setBulkImportError(null);
+    setBulkImportResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', bulkImportFile[0]);
+      formData.append('classId', groupId);
+
+      console.log('🚀 Processing bulk import file:', bulkImportFile[0].name);
+
+      const response = await fetch('/api/admin/crc-classes/bulk-import', {
+        method: 'POST',
+        body: formData,
+      });
+
+      console.log('📡 Response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Response not OK:', errorText);
+        setBulkImportError(`Server error (${response.status}): ${errorText}`);
+        return;
+      }
+
+      const data = await response.json();
+      console.log('📊 Response data:', data);
+
+      if (data.success) {
+        setBulkImportResult(data);
+        // Refresh the group and students data
+        fetchGroup();
+        fetchStudents();
+        
+        showToastSuccess({
+          headerText: 'Students Imported Successfully',
+          paragraphText: `${data.matchedStudents} student(s) have been added to the class.`,
+          direction: 'right'
+        });
+      } else {
+        setBulkImportError(data.error || 'Failed to import students');
+      }
+    } catch (err) {
+      setBulkImportError(err instanceof Error ? err.message : 'Unknown error occurred');
+    } finally {
+      setIsBulkImporting(false);
+    }
   };
 
   const saveClassName = async () => {
@@ -620,6 +682,88 @@ export default function CrcClassGroupDetailPage() {
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
+            <div className="relative">
+              <input
+                type="file"
+                accept=".xlsx,.xls,.csv,.pdf,.docx,.txt"
+                onChange={async (e) => {
+                  if (e.target.files && e.target.files[0]) {
+                    const file = e.target.files[0];
+                    setBulkImportFile([file]);
+                    setBulkImportError(null);
+                    setBulkImportResult(null);
+                    
+                    // Automatically trigger the import
+                    setIsBulkImporting(true);
+                    
+                    try {
+                      const formData = new FormData();
+                      formData.append('file', file);
+                      formData.append('classId', groupId);
+
+                      console.log('🚀 Processing bulk import file:', file.name);
+
+                      const response = await fetch('/api/admin/crc-classes/bulk-import', {
+                        method: 'POST',
+                        body: formData,
+                      });
+
+                      console.log('📡 Response status:', response.status);
+
+                      if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error('❌ Response not OK:', errorText);
+                        setBulkImportError(`Server error (${response.status}): ${errorText}`);
+                        return;
+                      }
+
+                      const data = await response.json();
+                      console.log('📊 Response data:', data);
+
+                      if (data.success) {
+                        setBulkImportResult(data);
+                        // Refresh the group and students data
+                        fetchGroup();
+                        fetchStudents();
+                        
+                        showToastSuccess({
+                          headerText: 'Students Imported Successfully',
+                          paragraphText: `${data.matchedStudents} student(s) have been added to the class.`,
+                          direction: 'right'
+                        });
+                      } else {
+                        setBulkImportError(data.error || 'Failed to import students');
+                      }
+                    } catch (err) {
+                      setBulkImportError(err instanceof Error ? err.message : 'Unknown error occurred');
+                    } finally {
+                      setIsBulkImporting(false);
+                      // Reset the file input
+                      e.target.value = '';
+                    }
+                  }
+                }}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer hover:cursor-pointer hover:bg-gray-50 z-10"
+                disabled={isBulkImporting}
+              />
+              <Button
+                variant="outline"
+                className="gap-2"
+                disabled={isBulkImporting}
+              >
+                {isBulkImporting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Importing...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4" />
+                    Bulk Import
+                  </>
+                )}
+              </Button>
+            </div>
             <Button 
               disabled={selected.length === 0 || isAssigning} 
               onClick={assignSelected}
@@ -639,6 +783,19 @@ export default function CrcClassGroupDetailPage() {
             </Button>
           </div>
         </div>
+        
+        {/* Bulk Import Error Display */}
+        {bulkImportError && (
+          <div className="mt-4">
+            <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-red-500" />
+                <span className="text-red-700 font-medium text-sm">Import Error</span>
+              </div>
+              <p className="text-red-600 text-sm mt-1">{bulkImportError}</p>
+            </div>
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="rounded-lg border p-3">
             <div className="flex items-center justify-between mb-2">

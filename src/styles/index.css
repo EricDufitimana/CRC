@@ -5,6 +5,16 @@
 @tailwind components;
 @tailwind utilities;
 
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* Performance-optimized animations */
 @keyframes subtle-float {
   0%, 100% {

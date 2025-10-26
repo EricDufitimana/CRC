@@ -9,7 +9,7 @@ function formatEnumValue(value) {
 
 export async function GET(request, { params }) {
   try {
-    const classId = params.classId;
+    const classId =  await params.classId;
     
     if (!classId) {
       return NextResponse.json({ error: "Class ID is required" }, { status: 400 });
