@@ -78,7 +78,10 @@ export async function updateSession(request: NextRequest) {
     try {
       // Check admin creation access for create-admin route
       if (isCreateAdminRoute) {
-        const ALLOWED_USER_ID = "de333332-1435-4fd5-a128-0337b5078888";
+        const ALLOWED_USER_ID = process.env.ALLOWED_USER_ID_1! || process.env.ALLOWED_USER_ID_2!;
+        if (!ALLOWED_USER_ID) {
+          throw new Error('ALLOWED_USER_ID is not set');
+        }
         
         if (user.id !== ALLOWED_USER_ID) {
           console.log('🚫 Admin creation access denied:', {
