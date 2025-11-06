@@ -1,6 +1,7 @@
 import { Menu } from "@/types/menu";
 
-const menuData: Menu[] = [
+// Base menu data without dynamic classes
+const baseMenuData: Menu[] = [
   {
     id: 1,
     title: "Home",
@@ -97,55 +98,108 @@ const menuData: Menu[] = [
         title: "S5",
         path: "/workshops/s5",
         newTab: false,
-        nestedSubmenu: [
-          {
-            id: 22,
-            title: "Groups A+B",
-            path: "/workshops/s5/groups-ab",
-            newTab: false,
-          },
-          {
-            id: 23,
-            title: "Customer Care",
-            path: "/workshops/s5/customer-care",
-            newTab: false,
-          },
-        ]
+        nestedSubmenu: [] // Will be populated by getMenuDataWithClasses
       },
       {
         id: 21,
         title: "S6",
         path: "/workshops/s6",
         newTab: false,
-        nestedSubmenu: [
-          {
-            id: 24,
-            title: "Groups A+B",
-            path: "/workshops/s6/groups-ab",
-            newTab: false,
-          },
-          {
-            id: 25,
-            title: "Group C",
-            path: "/workshops/s6/group-c",
-            newTab: false,
-          },
-          {
-            id: 26,
-            title: "Group D",
-            path: "/workshops/s6/group-d",
-            newTab: false,
-          },
-          {
-            id: 27,
-            title: "Job Readiness Course",
-            path: "/workshops/s6/job-readiness",
-            newTab: false,
-          },
-        ]
+        nestedSubmenu: [] // Will be populated by getMenuDataWithClasses
       },
     ]
   },
 
 ];
-export default menuData;
+// Function to fetch CRC classes and populate menu data
+export async function getMenuDataWithClasses(): Promise<Menu[]> {
+  // Clone the base menu data
+  const menuData = JSON.parse(JSON.stringify(baseMenuData));
+
+  try {
+    // Fetch CRC classes for S5 and S6
+    const [s5Response, s6Response] = await Promise.all([
+      fetch(`${typeof window !== 'undefined' ? window.location.origin : ''}/api/crc-classes/by-grade-group?gradeGroup=s5`).catch(() => null),
+      fetch(`${typeof window !== 'undefined' ? window.location.origin : ''}/api/crc-classes/by-grade-group?gradeGroup=s6`).catch(() => null)
+    ]);
+
+    let s5Classes: any[] = [];
+    let s6Classes: any[] = [];
+
+    if (s5Response?.ok) {
+      const s5Data = await s5Response.json();
+      if (s5Data.success) {
+        s5Classes = s5Data.data;
+      }
+    }
+
+    if (s6Response?.ok) {
+      const s6Data = await s6Response.json();
+      if (s6Data.success) {
+        s6Classes = s6Data.data;
+      }
+    }
+
+    // Find S5 and S6 menu items and populate their nestedSubmenu
+    const workshopsMenu = menuData.find((item: Menu) => item.id === 5);
+    if (workshopsMenu?.submenu) {
+      const s5Menu = workshopsMenu.submenu.find((item: Menu) => item.id === 20);
+      if (s5Menu && s5Classes.length > 0) {
+        s5Menu.nestedSubmenu = s5Classes.map((crcClass, index) => ({
+          id: 1000 + index, // Use high IDs to avoid conflicts
+          title: crcClass.name,
+          path: `/workshops/s5/${crcClass.id}`,
+          newTab: false,
+        }));
+      }
+
+      const s6Menu = workshopsMenu.submenu.find((item: Menu) => item.id === 21);
+      if (s6Menu && s6Classes.length > 0) {
+        s6Menu.nestedSubmenu = s6Classes.map((crcClass, index) => ({
+          id: 2000 + index, // Use high IDs to avoid conflicts
+          title: crcClass.name,
+          path: `/workshops/s6/${crcClass.id}`,
+          newTab: false,
+        }));
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching CRC classes for menu:', error);
+  }
+
+  return menuData;
+}
+
+// Client-side hook version that uses state
+export function useMenuDataWithClasses(s5Classes: any[] = [], s6Classes: any[] = []): Menu[] {
+  // Clone the base menu data
+  const menuData = JSON.parse(JSON.stringify(baseMenuData));
+
+  // Find S5 and S6 menu items and update their nestedSubmenu
+  const workshopsMenu = menuData.find((item: Menu) => item.id === 5);
+  if (workshopsMenu?.submenu) {
+    const s5Menu = workshopsMenu.submenu.find((item: Menu) => item.id === 20);
+    if (s5Menu && s5Classes.length > 0) {
+      s5Menu.nestedSubmenu = s5Classes.map((crcClass, index) => ({
+        id: 1000 + index, // Use high IDs to avoid conflicts
+        title: crcClass.name,
+        path: `/workshops/s5/${crcClass.id}`,
+        newTab: false,
+      }));
+    }
+
+    const s6Menu = workshopsMenu.submenu.find((item: Menu) => item.id === 21);
+    if (s6Menu && s6Classes.length > 0) {
+      s6Menu.nestedSubmenu = s6Classes.map((crcClass, index) => ({
+        id: 2000 + index, // Use high IDs to avoid conflicts
+        title: crcClass.name,
+        path: `/workshops/s6/${crcClass.id}`,
+        newTab: false,
+      }));
+    }
+  }
+
+  return menuData;
+}
+
+export default baseMenuData;

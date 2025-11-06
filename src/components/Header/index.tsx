@@ -18,7 +18,7 @@ import {
   SheetClose
 } from "@/components/ui/sheet";
 
-import menuData from "./menuData";
+import baseMenuData, { useMenuDataWithClasses, getMenuDataWithClasses } from "./menuData";
 
 const Header = () => {
   const pathUrl = usePathname();
@@ -205,6 +205,26 @@ const Header = () => {
   const { theme, setTheme } = useTheme();
   const [loading, setLoading ] = useState(false);
 
+  // Menu data state
+  const [menuData, setMenuData] = useState<typeof baseMenuData>(baseMenuData);
+  const [menuLoading, setMenuLoading] = useState(true);
+
+  // Fetch menu data with CRC classes
+  useEffect(() => {
+    const loadMenuData = async () => {
+      try {
+        const data = await getMenuDataWithClasses();
+        setMenuData(data);
+      } catch (error) {
+        console.error('Error loading menu data:', error);
+      } finally {
+        setMenuLoading(false);
+      }
+    };
+
+    loadMenuData();
+  }, []);
+
   // GSAP refs
   const headerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -359,7 +379,7 @@ const Header = () => {
                             className={`submenu invisible absolute left-0 top-[110%] w-[250px] opacity-0 transition-all duration-300 ease-linear group-hover:visible group-hover:top-full group-hover:opacity-100 ${
                               sticky && !isMobile
                                 ? "rounded-2xl bg-white backdrop-blur-[10px] border border-stroke dark:border-dark-3/20 dark:bg-dark/90 p-4 shadow-lg" 
-                                : "rounded-sm bg-white p-4 dark:bg-dark-2 shadow-lg"
+                                : "rounded-2xl bg-white border border-stroke dark:border-dark-3/20 p-4 dark:bg-dark-2 shadow-lg"
                             }`}
                           >
                             {menuItem?.submenu?.map((submenuItem: any, i) => (
@@ -389,20 +409,31 @@ const Header = () => {
                                       </span>
                                     </div>
                                     {/* Nested submenu */}
-                                    <div className="invisible absolute left-full top-0 ml-2 w-[200px] opacity-0 transition-all duration-300 ease-linear group-hover/nested:visible group-hover/nested:opacity-100 rounded-sm bg-white p-2 shadow-lg dark:bg-dark-2">
-                                      {submenuItem.nestedSubmenu.map((nestedItem: any, j: number) => (
-                                        <Link
-                                          href={nestedItem.path}
-                                          key={j}
-                                          className={`block rounded px-4 py-[8px] text-sm ${
-                                            pathUrl === nestedItem.path
-                                              ? "text-primary"
-                                              : "text-body-color hover:text-primary dark:text-dark-6 dark:hover:text-primary"
-                                          }`}
-                                        >
-                                          {nestedItem.title}
-                                        </Link>
-                                      ))}
+                                    <div className="invisible absolute left-full top-0 ml-2 w-[200px] opacity-0 transition-all duration-300 ease-linear group-hover/nested:visible group-hover/nested:opacity-100 rounded-2xl bg-white border border-stroke dark:border-dark-3/20 p-2 shadow-lg dark:bg-dark-2">
+                                      {menuLoading && (submenuItem.id === 20 || submenuItem.id === 21) ? (
+                                        <div className="flex items-center justify-center py-4">
+                                          <Loader2 className="mr-2 h-4 w-4 animate-spin text-gray-500" />
+                                          <span className="ml-2 text-sm text-body-color dark:text-dark-6">Loading...</span>
+                                        </div>
+                                      ) : submenuItem.nestedSubmenu && submenuItem.nestedSubmenu.length > 0 ? (
+                                        submenuItem.nestedSubmenu.map((nestedItem: any, j: number) => (
+                                          <Link
+                                            href={nestedItem.path}
+                                            key={j}
+                                            className={`block rounded px-4 py-[8px] text-sm ${
+                                              pathUrl === nestedItem.path
+                                                ? "text-primary"
+                                                : "text-body-color hover:text-primary dark:text-dark-6 dark:hover:text-primary"
+                                            }`}
+                                          >
+                                            {nestedItem.title}
+                                          </Link>
+                                        ))
+                                      ) : (
+                                        <div className="px-4 py-[8px] text-sm text-body-color dark:text-dark-6">
+                                          No classes available
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
                                 ) : (
@@ -534,20 +565,32 @@ const Header = () => {
                                             </button>
                                             {openNestedIndex === i && (
                                               <div className="ml-4 mt-2 space-y-1">
-                                                {submenuItem.nestedSubmenu.map((nestedItem: any, j: number) => (
-                                                  <SheetClose asChild key={j}>
-                                                    <Link
-                                                      href={nestedItem.path}
-                                                      className={`block py-2 px-4 rounded-md text-sm ${
-                                                        pathUrl === nestedItem.path
-                                                          ? "text-primary bg-primary/10"
-                                                          : "text-gray-500 dark:text-gray-500 hover:text-primary hover:bg-primary/5"
-                                                      }`}
-                                                    >
-                                                      {nestedItem.title}
-                                                    </Link>
-                                                  </SheetClose>
-                                                ))}
+                                                {menuLoading && (submenuItem.id === 20 || submenuItem.id === 21) ? (
+                                                  <div className="flex items-center justify-center py-4">
+                                                    
+                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin text-gray-500" />
+                                                    <span className="ml-2 text-sm text-gray-500 dark:text-gray-500">Loading...</span>
+                                                  </div>
+                                                ) : submenuItem.nestedSubmenu && submenuItem.nestedSubmenu.length > 0 ? (
+                                                  submenuItem.nestedSubmenu.map((nestedItem: any, j: number) => (
+                                                    <SheetClose asChild key={j}>
+                                                      <Link
+                                                        href={nestedItem.path}
+                                                        className={`block py-2 px-4 rounded-md text-sm ${
+                                                          pathUrl === nestedItem.path
+                                                            ? "text-primary bg-primary/10"
+                                                            : "text-gray-500 dark:text-gray-500 hover:text-primary hover:bg-primary/5"
+                                                        }`}
+                                                      >
+                                                        {nestedItem.title}
+                                                      </Link>
+                                                    </SheetClose>
+                                                  ))
+                                                ) : (
+                                                  <div className="px-4 py-2 text-sm text-gray-500 dark:text-gray-500">
+                                                    No classes available
+                                                  </div>
+                                                )}
                                               </div>
                                             )}
                                           </div>
