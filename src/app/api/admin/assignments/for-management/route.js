@@ -160,27 +160,68 @@ export async function GET(request) {
       submissions.map((s) => [s.student_id.toString(), s])
     )
 
-    // Use selectedClassId if provided, otherwise fall back to workshop's first CRC class
-    const targetClassId = selectedClassId || assignment.workshops?.workshop_to_crc?.[0]?.crc_class?.id?.toString()
-    console.log('🎯 DEBUG - Target class ID for filtering:', {
-      selectedClassId,
-      fallbackClassId: assignment.workshops?.workshop_to_crc?.[0]?.crc_class?.id?.toString(),
-      finalTargetClassId: targetClassId,
-      assignmentWorkshop: assignment.workshops?.title,
-      workshopCrcClasses: assignment.workshops?.workshop_to_crc?.map(wtc => ({
-        id: wtc.crc_class.id.toString(),
-        name: wtc.crc_class.name
-      }))
-    })
-    
-    // Build the where clause for student filtering
+    // Check if selectedClassId is a grade group ID (ends with "_group") or a specific class ID
     let studentWhereClause = {};
     
-    if (targetClassId) {
-      studentWhereClause = {
-        crc_class_id: BigInt(targetClassId)
-      };
+    if (selectedClassId) {
+      if (selectedClassId.endsWith('_group')) {
+        // It's a grade group ID - extract grade group name and fetch all classes in that group
+        const gradeGroupName = selectedClassId
+          .replace('_group', '')
+          .replace(/_/g, ' ')
+          .split(' ')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(' ');
+        
+        // Map formatted names back to enum values
+        const gradeGroupMap = {
+          'Enrichment Year': 'Enrichment_Year',
+          'Senior 4': 'Senior_4',
+          'Senior 5': 'Senior_5',
+          'Senior 6': 'Senior_6',
+          'Other': null
+        };
+        
+        const enumValue = gradeGroupMap[gradeGroupName] || gradeGroupName.replace(' ', '_');
+        
+        if (enumValue) {
+          // Fetch all classes in this grade group
+          const gradeGroupClasses = await prisma.crc_class.findMany({
+            where: {
+              grade_group: enumValue
+            },
+            select: { id: true }
+          });
+          
+          const classIds = gradeGroupClasses.map(c => c.id);
+          
+          if (classIds.length > 0) {
+            studentWhereClause = {
+              crc_class_id: { in: classIds }
+            };
+          }
+        }
+      } else {
+        // It's a specific class ID
+        studentWhereClause = {
+          crc_class_id: BigInt(selectedClassId)
+        };
+      }
+    } else {
+      // Fall back to workshop's first CRC class
+      const fallbackClassId = assignment.workshops?.workshop_to_crc?.[0]?.crc_class?.id?.toString();
+      if (fallbackClassId) {
+        studentWhereClause = {
+          crc_class_id: BigInt(fallbackClassId)
+        };
+      }
     }
+    
+    console.log('🎯 DEBUG - Target class ID for filtering:', {
+      selectedClassId,
+      isGradeGroup: selectedClassId?.endsWith('_group'),
+      studentWhereClause
+    })
     
     console.log('🎯 DEBUG - Student where clause:', studentWhereClause)
     
@@ -200,7 +241,7 @@ export async function GET(request) {
 
     console.log('👥 DEBUG - Students found:', {
       count: students.length,
-      targetClassId,
+      selectedClassId,
       studentWhereClause,
       firstStudent: students[0] ? {
         id: students[0].id.toString(),

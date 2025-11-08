@@ -79,11 +79,13 @@ interface Workshop {
   id: number;
   title: string;
   date: string;
+  crc_classes?: Array<{ id: string; name: string }>;
 }
 
 interface CRCClass {
   id: number;
   name: string;
+  grade_group?: string | null;
 }
 
 interface AttendanceRecord {
@@ -93,6 +95,7 @@ interface AttendanceRecord {
   created_at: string;
   workshop_title: string;
   class_name: string;
+  class_id?: string | null;
 }
 
 export default function AttendancePage() {
@@ -135,8 +138,8 @@ export default function AttendancePage() {
     absentLastWeek: 0
   });
 
-  // Generate week options for the dropdown
-  const generateWeekOptions = () => {
+  // Generate week options for the dropdown (infinite scroll)
+  const generateWeekOptions = useMemo(() => {
     const options = [];
     const today = new Date();
     
@@ -146,6 +149,7 @@ export default function AttendancePage() {
       const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
       const monday = new Date(date);
       monday.setDate(date.getDate() - daysToSubtract);
+      monday.setHours(0, 0, 0, 0);
       return monday;
     };
     
@@ -153,6 +157,7 @@ export default function AttendancePage() {
     const getSundayOfWeek = (monday: Date) => {
       const sunday = new Date(monday);
       sunday.setDate(monday.getDate() + 6);
+      sunday.setHours(23, 59, 59, 999);
       return sunday;
     };
     
@@ -161,23 +166,50 @@ export default function AttendancePage() {
     const thisWeekSunday = getSundayOfWeek(thisWeekMonday);
     options.push({
       value: "this-week",
-      label: `This Week (${format(thisWeekMonday, "MMM dd")} - ${format(thisWeekSunday, "MMM dd")})`
+      label: `This Week (${format(thisWeekMonday, "MMM dd")} - ${format(thisWeekSunday, "MMM dd")})`,
+      startDate: thisWeekMonday,
+      endDate: thisWeekSunday
     });
     
-    // Last 4 weeks
-    for (let i = 1; i <= 4; i++) {
-      const weekMonday = new Date(thisWeekMonday);
-      weekMonday.setDate(thisWeekMonday.getDate() - (i * 7));
-      const weekSunday = getSundayOfWeek(weekMonday);
+    // Find the earliest attendance record date
+    if (attendanceRecords.length > 0) {
+      const earliestRecordDate = new Date(Math.min(...attendanceRecords.map(r => new Date(r.created_at).getTime())));
+      const earliestWeekMonday = getMondayOfWeek(earliestRecordDate);
+      
+      // Calculate how many weeks back we need to go from the earliest record
+      const weeksBack = Math.ceil((thisWeekMonday.getTime() - earliestWeekMonday.getTime()) / (7 * 24 * 60 * 60 * 1000));
+      
+      // Generate all weeks from now back to the earliest record week
+      for (let i = 1; i <= weeksBack; i++) {
+        const weekMonday = new Date(thisWeekMonday);
+        weekMonday.setDate(thisWeekMonday.getDate() - (i * 7));
+        weekMonday.setHours(0, 0, 0, 0);
+        const weekSunday = getSundayOfWeek(weekMonday);
+        
+        options.push({
+          value: `week-${i}`,
+          label: `${i === 1 ? 'Last week' : `${i} weeks ago`} (${format(weekMonday, "MMM dd")} - ${format(weekSunday, "MMM dd")})`,
+          startDate: weekMonday,
+          endDate: weekSunday
+        });
+      }
+    } else {
+      // If no attendance records, just show last week as an option
+      const lastWeekMonday = new Date(thisWeekMonday);
+      lastWeekMonday.setDate(thisWeekMonday.getDate() - 7);
+      lastWeekMonday.setHours(0, 0, 0, 0);
+      const lastWeekSunday = getSundayOfWeek(lastWeekMonday);
       
       options.push({
-        value: `week-${i}`,
-        label: `${i === 1 ? 'Last' : `${i} weeks ago`} (${format(weekMonday, "MMM dd")} - ${format(weekSunday, "MMM dd")})`
+        value: `week-1`,
+        label: `Last week (${format(lastWeekMonday, "MMM dd")} - ${format(lastWeekSunday, "MMM dd")})`,
+        startDate: lastWeekMonday,
+        endDate: lastWeekSunday
       });
     }
     
     return options;
-  };
+  }, [attendanceRecords]);
 
   useEffect(() => {
     // Load attendance records
@@ -196,7 +228,8 @@ export default function AttendancePage() {
             status: record.status,
             created_at: record.created_at,
             workshop_title: record.session?.workshop?.title || 'Unknown Workshop',
-            class_name: record.session?.class?.name || 'Unknown Class'
+            class_name: record.session?.class?.name || 'Unknown Class',
+            class_id: record.session?.crc_class_id?.toString() || null
           }));
           console.log('Loaded attendance records:', transformedRecords.length, transformedRecords);
           setAttendanceRecords(transformedRecords);
@@ -228,28 +261,7 @@ export default function AttendancePage() {
         const response = await fetch('/api/admin/crc-classes');
         const data = await response.json();
         if (data.classes) {
-          // Sort classes: EY first, then S4, S5, S6
-          const sortedClasses = data.classes.sort((a: any, b: any) => {
-            const getClassOrder = (className: string) => {
-              if (className.toLowerCase().includes('ey') || className.toLowerCase().includes('enrichment')) return 1;
-              if (className.toLowerCase().includes('s4')) return 2;
-              if (className.toLowerCase().includes('s5')) return 3;
-              if (className.toLowerCase().includes('s6')) return 4;
-              return 5; // Any other classes go last
-            };
-            
-            const orderA = getClassOrder(a.name);
-            const orderB = getClassOrder(b.name);
-            
-            if (orderA !== orderB) {
-              return orderA - orderB;
-            }
-            
-            // If same order, sort alphabetically
-            return a.name.localeCompare(b.name);
-          });
-          
-          setClasses(sortedClasses);
+          setClasses(data.classes);
         } else {
           setClasses([]);
         }
@@ -264,16 +276,18 @@ export default function AttendancePage() {
     fetchClasses();
   }, []);
 
+  // Load workshops for selected class (excludes workshops with existing attendance)
   useEffect(() => {
-    // Load workshops for selected class when selectedClassId changes
-    const loadWorkshopsForClass = async () => {
-      if (!selectedClassId) {
-        setFilteredWorkshops([]);
-        return;
-      }
+    if (!selectedClassId) {
+      setFilteredWorkshops([]);
+      setLoadingWorkshops(false);
+      return;
+    }
 
+    const loadWorkshopsForClass = async () => {
       setLoadingWorkshops(true);
       try {
+        // Load workshops for this specific class - API will exclude those with existing attendance
         const response = await fetch(`/api/admin/workshops?crcClassId=${selectedClassId}&useCase=attendance`);
         const data = await response.json();
         
@@ -339,6 +353,35 @@ export default function AttendancePage() {
     setSelectedClassId(classId === "all" ? null : parseInt(classId));
     setSelectedWorkshop(""); // Reset workshop selection
   };
+
+  // Group classes by grade_group
+  const groupedClasses = useMemo(() => {
+    const grouped: Record<string, CRCClass[]> = {};
+    
+    classes.forEach(cls => {
+      const group = cls.grade_group || 'Other';
+      if (!grouped[group]) {
+        grouped[group] = [];
+      }
+      grouped[group].push(cls);
+    });
+
+    // Sort groups: Enrichment Year, Senior 4, Senior 5, Senior 6, then Others
+    const order = ['Enrichment Year', 'Senior 4', 'Senior 5', 'Senior 6'];
+    const sortedGroups = Object.entries(grouped).sort((a, b) => {
+      const aIndex = order.indexOf(a[0]);
+      const bIndex = order.indexOf(b[0]);
+      if (aIndex === -1 && bIndex === -1) return a[0].localeCompare(b[0]);
+      if (aIndex === -1) return 1;
+      if (bIndex === -1) return -1;
+      return aIndex - bIndex;
+    });
+
+    return sortedGroups.map(([groupName, classes]) => ({
+      groupName,
+      classes: classes.sort((a, b) => a.name.localeCompare(b.name))
+    }));
+  }, [classes]);
 
   const getStatusBadge = (status: string, attendanceId: number) => {
     const statusOptions = [
@@ -471,7 +514,8 @@ export default function AttendancePage() {
             status: record.status,
             created_at: record.created_at,
             workshop_title: record.session?.workshop?.title || 'Unknown Workshop',
-            class_name: record.session?.class?.name || 'Unknown Class'
+            class_name: record.session?.class?.name || 'Unknown Class',
+            class_id: record.session?.crc_class_id?.toString() || null
           }));
           setAttendanceRecords(transformedRecords);
         }
@@ -563,54 +607,24 @@ console.log('=== END FILTER DEBUG ===');
     const matchesSearch = record.student?.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          record.student?.last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          record.student?.student_id?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesClass = !selectedClass || selectedClass === "all" || record.class_name?.includes(selectedClass);
+    // Match by class ID if available, otherwise fall back to exact class name match
+    const matchesClass = !selectedClass || selectedClass === "all" || 
+      (selectedClass !== "all" && (
+        record.class_id === selectedClass || 
+        (!record.class_id && record.class_name === selectedClass)
+      ));
     const matchesDate = !selectedDate || record.created_at?.startsWith(selectedDate);
     const matchesStatus = !selectedStatus || selectedStatus === "all" || record.status === selectedStatus;
     const matchesWorkshop = !selectedWorkshopFilter || selectedWorkshopFilter === "all" || record.workshop_title === selectedWorkshopFilter;
     
     // Filter by selected week
-    const weekOptions = generateWeekOptions();
+    const weekOptions = generateWeekOptions;
     const selectedWeekOption = weekOptions.find(option => option.value === selectedWeek);
     let matchesWeek = true;
     
-    if (selectedWeekOption) {
-      const dateRangeMatch = selectedWeekOption.label.match(/\(([^)]+)\)/);
-      if (dateRangeMatch) {
-        const [startDateStr, endDateStr] = dateRangeMatch[1].split(' - ');
-        
-        // Parse dates more reliably
-        const parseDate = (dateStr: string) => {
-          const today = new Date();
-          const currentYear = today.getFullYear();
-          
-          // Try to parse the date with the current year
-          const dateWithYear = new Date(`${dateStr}, ${currentYear}`);
-          
-          // If the parsed date is invalid, return null
-          if (isNaN(dateWithYear.getTime())) {
-            return null;
-          }
-          
-          // If the date is in the future and we're in the latter part of the year,
-          // it might be from last year
-          if (dateWithYear > today && today.getMonth() >= 10) {
-            return new Date(`${dateStr}, ${currentYear - 1}`);
-          }
-          
-          return dateWithYear;
-        };
-        
-        const startDate = parseDate(startDateStr);
-        const endDate = parseDate(endDateStr);
-        
-        if (startDate && endDate) {
-          // Set end date to end of day for inclusive comparison
-          endDate.setHours(23, 59, 59, 999);
-          
-          const recordDate = new Date(record.created_at);
-          matchesWeek = recordDate >= startDate && recordDate <= endDate;
-        }
-      }
+    if (selectedWeekOption && selectedWeekOption.startDate && selectedWeekOption.endDate) {
+      const recordDate = new Date(record.created_at);
+      matchesWeek = recordDate >= selectedWeekOption.startDate && recordDate <= selectedWeekOption.endDate;
     }
     
     return matchesSearch && matchesClass && matchesDate && matchesStatus && matchesWorkshop && matchesWeek;
@@ -638,51 +652,15 @@ console.log('=== END FILTER DEBUG ===');
 
   // Calculate real metrics from attendance records for selected week
   const calculateMetrics = () => {
-    const today = new Date();
-    const weekOptions = generateWeekOptions();
+    const weekOptions = generateWeekOptions;
     const selectedWeekOption = weekOptions.find(option => option.value === selectedWeek);
     
-    if (!selectedWeekOption) return;
+    if (!selectedWeekOption || !selectedWeekOption.startDate || !selectedWeekOption.endDate) return;
     
-    // Parse the date range from the selected week
-    const dateRangeMatch = selectedWeekOption.label.match(/\(([^)]+)\)/);
-    if (!dateRangeMatch) return;
-    
-    const [startDateStr, endDateStr] = dateRangeMatch[1].split(' - ');
-    
-    // Parse dates more reliably
-    const parseDate = (dateStr: string) => {
-      const currentYear = today.getFullYear();
-      
-      // Try to parse the date with the current year
-      const dateWithYear = new Date(`${dateStr}, ${currentYear}`);
-      
-      // If the parsed date is invalid, return null
-      if (isNaN(dateWithYear.getTime())) {
-        return null;
-      }
-      
-      // If the date is in the future and we're in the latter part of the year,
-      // it might be from last year
-      if (dateWithYear > today && today.getMonth() >= 10) {
-        return new Date(`${dateStr}, ${currentYear - 1}`);
-      }
-      
-      return dateWithYear;
-    };
-    
-    const startDate = parseDate(startDateStr);
-    const endDate = parseDate(endDateStr);
-    
-    if (!startDate || !endDate) return;
-    
-    // Set end date to end of day for inclusive comparison
-    endDate.setHours(23, 59, 59, 999);
-    
-    // Filter records for the selected week
+    // Filter records for the selected week using the actual date objects
     const weekRecords = attendanceRecords.filter(record => {
       const recordDate = new Date(record.created_at);
-      return recordDate >= startDate && recordDate <= endDate;
+      return recordDate >= selectedWeekOption.startDate! && recordDate <= selectedWeekOption.endDate!;
     });
     
     // Calculate metrics for the selected week
@@ -692,10 +670,10 @@ console.log('=== END FILTER DEBUG ===');
     const totalStudents = presentCount + lateCount + absentCount;
     
     // Calculate comparison week (previous week)
-    const comparisonStartDate = new Date(startDate);
-    comparisonStartDate.setDate(startDate.getDate() - 7);
-    const comparisonEndDate = new Date(endDate);
-    comparisonEndDate.setDate(endDate.getDate() - 7);
+    const comparisonStartDate = new Date(selectedWeekOption.startDate!);
+    comparisonStartDate.setDate(comparisonStartDate.getDate() - 7);
+    const comparisonEndDate = new Date(selectedWeekOption.endDate!);
+    comparisonEndDate.setDate(comparisonEndDate.getDate() - 7);
     
     const comparisonRecords = attendanceRecords.filter(record => {
       const recordDate = new Date(record.created_at);
@@ -927,7 +905,7 @@ console.log('=== END FILTER DEBUG ===');
                 <SelectValue placeholder="Select week" />
               </SelectTrigger>
               <SelectContent className="rounded-xl">
-                {generateWeekOptions().map((option) => (
+                {generateWeekOptions.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
                   </SelectItem>
@@ -977,16 +955,23 @@ console.log('=== END FILTER DEBUG ===');
                             <div className="animate-spin h-5 w-5 border-2 border-orange-600 border-t-transparent rounded-full"></div>
                             <span className="ml-2 text-sm text-gray-500">Loading classes...</span>
                             </div>
+                        ) : groupedClasses.length === 0 ? (
+                          <div className="p-4 text-center text-gray-500">
+                            No classes available
+                          </div>
                         ) : (
-                          Array.isArray(classes) ? classes.map((cls) => (
-                            <SelectItem key={cls.id} value={cls.id.toString()}>
-                              {cls.name}
-                          </SelectItem>
-                          )) : (
-                            <div className="p-4 text-center text-gray-500">
-                              No classes available
+                          groupedClasses.map(({ groupName, classes: groupClasses }) => (
+                            <div key={groupName}>
+                              <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                                {groupName}
+                              </div>
+                              {groupClasses.map((cls) => (
+                                <SelectItem key={cls.id} value={cls.id.toString()}>
+                                  {cls.name}
+                                </SelectItem>
+                              ))}
                             </div>
-                          )
+                          ))
                         )}
                       </SelectContent>
                     </Select>
@@ -1009,19 +994,28 @@ console.log('=== END FILTER DEBUG ===');
                             <div className="animate-spin h-5 w-5 border-2 border-orange-600 border-t-transparent rounded-full"></div>
                             <span className="ml-2 text-sm text-gray-500">Loading workshops...</span>
                           </div>
-                        ) : (
-                          Array.isArray(filteredWorkshops) && filteredWorkshops.length > 0 ? filteredWorkshops.map((workshop) => (
+                        ) : selectedClass === "all" ? (
+                          <div className="p-4 text-center text-gray-500">
+                            Select a class first
+                          </div>
+                        ) : Array.isArray(filteredWorkshops) && filteredWorkshops.length > 0 ? (
+                          filteredWorkshops.map((workshop) => (
                             <SelectItem key={workshop.id} value={workshop.id.toString()}>
                               <div className="flex flex-col">
                                 <span className="font-medium">{workshop.title}</span>
                                 <span className="text-xs text-gray-500">{format(new Date(workshop.date), "MMM dd, yyyy")}</span>
                               </div>
-                          </SelectItem>
-                          )) : (
-                            <div className="p-4 text-center text-gray-500">
-                              No workshops found for this class
-                            </div>
-                          )
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <div className="p-4 text-center text-gray-500">
+                            {selectedClassId ? 
+                            <p>
+                              No available workshops for this class <br/> <span className="text-xs text-gray-500"> (all workshops already have attendance recorded)</span>
+                            </p>
+                            : 
+                            "No workshops found for this class"}
+                          </div>
                         )}
                       </SelectContent>
                     </Select>
@@ -1029,7 +1023,7 @@ console.log('=== END FILTER DEBUG ===');
                 </div>
 
                 {/* Student List */}
-                {selectedWorkshop && selectedClass !== "all" && !loadingWorkshops && (
+                {selectedWorkshop && selectedClass !== "all" && (
                   <div className="flex-1 overflow-hidden flex flex-col">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="font-semibold text-lg">Student Attendance</h3>
@@ -1392,17 +1386,33 @@ console.log('=== END FILTER DEBUG ===');
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
               <div className="flex-1">
                 <Label htmlFor="class-filter">Select Class</Label>
-                <Select value={selectedClass} onValueChange={setSelectedClass}>
+                <Select value={selectedClass} onValueChange={setSelectedClass} disabled={classesLoading}>
                   <SelectTrigger>
-                    <SelectValue placeholder="All classes" />
+                    <SelectValue placeholder={classesLoading ? "Loading classes..." : "All classes"} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All classes</SelectItem>
-                    {classes.map((cls) => (
-                      <SelectItem key={cls.id} value={cls.name}>
-                        {cls.name}
-                      </SelectItem>
-                    ))}
+                    {classesLoading ? (
+                      <div className="flex items-center justify-center p-4">
+                        <div className="animate-spin h-5 w-5 border-2 border-orange-600 border-t-transparent rounded-full"></div>
+                        <span className="ml-2 text-sm text-gray-500">Loading classes...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <SelectItem value="all">All classes</SelectItem>
+                        {groupedClasses.map(({ groupName, classes: groupClasses }) => (
+                          <div key={groupName}>
+                            <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                              {groupName}
+                            </div>
+                            {groupClasses.map((cls) => (
+                              <SelectItem key={cls.id} value={cls.id.toString()}>
+                                {cls.name}
+                              </SelectItem>
+                            ))}
+                          </div>
+                        ))}
+                      </>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -1425,36 +1435,51 @@ console.log('=== END FILTER DEBUG ===');
             
             <div className="flex-1">
               <Label htmlFor="workshop-filter">Select Workshop</Label>
-              <Select value={selectedWorkshopFilter} onValueChange={setSelectedWorkshopFilter}>
+              <Select value={selectedWorkshopFilter} onValueChange={setSelectedWorkshopFilter} disabled={loading}>
                 <SelectTrigger>
-                  <SelectValue placeholder="All workshops" />
+                  <SelectValue placeholder={loading ? "Loading workshops..." : "All workshops"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All workshops</SelectItem>
-                  {(() => {
-                    // If no specific class is selected, show all workshops
-                    if (selectedClass === "all") {
-                      return uniqueWorkshops.map((workshop) => (
-                        <SelectItem key={workshop} value={workshop}>
-                          {workshop}
-                        </SelectItem>
-                      ));
-                    } else {
-                      // If a specific class is selected, only show workshops for that class
-                      const classWorkshops = attendanceRecords
-                        .filter(record => record.class_name === selectedClass)
-                        .map(record => record.workshop_title);
-                      
-                      // Remove duplicates and sort
-                      const uniqueClassWorkshops = Array.from(new Set(classWorkshops)).sort();
-                      
-                      return uniqueClassWorkshops.map((workshop) => (
-                        <SelectItem key={workshop} value={workshop}>
-                          {workshop}
-                        </SelectItem>
-                      ));
-                    }
-                  })()}
+                  {loading ? (
+                    <div className="flex items-center justify-center p-4">
+                      <div className="animate-spin h-5 w-5 border-2 border-orange-600 border-t-transparent rounded-full"></div>
+                      <span className="ml-2 text-sm text-gray-500">Loading workshops...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <SelectItem value="all">All workshops</SelectItem>
+                      {(() => {
+                        // If no specific class is selected, show all workshops
+                        if (selectedClass === "all") {
+                          return uniqueWorkshops.map((workshop) => (
+                            <SelectItem key={workshop} value={workshop}>
+                              {workshop}
+                            </SelectItem>
+                          ));
+                        } else {
+                          // If a specific class is selected, only show workshops for that class
+                          const classWorkshops = attendanceRecords
+                            .filter(record => {
+                              // Match by class ID if available, otherwise fall back to class name
+                              if (record.class_id) {
+                                return record.class_id === selectedClass;
+                              }
+                              return record.class_name === selectedClass;
+                            })
+                            .map(record => record.workshop_title);
+                          
+                          // Remove duplicates and sort
+                          const uniqueClassWorkshops = Array.from(new Set(classWorkshops)).sort();
+                          
+                          return uniqueClassWorkshops.map((workshop) => (
+                            <SelectItem key={workshop} value={workshop}>
+                              {workshop}
+                            </SelectItem>
+                          ));
+                        }
+                      })()}
+                    </>
+                  )}
                 </SelectContent>
               </Select>
             </div>

@@ -11,17 +11,18 @@ import MultipleAnnouncementsBanner from "@/components/Banner/MultipleAnnouncemen
 import SectionTitle from "@/components/Common/SectionTitle";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-// Type definition based on Sanity schema
+// Type definition based on Supabase schema
 type Event = {
-  _id: string;
-  _type: "events";
+  id: number;
   title: string;
   description: string;
   type: "previous_events" | "upcoming_events";
   date: string; // ISO date string from Sanity
   location: string;
   category: "conference" | "seminar" | "workshop" | "webinar" | "training" | "other";
-  gallery: Array<{
+  gallery_folder?: string | null;
+  gallery_images?: string[];
+  gallery?: Array<{
     _key: string;
     _type: "image";
     asset: {
@@ -184,12 +185,32 @@ export default function PreviousEventsPage() {
               ) : events && events.length > 0 ? (
                 events.map((event) => (
                   <EventCard
-                    key={event._id}
+                    key={event.id}
                     event={{
-                      ...event,
+                      _id: String(event.id),
+                      _type: "events",
+                      title: event.title,
+                      description: event.description,
+                      type: event.type,
+                      date: event.date,
+                      location: event.location,
+                      category: event.category,
+                      gallery: event.gallery_images?.map((url, index) => ({
+                        _key: `img-${index}`,
+                        _type: "image" as const,
+                        asset: {
+                          _id: `asset-${index}`,
+                          url: url,
+                          metadata: {}
+                        },
+                        isHero: index === 0
+                      })) || event.gallery || [],
                       event_organizer: event.event_organizer ? {
-                        ...event.event_organizer,
-                        image: event.event_organizer.image?.asset?.url
+                        name: event.event_organizer.name,
+                        role: event.event_organizer.role,
+                        image: typeof event.event_organizer.image === 'string' 
+                          ? event.event_organizer.image 
+                          : event.event_organizer.image?.asset?.url
                       } : undefined
                     }}
                   />
@@ -197,10 +218,14 @@ export default function PreviousEventsPage() {
               ) : (
                 <div className="col-span-full text-center py-16">
                   <div className="max-w-md mx-auto">
-                    <div className="text-gray-400 mb-4">
-                      <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
+                    <div className="mb-4 flex justify-center">
+                      <Image
+                        src="/images/empty-state/empty-state-events.svg"
+                        alt="No previous events"
+                        width={256}
+                        height={256}
+                        className="h-64 w-64 mx-auto"
+                      />
                     </div>
                     <h3 className="text-xl font-semibold text-gray-700 mb-2">No Previous Events</h3>
                     <p className="text-gray-500">We haven&apos;t held any events yet. Check back soon for updates!</p>

@@ -236,7 +236,7 @@ export const addResource = async(state: any, form:FormData) => {
 export const deleteResource = async(resourceId: string) => {
   try {
     await deleteResourceQuery(resourceId);
-    console.log("✅ Resource deleted successfully");
+    console.log("✅ Resource deactivated successfully");
     return parseServerActionResponse({
       error: '',
       status: 'SUCCESS',
@@ -244,7 +244,25 @@ export const deleteResource = async(resourceId: string) => {
   } catch (error) {
     console.log(error)
     return parseServerActionResponse({
-      error: 'Failed to delete resource. Please try again.',
+      error: 'Failed to deactivate resource. Please try again.',
+      status: 'ERROR',
+    });
+  }
+}
+
+export const reactivateResource = async(resourceId: string) => {
+  try {
+    const { reactivateResource: reactivateResourceQuery } = await import("@/lib/supabase-queries");
+    await reactivateResourceQuery(resourceId);
+    console.log("✅ Resource reactivated successfully");
+    return parseServerActionResponse({
+      error: '',
+      status: 'SUCCESS',
+    });
+  } catch (error) {
+    console.log(error)
+    return parseServerActionResponse({
+      error: 'Failed to reactivate resource. Please try again.',
       status: 'ERROR',
     });
   }
@@ -604,10 +622,10 @@ export const fetchResourcesByCategory = async (category: string) => {
   
   try {
     const { 
-      getNewOpportunities, 
-      getTemplates, 
-      getEnglishLanguageLearning, 
-      getRecurringOpportunities 
+      getNewOpportunitiesForAdmin, 
+      getTemplatesForAdmin, 
+      getEnglishLanguageLearningForAdmin, 
+      getRecurringOpportunitiesForAdmin 
     } = await import("@/lib/supabase-queries");
     
     let data: any[] = [];
@@ -615,19 +633,19 @@ export const fetchResourcesByCategory = async (category: string) => {
     switch (category) {
       case "new-opportunities":
         console.log("Fetching new opportunities...");
-        data = await getNewOpportunities();
+        data = await getNewOpportunitiesForAdmin();
         break;
       case "recurring-opportunities":
         console.log("Fetching recurring opportunities...");
-        data = await getRecurringOpportunities();
+        data = await getRecurringOpportunitiesForAdmin();
         break;
       case "templates":
         console.log("Fetching templates...");
-        data = await getTemplates();
+        data = await getTemplatesForAdmin();
         break;
       case "english-learning":
         console.log("Fetching English learning...");
-        data = await getEnglishLanguageLearning();
+        data = await getEnglishLanguageLearningForAdmin();
         break;
       default:
         console.log("No matching category found");

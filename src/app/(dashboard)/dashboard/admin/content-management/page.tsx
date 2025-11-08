@@ -19,12 +19,12 @@ import {
   DialogTrigger,
 } from "../../../../../../zenith/src/components/ui/dialog";
 import { sendBulkEmails } from "@/actions/emails/sendBulkEmails";
-import { Plus, Edit, Trash2, ExternalLink, Calendar, FileText, Briefcase, BookOpen } from "lucide-react";
+import { Plus, Edit, PowerOff, ExternalLink, Calendar, FileText, Briefcase, BookOpen } from "lucide-react";
 import { showToastSuccess, showToastError, showToastPromise } from "@/components/toasts";
 import { useActionState } from "react";
 import { z } from "zod";
 import { Checkbox } from "../../../../../../zenith/src/components/ui/checkbox";
-import { deleteResource, updateResource, addResource, fetchResourcesByCategory } from "@/lib/action";
+import { deleteResource, updateResource, addResource, fetchResourcesByCategory, reactivateResource } from "@/lib/action";
 import { subscribeToAllResourcesForAdmin } from "@/lib/supabase-queries";
 import { useAdminRealtimeData } from "@/hooks/useAdminRealtimeData";
 type SupabaseResource = {
@@ -37,6 +37,7 @@ type SupabaseResource = {
   created_at?: string;
   opportunity_deadline?: string;
   category?: string;
+  status?: 'active' | 'inactive';
 };
 
 const categories = [
@@ -116,21 +117,44 @@ export default function ContentManagement() {
     const deletePromise = (async () => {
       const result = await deleteResource(id);
       if (result.status === 'SUCCESS') {
-        console.log("Resource deleted successfully");
+        console.log("Resource deactivated successfully");
         // Data will be automatically updated via realtime subscription
         return { success: true };
       } else {
-        throw new Error(result.error || "Failed to delete resource");
+        throw new Error(result.error || "Failed to deactivate resource");
       }
     })();
 
     showToastPromise({
       promise: deletePromise,
-      loadingText: 'Deleting resource...',
+      loadingText: 'Deactivating resource...',
       successText: 'The resource has been removed from the website',
-      successHeaderText: 'Resource Deleted Successfully',
-      errorText: 'We couldn\'t delete the resource. Please try again or contact support.',
-      errorHeaderText: 'Failed To Delete Resource',
+      successHeaderText: 'Resource Deactivated Successfully',
+      errorText: 'We couldn\'t deactivate the resource. Please try again or contact support.',
+      errorHeaderText: 'Failed To Deactivate Resource',
+      direction: 'right'
+    });
+  }
+
+  const handleReactivateResource = async(id:string) => {
+    const reactivatePromise = (async () => {
+      const result = await reactivateResource(id);
+      if (result.status === 'SUCCESS') {
+        console.log("Resource reactivated successfully");
+        // Data will be automatically updated via realtime subscription
+        return { success: true };
+      } else {
+        throw new Error(result.error || "Failed to reactivate resource");
+      }
+    })();
+
+    showToastPromise({
+      promise: reactivatePromise,
+      loadingText: 'Reactivating resource...',
+      successText: 'The resource is now visible on the website',
+      successHeaderText: 'Resource Reactivated Successfully',
+      errorText: 'We couldn\'t reactivate the resource. Please try again or contact support.',
+      errorHeaderText: 'Failed To Reactivate Resource',
       direction: 'right'
     });
   }
@@ -599,6 +623,7 @@ export default function ContentManagement() {
                         <TableHead>Title</TableHead>
                         <TableHead>Description</TableHead>
                         <TableHead>Deadline</TableHead>
+                        <TableHead>Status</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -633,7 +658,7 @@ export default function ContentManagement() {
                       ) : resources.length === 0 ? (
                         // Empty state
                         <TableRow>
-                          <TableCell colSpan={4} className="text-center py-12">
+                          <TableCell colSpan={5} className="text-center py-12">
                             <div className="flex flex-col items-center space-y-3">
                               <div className="h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center">
                                 <FileText className="h-8 w-8 text-gray-400" />
@@ -650,7 +675,7 @@ export default function ContentManagement() {
                       ) : (
                         // Actual data rows
                         currentResources.map((resource) => (
-                          <TableRow key={resource.id}>
+                          <TableRow key={resource.id} className={resource.status === 'inactive' ? 'opacity-60' : ''}>
                             <TableCell className="font-medium">
                               <div className="flex text-md items-center gap-2">
                                 {resource.title}
@@ -671,6 +696,11 @@ export default function ContentManagement() {
                               )}
                             </TableCell>
                             <TableCell>
+                              <Badge className={resource.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                                {resource.status === 'active' ? 'Active' : 'Inactive'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
                               <div className="flex items-center gap-2">
                                 <Button
                                   variant="outline"
@@ -679,14 +709,26 @@ export default function ContentManagement() {
                                 >
                                   <Edit className="h-3 w-3" />
                                 </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleDeleteClick(resource.id.toString())}
-                                  className="text-red-600 hover:text-red-700"
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
+                                {resource.status === 'active' ? (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleDeleteClick(resource.id.toString())}
+                                    className="text-red-600 hover:text-red-700"
+                                    title="Deactivate resource"
+                                  >
+                                    <PowerOff className="h-3 w-3" />
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleReactivateResource(resource.id.toString())}
+                                    className="text-green-600 hover:text-green-700"
+                                  >
+                                    Activate
+                                  </Button>
+                                )}
                               </div>
                             </TableCell>
                           </TableRow>
@@ -905,11 +947,11 @@ export default function ContentManagement() {
       <Dialog open={deleteConfirmationOpen} onOpenChange={setDeleteConfirmationOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirm Delete</DialogTitle>
+            <DialogTitle>Confirm Deactivate</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <p className="text-gray-900">
-              Are you sure you want to delete this content?
+            <p className="text-gray-500 text-md">
+              Are you sure you want to deactivate this content? It will be removed from the website but can be reactivated later.
             </p>
           </div>
           <div className="flex justify-end space-x-2">
@@ -920,7 +962,7 @@ export default function ContentManagement() {
             variant="destructive" 
               onClick={handleDeleteConfirm}
             >
-              Delete
+              Deactivate
             </Button>
           </div>
         </DialogContent>

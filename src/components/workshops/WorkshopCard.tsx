@@ -19,6 +19,7 @@ interface Workshop {
   description: string;
   date: string;
   presentation_url?: string;
+  google_slide_url?: string;
   assignments?: Assignment[];
   crc_classes?: Array<{ name: string }>;
 }
@@ -40,7 +41,8 @@ export default function WorkshopCard({
   formatDate
 }: WorkshopCardProps) {
   const isExpanded = expandedCards.includes(index);
-
+  
+  console.log("Workshops Urls", workshop.presentation_url, workshop.google_slide_url);
   return (
     <Card className="overflow-hidden">
       <CardContent className="p-4">
@@ -97,20 +99,36 @@ export default function WorkshopCard({
             </div>
 
             {/* Right side - Presentation */}
-            {workshop.presentation_url && (
-              <div className="sm:w-[250px] flex-shrink-0 flex">
-                <a 
-                  href={workshop.presentation_url} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="block w-full h-full"
-                >
-                  <div className="bg-gray-100 border-2 border-dashed border-gray-300 rounded-md p-4 h-full min-h-[200px] flex flex-col justify-center items-center text-center hover:bg-gray-50 transition">
-                    <div className="text-gray-500 mb-2 text-2xl">📄</div>
-                    <p className="text-sm font-medium text-gray-700">View Presentation</p>
-                    <p className="text-xs text-gray-500 mt-1">Click to open PDF</p>
-                  </div>
-                </a>
+            {(workshop.presentation_url || workshop.google_slide_url) && (
+              <div className="sm:w-[250px] flex-shrink-0 flex flex-col gap-2">
+                {workshop.presentation_url && (
+                  <a 
+                    href={workshop.presentation_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="block w-full h-full flex-1"
+                  >
+                    <div className="bg-gray-100 border-2 border-dashed border-gray-300 rounded-md p-4 h-full flex flex-col justify-center items-center text-center hover:bg-gray-50 transition">
+                      <div className="text-gray-500 mb-2 text-2xl">📄</div>
+                      <p className="text-sm font-medium text-gray-700">View PDF</p>
+                      <p className="text-xs text-gray-500 mt-1">Click to open</p>
+                    </div>
+                  </a>
+                )}
+                {workshop.google_slide_url && (
+                  <a 
+                    href={workshop.google_slide_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="block w-full h-full flex-1"
+                  >
+                    <div className="bg-gray-100 border-2 border-dashed border-gray-300 rounded-md p-4 h-full flex flex-col justify-center items-center text-center hover:bg-gray-50 transition">
+                      <div className="text-gray-500 mb-2 text-2xl">📄</div>
+                      <p className="text-sm font-medium text-gray-700">View Slides</p>
+                      <p className="text-xs text-gray-500 mt-1">Click to open</p>
+                    </div>
+                  </a>
+                )}
               </div>
             )}
           </div>

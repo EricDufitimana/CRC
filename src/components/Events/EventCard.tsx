@@ -5,7 +5,6 @@ import Image from 'next/image';
 import { Calendar, MapPin, ArrowRight } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { urlFor } from '@/sanity/lib/image';
 import { EventDetailsModal } from './EventDetailsModal';
 
 // Sanity Event type definition
@@ -57,19 +56,13 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onViewDetails }) =>
   const firstImageAsset = event.gallery?.[0]?.asset;
   const eventImageAsset = heroImageAsset || firstImageAsset || event.image?.asset;
   
-  // Convert Sanity image asset to URL
+  // Use direct image URL from asset
   let eventImageUrl = "/images/blog/blog-01.jpg";
   if (eventImageAsset) {
-    try {
-      // For upcoming events, use direct URL if available, otherwise use Sanity URL
-      if (eventImageAsset.url && eventImageAsset.url.startsWith('http')) {
-        eventImageUrl = eventImageAsset.url;
-      } else {
-        eventImageUrl = urlFor(eventImageAsset).url();
-      }
-    } catch (error) {
-      console.error('Error processing image:', error);
-      eventImageUrl = "/images/blog/blog-01.jpg";
+    if (eventImageAsset.url && eventImageAsset.url.startsWith('http')) {
+      eventImageUrl = eventImageAsset.url;
+    } else if (eventImageAsset.url) {
+      eventImageUrl = eventImageAsset.url;
     }
   }
   

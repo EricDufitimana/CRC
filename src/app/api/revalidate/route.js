@@ -5,19 +5,17 @@ export async function POST(request) {
   try {
     const body = await request.json()
     
-    // Optional: Verify the request is from Sanity
+    // Verify the request secret
     const secret = request.nextUrl.searchParams.get('secret')
-    if (secret !== process.env.SANITY_REVALIDATE_SECRET) {
+    if (secret !== process.env.REVALIDATE_SECRET) {
       return NextResponse.json({ message: 'Invalid secret' }, { status: 401 })
     }
 
-    // Log what triggered the webhook (optional but helpful for debugging)
-    console.log('Revalidation triggered by:', body._type)
+    // Log what triggered the webhook
+    console.log('Revalidation triggered:', body)
 
-    // Option A: Revalidate specific paths
-   
-    // Option B: Revalidate by tag (more flexible)
-    revalidateTag('sanity-content')
+    // Revalidate by tag
+    revalidateTag('content')
     
     return NextResponse.json({ 
       revalidated: true, 

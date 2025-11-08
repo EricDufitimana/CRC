@@ -9,7 +9,6 @@ import Layout from "@/components/other/ResourceLayout";
 import { Fragment } from "react";
 import { getNewOpportunities, subscribeToNewOpportunities } from "@/lib/supabase-queries";
 import { Sparkles } from "lucide-react";
-import { filterExpiredResources } from "@/utils/filterExpiredResources";
 import ConditionalHeader from "../../../../components/other/ConditionalHeader";
 import { useRealtimeData } from "@/hooks/useRealTimeData";
 
@@ -30,7 +29,6 @@ export default function Home() {
   const { data, loading, error, refetch } = useRealtimeData<Opportunity>({
     fetchFunction: getNewOpportunities,
     subscribeFunction: subscribeToNewOpportunities,
-    filterFunction: filterExpiredResources,
   });
   
   return (

@@ -81,6 +81,85 @@ export async function GET(request) {
     const workshopId = searchParams.get('workshopId');
     const date = searchParams.get('date');
 
+    console.log('🔍 Attendance API called with params:', { classId, workshopId, date });
+
+    // If no filters are provided, fetch all records directly
+    if (!classId && !workshopId) {
+      let query = supabase
+        .from('attendance_records')
+        .select(`
+          *,
+          student:students(
+            id,
+            student_id,
+            first_name,
+            last_name,
+            major_short,
+            grade,
+            profile_picture
+          ),
+          session:attendance_sessions(
+            id,
+            crc_class_id,
+            workshop_id,
+            workshop:workshops(title, date),
+            class:crc_class(name)
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (date) {
+        query = query.gte('created_at', `${date}T00:00:00`).lt('created_at', `${date}T23:59:59`);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Attendance fetch error:', error);
+        return NextResponse.json(
+          { error: 'Failed to fetch attendance records', details: error.message },
+          { status: 500 }
+        );
+      }
+
+      console.log(`✅ Fetched ${data?.length || 0} attendance records (no filters)`);
+      return NextResponse.json({ data: data || [] });
+    }
+
+    // If filters are provided, use two-step approach
+    // First, get session IDs that match the filters
+    let sessionQuery = supabase
+      .from('attendance_sessions')
+      .select('id');
+
+    if (classId) {
+      sessionQuery = sessionQuery.eq('crc_class_id', classId);
+    }
+
+    if (workshopId) {
+      sessionQuery = sessionQuery.eq('workshop_id', workshopId);
+    }
+
+    const { data: sessions, error: sessionError } = await sessionQuery;
+
+    if (sessionError) {
+      console.error('Session fetch error:', sessionError);
+      return NextResponse.json(
+        { error: 'Failed to fetch attendance sessions', details: sessionError.message },
+        { status: 500 }
+      );
+    }
+
+    // If no sessions match the filters, return empty array
+    if (!sessions || sessions.length === 0) {
+      console.log('⚠️ No sessions found matching filters');
+      return NextResponse.json({ data: [] });
+    }
+
+    const sessionIds = sessions.map(s => s.id);
+    console.log(`📋 Found ${sessionIds.length} matching sessions`);
+
+    // Now fetch attendance records for those sessions
     let query = supabase
       .from('attendance_records')
       .select(`
@@ -96,19 +175,14 @@ export async function GET(request) {
         ),
         session:attendance_sessions(
           id,
+          crc_class_id,
+          workshop_id,
           workshop:workshops(title, date),
           class:crc_class(name)
         )
       `)
+      .in('session_id', sessionIds)
       .order('created_at', { ascending: false });
-
-    if (classId) {
-      query = query.eq('session.crc_class_id', classId);
-    }
-
-    if (workshopId) {
-      query = query.eq('session.workshop_id', workshopId);
-    }
 
     if (date) {
       query = query.gte('created_at', `${date}T00:00:00`).lt('created_at', `${date}T23:59:59`);
@@ -119,17 +193,19 @@ export async function GET(request) {
     if (error) {
       console.error('Attendance fetch error:', error);
       return NextResponse.json(
-        { error: 'Failed to fetch attendance records' },
+        { error: 'Failed to fetch attendance records', details: error.message },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ data });
+    console.log(`✅ Fetched ${data?.length || 0} attendance records`);
+
+    return NextResponse.json({ data: data || [] });
 
   } catch (error) {
     console.error('Attendance fetch error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error.message },
       { status: 500 }
     );
   }

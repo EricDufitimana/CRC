@@ -66,27 +66,35 @@ type SupabaseWorkshop = {
   }[];
 };
 
-const workshopGroups = [
+// Type definitions for workshop groups
+type WorkshopSubmenuItem = {
+  id: string;
+  label: string;
+  classId?: string;
+};
+
+type WorkshopGroup = {
+  id: string;
+  label: string;
+  icon: any;
+  submenu?: WorkshopSubmenuItem[];
+};
+
+// Base workshop groups structure - Senior 5 and Senior 6 submenus will be populated dynamically
+const baseWorkshopGroups: WorkshopGroup[] = [
   { id: "ey", label: "EY", icon: GraduationCap },
   { id: "senior_4", label: "Senior 4", icon: Users },
   { 
     id: "senior_5", 
     label: "Senior 5", 
     icon: Users,
-    submenu: [
-      { id: "senior_5_group_a_b", label: "Group A+B" },
-    ]
+    submenu: [] // Will be populated dynamically
   },
   { 
     id: "senior_6", 
     label: "Senior 6", 
     icon: Users,
-    submenu: [
-      { id: "senior_6_group_a_b", label: "Group A+B" },
-      { id: "senior_6_group_c", label: "Group C" },
-      { id: "senior_6_group_d", label: "Group D" },
-      { id: "senior_6_job_readiness_course", label: "Job Readiness Course" },
-    ]
+    submenu: [] // Will be populated dynamically
   },
 ];
 
@@ -104,6 +112,7 @@ export default function WorkshopsManagement() {
   const [allWorkshops, setAllWorkshops] = useState<SupabaseWorkshop[]>([]);
   const [crcClasses, setCrcClasses] = useState<any[]>([]);
   const [crcClassesLoading, setCrcClassesLoading] = useState(false);
+  const [workshopGroups, setWorkshopGroups] = useState<WorkshopGroup[]>(baseWorkshopGroups);
   const [isAddWorkshopOpen, setIsAddWorkshopOpen] = useState(false);
   const [isAddAssignmentOpen, setIsAddAssignmentOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -234,11 +243,10 @@ export default function WorkshopsManagement() {
           title: "", 
           description: "", 
           presentation_pdf_url: "", 
+          google_slide_url: "",
           workshop_date: "", 
           workshop_group: "",
         });
-        setSelectedFile(null);
-        setIsUploading(false);
         setFormError("");
         
         // Show success toast
@@ -280,11 +288,10 @@ export default function WorkshopsManagement() {
     title: "",
     description: "",
     presentation_pdf_url: "",
+    google_slide_url: "",
     workshop_date: "",
     workshop_group: "",
   });
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
   
   // Assignment form state
   const [assignmentForm, setAssignmentForm] = useState({
@@ -310,11 +317,10 @@ export default function WorkshopsManagement() {
         title: "", 
         description: "", 
         presentation_pdf_url: "", 
+        google_slide_url: "",
         workshop_date: "", 
         workshop_group: "",
       });
-      setSelectedFile(null);
-      setIsUploading(false);
       setFormError("");
     }
   }, [isAddWorkshopOpen]);
@@ -350,6 +356,12 @@ export default function WorkshopsManagement() {
       return enumMappings[group];
     }
     
+    // Check if it's a class ID (for Senior 5 and Senior 6 submenu items)
+    const selectedClass = crcClasses.find((c: any) => String(c.id) === String(group));
+    if (selectedClass) {
+      return selectedClass.name;
+    }
+    
     // Fallback to workshop groups for backward compatibility
     const workshopGroup = workshopGroups.find(g => g.id === group);
     return workshopGroup ? workshopGroup.label : group;
@@ -376,7 +388,7 @@ export default function WorkshopsManagement() {
         // Add parent group as a disabled option
         flattened.push({ id: group.id, label: `${group.label} (Select subgroup)` });
         // Add submenu items
-        group.submenu.forEach(subItem => {
+        group.submenu.forEach((subItem: WorkshopSubmenuItem) => {
           // For Senior 5 and Senior 6, show the full name without indentation
           if (group.id === 'senior_5' || group.id === 'senior_6') {
             flattened.push({ id: subItem.id, label: `${group.label} ${subItem.label}` });
@@ -393,26 +405,9 @@ export default function WorkshopsManagement() {
   };
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value, files } = e.target as HTMLInputElement;
+    const { name, value } = e.target;
     
     console.log("🔧 handleFormChange called with:", { name, value });
-    
-    if (name === "presentation_file" && files && files[0]) {
-      const file = files[0];
-      if (file.type !== 'application/pdf') {
-        setFormError("Only PDF files are allowed for presentations");
-        return;
-      }
-      setSelectedFile(file);
-      setFormError("");
-      
-      // Simulate upload progress
-      setIsUploading(true);
-      setTimeout(() => {
-        setIsUploading(false);
-      }, 2000); // 2 second simulation
-      return;
-    }
     
     if (name === "title" && value.length > TITLE_MAX) return;
     if (name === "description" && value.length > DESC_MAX) return;
@@ -439,17 +434,16 @@ export default function WorkshopsManagement() {
       return;
     }
     
+    // Pass class ID directly if it's in class:ID format, otherwise pass as-is (for grade groups)
+    let workshopGroupValue = form.workshop_group;
+    
     const formData = new FormData();
     formData.append("title", form.title);
     formData.append("description", form.description);
     formData.append("presentation_pdf_url", form.presentation_pdf_url);
+    formData.append("google_slide_url", form.google_slide_url);
     formData.append("workshop_date", form.workshop_date);
-    formData.append("workshop_group", form.workshop_group);
-    
-    // Add file if selected
-    if (selectedFile) {
-      formData.append("presentation_file", selectedFile);
-    }
+    formData.append("workshop_group", workshopGroupValue);
     
     // Debug: Log all FormData entries
     console.log("🔧 FormData entries:");
@@ -465,6 +459,17 @@ export default function WorkshopsManagement() {
 
   const handleAssignmentFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+    
+    // Debug logging for CRC class selection
+    if (name === 'crc_class') {
+      console.log("🔍 Assignment Form - CRC Class selected:", value);
+      if (value.startsWith('class:')) {
+        const classId = value.replace('class:', '');
+        const selectedClass = crcClasses.find((c: any) => String(c.id) === classId);
+        console.log("🔍 Selected class ID:", classId, "Class name:", selectedClass?.name);
+      }
+    }
+    
     setAssignmentForm(prev => {
       const newForm = { ...prev, [name]: value };
       
@@ -485,6 +490,16 @@ export default function WorkshopsManagement() {
     });
   };
 
+  // Helper function to convert class ID format to class name
+  const getClassNameFromValue = (value: string): string => {
+    if (value.startsWith('class:')) {
+      const classId = value.replace('class:', '');
+      const selectedClass = crcClasses.find((c: any) => String(c.id) === classId);
+      return selectedClass ? selectedClass.name : value;
+    }
+    return value;
+  };
+
   const handleAddAssignment = async (prevstate: any | undefined, formDataParam: FormData) => {
     console.log("🔧 handleAddAssignment called");
     console.log("Form data entries:");
@@ -502,6 +517,8 @@ export default function WorkshopsManagement() {
         
         if (result.status === "SUCCESS") {
           await fetchDataForGroup(selectedGroup);
+          // Close the dialog on success
+          setIsAddAssignmentOpen(false);
           return { success: true };
         } else {
           throw new Error(result.error || "Failed to add assignment");
@@ -876,11 +893,54 @@ export default function WorkshopsManagement() {
       const classesToSet = crcClassesData.classes || [];
       setCrcClasses(classesToSet);
       
-      // Get all CRC class names directly
-      const allCrcClassNames = crcClassesData.classes?.map((c: any) => c.name) || [];
+      // Update workshop groups with dynamic CRC classes for Senior 5 and Senior 6
+      const updatedGroups = baseWorkshopGroups.map(group => {
+        if (group.id === 'senior_5' || group.id === 'senior_6') {
+          const gradeGroup = group.id === 'senior_5' ? 'Senior 5' : 'Senior 6';
+          const classesForGrade = classesToSet.filter((c: any) => c.grade_group === gradeGroup);
+          return {
+            ...group,
+            submenu: classesForGrade.map((crcClass: any) => ({
+              id: crcClass.id, // Use class ID instead of hardcoded IDs
+              label: crcClass.name,
+              classId: crcClass.id // Store class ID for reference
+            }))
+          };
+        }
+        return group;
+      });
+      setWorkshopGroups(updatedGroups);
       
-      // For now, show all workshops since we're not filtering by groups anymore
-      const targetClassNames = allCrcClassNames;
+      // Determine target classes based on selected group
+      let targetClassNames: string[] = [];
+      let targetClassIds: string[] = [];
+      
+      // Check if selectedGroup is a class ID (for Senior 5 and Senior 6 submenu items)
+      const selectedClass = classesToSet.find((c: any) => String(c.id) === String(group));
+      if (selectedClass) {
+        // If it's a specific class ID, filter by that class name
+        targetClassNames = [selectedClass.name];
+        targetClassIds = [String(selectedClass.id)];
+      } else {
+        // Otherwise, filter by grade group
+        const enumMappings: { [key: string]: string } = {
+          'ey': 'Enrichment Year',
+          'senior_4': 'Senior 4',
+          'senior_5': 'Senior 5',
+          'senior_6': 'Senior 6'
+        };
+        
+        const gradeGroup = enumMappings[group];
+        if (gradeGroup) {
+          const classesForGrade = classesToSet.filter((c: any) => c.grade_group === gradeGroup);
+          targetClassNames = classesForGrade.map((c: any) => c.name);
+          targetClassIds = classesForGrade.map((c: any) => String(c.id));
+        } else {
+          // Fallback: show all classes
+          targetClassNames = classesToSet.map((c: any) => c.name);
+          targetClassIds = classesToSet.map((c: any) => String(c.id));
+        }
+      }
       
       // Filter workshops by the selected group using the new crc_classes structure
       const filteredWorkshops = allWorkshopsData.filter((workshop: any) => {
@@ -889,9 +949,13 @@ export default function WorkshopsManagement() {
         }
         
         // Check if any of the workshop's CRC classes match the target group
-        const hasMatchingClass = workshop.crc_classes.some((crcClass: any) => 
-          targetClassNames.includes(crcClass.name)
-        );
+        // Match by ID first (more reliable), then fall back to name
+        const hasMatchingClass = workshop.crc_classes.some((crcClass: any) => {
+          if (targetClassIds.length > 0 && crcClass.id) {
+            return targetClassIds.includes(String(crcClass.id));
+          }
+          return targetClassNames.includes(crcClass.name);
+        });
         
         return hasMatchingClass;
       });
@@ -973,12 +1037,17 @@ export default function WorkshopsManagement() {
     const options: any[] = [];
     
     Object.entries(grouped).forEach(([gradeGroup, classes]) => {
+      // Deduplicate classes by ID to prevent duplicate keys
+      const uniqueClasses = Array.from(
+        new Map((classes as any[]).map((c: any) => [String(c.id), c])).values()
+      );
+      
       // For "Enrichment Year" and "Senior 4", show as single combined options
       if (gradeGroup === 'Enrichment Year' || gradeGroup === 'Senior 4') {
         options.push({
           type: 'combined',
           gradeGroup,
-          classes,
+          classes: uniqueClasses,
           value: gradeGroup, // Use grade group name as value
           label: gradeGroup
         });
@@ -987,7 +1056,7 @@ export default function WorkshopsManagement() {
         options.push({
           type: 'grouped',
           gradeGroup,
-          classes,
+          classes: uniqueClasses,
           value: null, // No direct value for group header
           label: gradeGroup
         });
@@ -1120,19 +1189,26 @@ export default function WorkshopsManagement() {
                     {/* Submenu */}
                     {hasSubmenu && isExpanded && (
                       <div className="ml-4 space-y-1">
-                        {group.submenu.map((subItem) => (
-                          <button
-                            key={subItem.id}
-                            onClick={() => handleGroupChange(subItem.id)}
-                            className={`w-full text-left px-4 py-2 rounded-lg transition-colors text-sm ${
-                              selectedGroup === subItem.id
-                                ? "bg-green-50 text-green-800 border border-green-200"
-                                : "text-gray-600 hover:bg-gray-50"
-                            }`}
-                          >
-                            {subItem.label}
-                          </button>
-                        ))}
+                        {crcClassesLoading && (group.id === 'senior_5' || group.id === 'senior_6') && (!group.submenu || group.submenu.length === 0) ? (
+                          <div className="flex items-center justify-center px-4 py-2 text-sm text-gray-500">
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            <span>Loading classes...</span>
+                          </div>
+                        ) : group.submenu && group.submenu.length > 0 ? (
+                          group.submenu.map((subItem) => (
+                            <button
+                              key={subItem.id}
+                              onClick={() => handleGroupChange(subItem.id)}
+                              className={`w-full text-left px-4 py-2 rounded-lg transition-colors text-sm ${
+                                selectedGroup === subItem.id
+                                  ? "bg-green-50 text-green-800 border border-green-200"
+                                  : "text-gray-600 hover:bg-gray-50"
+                              }`}
+                            >
+                              {subItem.label}
+                            </button>
+                          ))
+                        ) : null}
                       </div>
                     )}
                   </div>
@@ -1219,10 +1295,10 @@ export default function WorkshopsManagement() {
                                         {option.gradeGroup}
                                       </div>
                                       {/* Individual Classes */}
-                                      {option.classes.map((crcClass: any) => (
+                                      {option.classes.map((crcClass: any, index: number) => (
                                         <SelectItem 
-                                          key={crcClass.id} 
-                                          value={crcClass.name}
+                                          key={`${option.gradeGroup}-${String(crcClass.id)}-${index}`} 
+                                          value={`class:${String(crcClass.id)}`}
                                           className="pl-6"
                                         >
                                           {crcClass.name}
@@ -1279,32 +1355,18 @@ export default function WorkshopsManagement() {
                         )}
                       </div>
                       <div>
-                        <Label className="text-sm font-medium mb-1 block">Presentation PDF</Label>
-                        <div className="relative">
-                          <input
-                            type="file"
-                            name="presentation_file"
-                            accept=".pdf"
-                            onChange={handleFormChange}
-                            className="hidden"
-                            id="presentation-file-input"
-                          />
-                          <label
-                            htmlFor="presentation-file-input"
-                            className="flex items-center justify-between w-full px-3 py-2 border border-gray-300 rounded-xl cursor-pointer hover:border-gray-400 transition-colors bg-white"
-                          >
-                            <span className="text-sm text-gray-600 truncate">
-                              {selectedFile ? selectedFile.name : "Choose PDF file..."}
-                            </span>
-                            {isUploading ? (
-                              <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
-                            ) : (
-                              <Upload className="h-4 w-4 text-gray-400" />
-                            )}
-                          </label>
-                        </div>
-                        {fieldErrors.presentation_pdf_url && fieldErrors.presentation_pdf_url.length > 0 && (
-                          <div className="text-red-500 text-xs mt-1">{fieldErrors.presentation_pdf_url[0]}</div>
+                        <Label className="text-sm font-medium mb-1 block">Google Slides Link</Label>
+                        <Input
+                          name="google_slide_url"
+                          type="url"
+                          value={form.google_slide_url}
+                          onChange={handleFormChange}
+                          placeholder="https://docs.google.com/presentation/..."
+                          className="rounded-xl"
+                        />
+                 
+                        {fieldErrors.google_slide_url && fieldErrors.google_slide_url.length > 0 && (
+                          <div className="text-red-500 text-xs mt-1">{fieldErrors.google_slide_url[0]}</div>
                         )}
                       </div>
                     </div>
@@ -1317,10 +1379,10 @@ export default function WorkshopsManagement() {
                     <input type="hidden" name="workshop_group" value={form.workshop_group} />
                     
                     <div className="flex justify-end space-x-2">
-                      <Button variant="outline" type="button" className="rounded-xl" onClick={() => setIsAddWorkshopOpen(false)} disabled={submitting || isUploading}>
+                      <Button variant="outline" type="button" className="rounded-xl" onClick={() => setIsAddWorkshopOpen(false)} disabled={submitting}>
                         Cancel
                       </Button>
-                      <Button type="submit" disabled={isPending || isUploading} className="bg-green-600 hover:bg-green-600/80 rounded-xl text-white shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,128,0,0.4)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_4px_rgba(0,128,0,0.1)] transition duration-200">
+                      <Button type="submit" disabled={isPending} className="bg-green-600 hover:bg-green-600/80 rounded-xl text-white shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,128,0,0.4)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_2px_4px_rgba(0,128,0,0.1)] transition duration-200">
                         {isPending ? (
                           <div className="flex items-center gap-2">
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -1369,7 +1431,7 @@ export default function WorkshopsManagement() {
                           <SelectContent>
                             {crcClassesLoading ? (
                               <div className="flex items-center justify-center py-2">
-                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                <Loader2 className="h-4 w-4 animate-spin mr-2 text-gray-500" />
                                 <span className="text-sm text-gray-500">Loading CRC classes...</span>
                               </div>
                             ) : crcClasses.length === 0 ? (
@@ -1395,10 +1457,10 @@ export default function WorkshopsManagement() {
                                         {option.gradeGroup}
                                       </div>
                                       {/* Individual Classes */}
-                                      {option.classes.map((crcClass: any) => (
+                                      {option.classes.map((crcClass: any, index: number) => (
                                         <SelectItem 
-                                          key={crcClass.id} 
-                                          value={crcClass.name}
+                                          key={`${option.gradeGroup}-${String(crcClass.id)}-${index}`} 
+                                          value={`class:${String(crcClass.id)}`}
                                           className="pl-6"
                                         >
                                           {crcClass.name}
@@ -1433,13 +1495,41 @@ export default function WorkshopsManagement() {
                                 
                                 if (!assignmentForm.crc_class) return true;
                                 
-                                // Use the selected CRC class directly
-                                const targetClassNames = assignmentForm.crc_class ? [assignmentForm.crc_class] : [];
+                                // Extract class ID(s) from the selected value - always use IDs, never names
+                                let targetClassIds: string[] = [];
                                 
-                                // Check if the workshop has CRC classes that match the selected group
-                                return workshop.crc_classes && workshop.crc_classes.some(crcClass => 
-                                  targetClassNames.includes(crcClass.name)
-                                );
+                                if (assignmentForm.crc_class.startsWith('class:')) {
+                                  // Individual class ID (format: class:123) - use ONLY this specific ID
+                                  const classId = assignmentForm.crc_class.replace('class:', '');
+                                  targetClassIds = [classId];
+                                  console.log("🔍 Filtering workshops for class ID:", classId);
+                                } else if (assignmentForm.crc_class === 'Enrichment Year' || assignmentForm.crc_class === 'Senior 4') {
+                                  // Grade groups - get all class IDs for this grade group
+                                  const gradeGroupClasses = crcClasses.filter((c: any) => c.grade_group === assignmentForm.crc_class);
+                                  targetClassIds = gradeGroupClasses.map((c: any) => String(c.id));
+                                  console.log("🔍 Filtering workshops for grade group:", assignmentForm.crc_class, "Class IDs:", targetClassIds);
+                                } else {
+                                  // If it's not in the expected format, don't show any workshops
+                                  // This prevents matching multiple classes with the same name
+                                  console.warn("⚠️ Unexpected CRC class format:", assignmentForm.crc_class);
+                                  return false;
+                                }
+                                
+                                if (targetClassIds.length === 0) {
+                                  console.warn("⚠️ No target class IDs found");
+                                  return false;
+                                }
+                                
+                                // Check if the workshop has CRC classes that match any of the target class IDs
+                                // Always compare by ID, never by name - ensures exact match
+                                const workshopClassIds = workshop.crc_classes?.map(c => String(c.id)) || [];
+                                const matches = targetClassIds.some(targetId => workshopClassIds.includes(targetId));
+                                
+                                if (matches) {
+                                  console.log("✅ Workshop matches:", workshop.title, "Workshop class IDs:", workshopClassIds, "Target IDs:", targetClassIds);
+                                }
+                                
+                                return matches;
                               })
                               .map((workshop) => (
                                 <SelectItem key={workshop.id} value={workshop.id}>
@@ -1447,16 +1537,33 @@ export default function WorkshopsManagement() {
                                 </SelectItem>
                               ))}
                             {!isFetchingWorkshops && assignmentForm.crc_class && (() => {
+                              // Extract class ID(s) from the selected value - always use IDs, never names
+                              let targetClassIds: string[] = [];
+                              
+                              if (assignmentForm.crc_class.startsWith('class:')) {
+                                // Individual class ID (format: class:123) - use ONLY this specific ID
+                                const classId = assignmentForm.crc_class.replace('class:', '');
+                                targetClassIds = [classId];
+                              } else if (assignmentForm.crc_class === 'Enrichment Year' || assignmentForm.crc_class === 'Senior 4') {
+                                // Grade groups - get all class IDs for this grade group
+                                const gradeGroupClasses = crcClasses.filter((c: any) => c.grade_group === assignmentForm.crc_class);
+                                targetClassIds = gradeGroupClasses.map((c: any) => String(c.id));
+                              } else {
+                                // If it's not in the expected format, don't show any workshops
+                                // This prevents matching multiple classes with the same name
+                                targetClassIds = [];
+                              }
+                              
                               const filteredWorkshops = allWorkshops.filter(workshop => {
                                 // First filter: only show workshops without assignments
                                 if (workshop.has_assignment) return false;
                                 
-                                // Use the selected CRC class directly
-                                const targetClassNames = assignmentForm.crc_class ? [assignmentForm.crc_class] : [];
+                                if (targetClassIds.length === 0) return false;
                                 
-                                // Check if the workshop has CRC classes that match the selected group
+                                // Check if the workshop has CRC classes that match any of the target class IDs
+                                // Always compare by ID, never by name - ensures exact match
                                 return workshop.crc_classes && workshop.crc_classes.some(crcClass => 
-                                  targetClassNames.includes(crcClass.name)
+                                  targetClassIds.includes(String(crcClass.id))
                                 );
                               });
                               
@@ -1541,7 +1648,7 @@ export default function WorkshopsManagement() {
                     
                     {/* Hidden inputs to submit the form data */}
                     <input type="hidden" name="workshop_id" value={assignmentForm.workshop_id} />
-                    <input type="hidden" name="crc_class" value={assignmentForm.crc_class} />
+                    <input type="hidden" name="crc_class" value={getClassNameFromValue(assignmentForm.crc_class)} />
                     <input type="hidden" name="submission_style" value={assignmentForm.submission_style} />
                     <input type="hidden" name="submission_deadline" value={assignmentForm.submission_deadline ? assignmentForm.submission_deadline.toISOString() : ''} />
                     

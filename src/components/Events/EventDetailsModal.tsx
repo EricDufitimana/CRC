@@ -35,7 +35,6 @@ import {
   CarouselIndicator,
 } from "@/components/ui/carousel";
 
-import { urlFor } from '@/sanity/lib/image';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 // Sanity Event type definition
@@ -112,19 +111,10 @@ export function EventDetailsModal({ event, isOpen, onClose }: EventDetailsModalP
     return colors[category.toLowerCase()] || "bg-gray-100 text-gray-800 border-gray-200";
   };
 
-  // Convert gallery images to URLs with proper error handling
+  // Convert gallery images to URLs - use direct URLs from assets
   const galleryImages = event.gallery?.map(img => {
-    if (img.asset) {
-      try {
-        // For upcoming events, use direct URL if available, otherwise use Sanity URL
-        if (img.asset.url && img.asset.url.startsWith('http')) {
-          return img.asset.url;
-        }
-        return urlFor(img.asset).url();
-      } catch (error) {
-        console.error('Error processing image:', error);
-        return null;
-      }
+    if (img.asset && img.asset.url) {
+      return img.asset.url;
     }
     return null;
   }).filter(url => url !== null) || [];

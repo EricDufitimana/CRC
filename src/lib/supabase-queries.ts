@@ -17,12 +17,13 @@ type SubscriptionCallback<T> = (payload: {
   old: T;
 }) => void;
 
-// Resource queries (unchanged)
+// Resource queries - Site pages (only active resources)
 export async function getNewOpportunities() {
   const { data, error } = await supabase
     .from('resources')
     .select('*')
     .eq('category', 'new_opportunities')
+    .eq('status', 'active')
     .order('created_at', { ascending: false });
 
   if (error) throw error;
@@ -34,6 +35,7 @@ export async function getTemplates() {
     .from('resources')
     .select('*')
     .eq('category', 'templates')
+    .eq('status', 'active')
     .order('created_at', { ascending: false });
 
   if (error) throw error;
@@ -45,6 +47,7 @@ export async function getEnglishLanguageLearning() {
     .from('resources')
     .select('*')
     .eq('category', 'english_language_learning')
+    .eq('status', 'active')
     .order('created_at', { ascending: false });
 
   if (error) throw error;
@@ -56,6 +59,7 @@ export async function getRecurringOpportunities() {
     .from('resources')
     .select('*')
     .eq('category', 'recurring_opportunities')
+    .eq('status', 'active')
     .order('created_at', { ascending: false });
 
   if (error) throw error;
@@ -67,6 +71,52 @@ export async function getInternships() {
     .from('resources')
     .select('*')
     .eq('category', 'internships')
+    .eq('status', 'active')
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data;
+}
+
+// Admin queries - All resources (active and inactive)
+export async function getNewOpportunitiesForAdmin() {
+  const { data, error } = await supabase
+    .from('resources')
+    .select('*')
+    .eq('category', 'new_opportunities')
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getTemplatesForAdmin() {
+  const { data, error } = await supabase
+    .from('resources')
+    .select('*')
+    .eq('category', 'templates')
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getEnglishLanguageLearningForAdmin() {
+  const { data, error } = await supabase
+    .from('resources')
+    .select('*')
+    .eq('category', 'english_language_learning')
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getRecurringOpportunitiesForAdmin() {
+  const { data, error } = await supabase
+    .from('resources')
+    .select('*')
+    .eq('category', 'recurring_opportunities')
     .order('created_at', { ascending: false });
 
   if (error) throw error;
@@ -77,6 +127,7 @@ export async function getRecentResources() {
   const { data, error } = await supabase
     .from('resources')
     .select('id, title, category, created_at')
+    .eq('status', 'active')
     .order('created_at', { ascending: false })
     .limit(6);
 
@@ -85,6 +136,38 @@ export async function getRecentResources() {
 }
 
 // Event queries (unchanged)
+// Helper function to get gallery images from a folder
+async function getGalleryImagesFromFolder(folderPath: string | null | undefined): Promise<string[]> {
+  if (!folderPath) return [];
+  
+  try {
+    const { data: files, error } = await supabase.storage
+      .from('events-gallery')
+      .list(folderPath, {
+        limit: 100,
+        sortBy: { column: 'name', order: 'asc' }
+      });
+
+    if (error) {
+      console.error('Error listing gallery images:', error);
+      return [];
+    }
+
+    if (!files || files.length === 0) return [];
+
+    // Construct public URLs for each image
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!supabaseUrl) return [];
+
+    return files
+      .filter(file => file.name && /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name))
+      .map(file => `${supabaseUrl}/storage/v1/object/public/events-gallery/${folderPath}/${file.name}`);
+  } catch (error) {
+    console.error('Error fetching gallery images:', error);
+    return [];
+  }
+}
+
 export async function getPreviousEvents() {
   const { data, error } = await supabase
     .from('events')
@@ -93,7 +176,19 @@ export async function getPreviousEvents() {
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  return data;
+  
+  // Fetch gallery images for each event
+  const eventsWithGallery = await Promise.all(
+    (data || []).map(async (event) => {
+      const galleryImages = await getGalleryImagesFromFolder(event.gallery_folder);
+      return {
+        ...event,
+        gallery_images: galleryImages
+      };
+    })
+  );
+  
+  return eventsWithGallery;
 }
 
 export async function getUpcomingEvents() {
@@ -104,7 +199,19 @@ export async function getUpcomingEvents() {
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  return data;
+  
+  // Fetch gallery images for each event
+  const eventsWithGallery = await Promise.all(
+    (data || []).map(async (event) => {
+      const galleryImages = await getGalleryImagesFromFolder(event.gallery_folder);
+      return {
+        ...event,
+        gallery_images: galleryImages
+      };
+    })
+  );
+  
+  return eventsWithGallery;
 }
 
 export async function getEventsByType(eventType: string) {
@@ -115,7 +222,19 @@ export async function getEventsByType(eventType: string) {
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  return data;
+  
+  // Fetch gallery images for each event
+  const eventsWithGallery = await Promise.all(
+    (data || []).map(async (event) => {
+      const galleryImages = await getGalleryImagesFromFolder(event.gallery_folder);
+      return {
+        ...event,
+        gallery_images: galleryImages
+      };
+    })
+  );
+  
+  return eventsWithGallery;
 }
 
 export async function getResourcesByCategory(category: string) {
@@ -333,9 +452,20 @@ export async function updateResource(id: string, updates: any) {
 }
 
 export async function deleteResource(id: string) {
+  // Instead of deleting, set status to inactive
   const { error } = await supabase
     .from('resources')
-    .delete()
+    .update({ status: 'inactive' })
+    .eq('id', id);
+
+  if (error) throw error;
+}
+
+export async function reactivateResource(id: string) {
+  // Reactivate a resource by setting status to active
+  const { error } = await supabase
+    .from('resources')
+    .update({ status: 'active' })
     .eq('id', id);
 
   if (error) throw error;

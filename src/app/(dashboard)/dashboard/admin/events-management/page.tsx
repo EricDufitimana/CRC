@@ -26,7 +26,6 @@ import {
 } from "../../../../../../zenith/src/components/ui/select";
 import { Plus, Edit, Trash2, Calendar, MapPin, Users, Image as ImageIcon } from "lucide-react";
 import { format } from "date-fns";
-import { urlFor } from "@/sanity/lib/image";
 import Image from "next/image";
 import { FileUpload } from "../../../../../../zenith/src/components/ui/file-upload";
 import MDEditor from '@uiw/react-md-editor';
@@ -48,6 +47,8 @@ type SupabaseEvent = {
   location: string;
   category: string;
   type: "previous_events" | "upcoming_events";
+  gallery_folder?: string | null;
+  gallery_images?: string[];
   event_organizer?: {
     name: string;
     role: string;
@@ -881,22 +882,21 @@ export default function EventsManagement() {
 
   const getEventImage = (event: SupabaseEvent) => {
     try {
-      // Check for hero image first
+      // First check gallery_images from folder (new method)
+      if (event.gallery_images && event.gallery_images.length > 0) {
+        return event.gallery_images[0];
+      }
+
+      // Fallback to old gallery structure
       const heroImage = event.gallery?.find((img: any) => img.isHero)?.asset;
-      if (heroImage) {
-        if (heroImage.url && heroImage.url.startsWith('http')) {
-          return heroImage.url;
-        }
-        return urlFor(heroImage).url();
+      if (heroImage && heroImage.url) {
+        return heroImage.url;
       }
 
       // Check for first gallery image
       const firstImage = event.gallery?.[0]?.asset;
-      if (firstImage) {
-        if (firstImage.url && firstImage.url.startsWith('http')) {
-          return firstImage.url;
-        }
-        return urlFor(firstImage).url();
+      if (firstImage && firstImage.url) {
+        return firstImage.url;
       }
 
       // Check for main event image
@@ -966,7 +966,7 @@ export default function EventsManagement() {
                   </DialogHeader>
                   
                   {/* Step Indicator */}
-                  <div className="flex items-center justify-center ">
+                  <div className="flex items-center justify-center">
                     <div className="flex items-center space-x-4">
                       <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
                         currentStep >= 1 ? 'bg-orange-500 border-orange-500 text-white' : 'bg-gray-100 border-gray-300 text-gray-500'
@@ -1312,9 +1312,10 @@ export default function EventsManagement() {
                          </div>
                       </div>
                     )}
+                  </div>
                     
-                    {/* Step Navigation */}
-                    <div className="flex justify-between pt-6">
+                  {/* Step Navigation */}
+                  <div className="flex justify-between pt-6">
                       <Button 
                         type="button"
                         variant="outline" 
@@ -1366,7 +1367,6 @@ export default function EventsManagement() {
                          )}
                       </div>
                     </div>
-                  </div>
                 </DialogContent>
               </Dialog>
             </div>
@@ -1496,10 +1496,12 @@ export default function EventsManagement() {
                                  <span className="truncate">{event.event_organizer.name}</span>
                                </div>
                              )}
-                             {event.gallery && event.gallery.length > 0 && (
+                             {((event.gallery_images && event.gallery_images.length > 0) || (event.gallery && event.gallery.length > 0)) && (
                                <div className="flex items-center gap-2">
                                  <ImageIcon className="h-4 w-4" />
-                                 <span>{event.gallery.length} image{event.gallery.length !== 1 ? 's' : ''}</span>
+                                 <span>
+                                   {(event.gallery_images?.length || event.gallery?.length || 0)} image{(event.gallery_images?.length || event.gallery?.length || 0) !== 1 ? 's' : ''}
+                                 </span>
                                </div>
                              )}
                            </div>
@@ -1885,11 +1887,7 @@ export default function EventsManagement() {
                         <div key={img._key} className="relative group">
                           <div className="relative h-32 w-full rounded-lg overflow-hidden border">
                             <Image
-                              src={
-                                img.asset?.url 
-                                  ? (img.asset.url.startsWith('http') ? img.asset.url : urlFor(img.asset).url())
-                                  : urlFor(img.asset).url()
-                              }
+                              src={img.asset?.url || '/images/blog/blog-01.jpg'}
                               alt={`Event image ${index + 1}`}
                               fill
                               className="object-cover"

@@ -10,6 +10,7 @@ import {
 } from "./AnimatedNumber";
 
 /**
+
  * Demo component showcasing different number animation styles
  * This component demonstrates various ways to use the AnimatedNumber component
  */

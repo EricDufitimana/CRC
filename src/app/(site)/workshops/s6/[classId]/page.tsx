@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import WorkshopsNotificationBanner from "@/components/Banner/WorkshopsNotificationBanner";
 import WorkshopCard from "@/components/workshops/WorkshopCard";
 import { Card, CardContent } from "@/components/ui/card";
+import Image from "next/image";
 
 interface Workshop {
   id: string;
@@ -32,7 +33,7 @@ interface CrcClass {
 
 export default function S6ClassWorkshopsPage() {
   const params = useParams();
-  const classId = params.classId as string;
+  const classId = (params?.classId as string) || '';
   const [expandedCards, setExpandedCards] = useState<number[]>([]);
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [crcClass, setCrcClass] = useState<CrcClass | null>(null);
@@ -47,17 +48,18 @@ export default function S6ClassWorkshopsPage() {
           throw new Error('Failed to fetch CRC classes');
         }
         const classData = await classResponse.json();
-        const foundClass = classData.classes?.find((c: CrcClass) => c.id === classId);
+        // Ensure we compare IDs as strings to handle any type mismatches
+        const foundClass = classData.classes?.find((c: CrcClass) => String(c.id) === String(classId));
         
         if (!foundClass) {
-          console.error('CRC class not found');
+          console.error('CRC class not found for classId:', classId);
           setLoading(false);
           return;
         }
         
         setCrcClass(foundClass);
 
-        // Fetch workshops for this specific CRC class
+        // Fetch workshops for this specific CRC class using the ID
         const workshopsResponse = await fetch(`/api/workshops/fetch-by-crc-class?crcClassId=${classId}`);
         if (!workshopsResponse.ok) {
           throw new Error('Failed to fetch workshops');
@@ -144,10 +146,14 @@ export default function S6ClassWorkshopsPage() {
 
       {!loading && workshops.length === 0 && (
         <div className="text-center py-12">
-          <div className="text-gray-400 mb-4">
-            <svg className="mx-auto h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
+          <div className="mb-4 flex justify-center">
+            <Image
+              src="/images/empty-state/empty-state-workshops.svg"
+              alt="No workshops"
+              width={256}
+              height={256}
+              className="h-64 w-64 mx-auto"
+            />
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">No Workshops Found</h3>
           <p className="text-gray-500">

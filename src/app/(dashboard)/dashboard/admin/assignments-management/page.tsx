@@ -21,6 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 type CrcClass = {
   id: string;
   name: string;
+  grade_group: string | null;
   created_by: string;
   created_by_name: string;
   created_at: string;
@@ -43,7 +44,6 @@ type Workshop = {
 // Simplified navigation state interface
 interface NavigationState {
   selectedClass: string | null;
-  selectedSubClass: string | null;
   selectedWorkshop: string | null;
   assignmentId: string | null;
 }
@@ -108,75 +108,45 @@ function isS6Class(className: string): boolean {
   return lowerName.includes('s6') || lowerName.includes('senior 6') || lowerName.includes('senior_6');
 }
 
-// Helper function to group classes for display
-function groupCrcClasses(classes: CrcClass[]): Array<{ id: string; name: string; isGroup: boolean; classes?: CrcClass[] }> {
-  const eyClasses = classes.filter(c => isEyClass(c.name));
-  const s4Classes = classes.filter(c => isS4Class(c.name));
-  const s5Classes = classes.filter(c => isS5Class(c.name));
-  const s6Classes = classes.filter(c => isS6Class(c.name));
-  const otherClasses = classes.filter(c => !isEyOrS4S5S6Class(c.name));
+// Helper function to group classes by grade_group
+function groupCrcClasses(classes: CrcClass[]): Array<{ id: string; name: string; isGroup: boolean; classes: CrcClass[] }> {
+  // Group classes by grade_group
+  const groupedByGrade: Record<string, CrcClass[]> = {};
   
-  const grouped = [];
-  
-  // Add EY as a group if there are any
-  if (eyClasses.length > 0) {
-    grouped.push({
-      id: 'ey_group',
-      name: 'Enrichment Year',
-      isGroup: true,
-      classes: eyClasses
-    });
-  }
-  
-  // Add S4 as a group if there are any
-  if (s4Classes.length > 0) {
-    grouped.push({
-      id: 's4_group',
-      name: 'Senior 4',
-      isGroup: true,
-      classes: s4Classes
-    });
-  }
-  
-  // Add S5 as a group if there are any
-  if (s5Classes.length > 0) {
-    grouped.push({
-      id: 's5_group',
-      name: 'Senior 5',
-      isGroup: true,
-      classes: s5Classes
-    });
-  }
-  
-  // Add S6 as a group if there are any
-  if (s6Classes.length > 0) {
-    grouped.push({
-      id: 's6_group',
-      name: 'Senior 6',
-      isGroup: true,
-      classes: s6Classes
-    });
-  }
-  
-  // Add other classes individually
-  otherClasses.forEach(c => {
-    grouped.push({
-      id: c.id,
-      name: c.name,
-      isGroup: false,
-      classes: [c]
+  classes.forEach(c => {
+    const gradeGroup = c.grade_group || 'Other';
+    if (!groupedByGrade[gradeGroup]) {
+      groupedByGrade[gradeGroup] = [];
+    }
+    groupedByGrade[gradeGroup].push(c);
   });
+  
+  // Convert to array format
+  const grouped = Object.entries(groupedByGrade).map(([gradeGroup, classList]) => ({
+    id: gradeGroup === 'Other' ? 'other_group' : `${gradeGroup.toLowerCase().replace(/\s+/g, '_')}_group`,
+    name: gradeGroup === 'Other' ? 'Other' : gradeGroup,
+    isGroup: true,
+    classes: classList
+  }));
+  
+  // Sort groups: Enrichment Year, Senior 4, Senior 5, Senior 6, then Others
+  const order = ['Enrichment Year', 'Senior 4', 'Senior 5', 'Senior 6'];
+  grouped.sort((a, b) => {
+    const aIndex = order.indexOf(a.name);
+    const bIndex = order.indexOf(b.name);
+    if (aIndex === -1 && bIndex === -1) return a.name.localeCompare(b.name);
+    if (aIndex === -1) return 1;
+    if (bIndex === -1) return -1;
+    return aIndex - bIndex;
   });
   
   return grouped;
 }
 
-// Fix the grouping logic bug - only treat actual groups as groups
+// This function is no longer needed since we always show groups
+// Keeping for backward compatibility but it will always return false
 function shouldShowSubClassSelection(selectedClass: string | null, groupedClasses: Array<{ id: string; name: string; isGroup: boolean; classes?: CrcClass[] }>): boolean {
-  if (!selectedClass) return false;
-  
-  const classGroup = groupedClasses.find(g => g.id === selectedClass);
-  return classGroup?.isGroup === true; // Only true groups, not individual classes
+  return false; // Never show sub-class selection anymore
 }
 
 // =============================================================================
@@ -185,7 +155,6 @@ function shouldShowSubClassSelection(selectedClass: string | null, groupedClasse
 
 const useAssignmentNavigation = () => {
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
-  const [selectedSubClass, setSelectedSubClass] = useState<string | null>(null);
   const [selectedWorkshop, setSelectedWorkshop] = useState<string | null>(null);
   const [assignmentId, setAssignmentId] = useState<string | null>(null);
 
@@ -197,38 +166,29 @@ const useAssignmentNavigation = () => {
     if (!searchParams) return;
     
     const urlClass = searchParams.get('crcClassId');
-    const urlSubClass = searchParams.get('subClassId');  
     const urlWorkshop = searchParams.get('workshopId');
     const urlAssignment = searchParams.get('assignmentId');
     
     // Set state from URL (single source of truth)
     setSelectedClass(urlClass);
-    setSelectedSubClass(urlSubClass);
     setSelectedWorkshop(urlWorkshop);
     setAssignmentId(urlAssignment);
   }, [searchParams]);
   
   // Single function to update navigation state
   const updateNavigation = useCallback((updates: Partial<NavigationState>) => {
-      const params = new URLSearchParams();
+    const params = new URLSearchParams();
     
     // Calculate new state
     const newClass = updates.selectedClass !== undefined ? updates.selectedClass : selectedClass;
-    const newSubClass = updates.selectedSubClass !== undefined ? updates.selectedSubClass : selectedSubClass;
     const newWorkshop = updates.selectedWorkshop !== undefined ? updates.selectedWorkshop : selectedWorkshop;
     const newAssignment = updates.assignmentId !== undefined ? updates.assignmentId : assignmentId;
     
     // Clear dependent selections when parent changes
-    let finalSubClass = newSubClass;
     let finalWorkshop = newWorkshop;
     let finalAssignment = newAssignment;
     
     if (updates.selectedClass !== undefined && updates.selectedClass !== selectedClass) {
-      finalSubClass = null;
-      finalWorkshop = null;
-      finalAssignment = null;
-    }
-    if (updates.selectedSubClass !== undefined && updates.selectedSubClass !== selectedSubClass) {
       finalWorkshop = null;
       finalAssignment = null;
     }
@@ -238,21 +198,19 @@ const useAssignmentNavigation = () => {
     
     // Build URL
     if (newClass) params.set('crcClassId', newClass);
-    if (finalSubClass) params.set('subClassId', finalSubClass);
     if (finalWorkshop) params.set('workshopId', finalWorkshop);
     if (finalAssignment) params.set('assignmentId', finalAssignment);
     
     router.push(`/dashboard/admin/assignments-management?${params.toString()}`);
-  }, [selectedClass, selectedSubClass, selectedWorkshop, assignmentId, router]);
+  }, [selectedClass, selectedWorkshop, assignmentId, router]);
   
   // Helper to get the effective class ID for API calls
   const getEffectiveClassId = useCallback(() => {
-    return selectedSubClass || selectedClass;
-  }, [selectedSubClass, selectedClass]);
+    return selectedClass; // selectedClass is now the individual CRC class ID
+  }, [selectedClass]);
   
   return {
     selectedClass,
-    selectedSubClass,
     selectedWorkshop,
     assignmentId,
     updateNavigation,
@@ -265,7 +223,7 @@ const useAssignmentNavigation = () => {
 // =============================================================================
 
 const useAssignmentData = () => {
-  const { selectedClass, selectedSubClass, selectedWorkshop, assignmentId, getEffectiveClassId } = useAssignmentNavigation();
+  const { selectedClass, selectedWorkshop, assignmentId, getEffectiveClassId } = useAssignmentNavigation();
   
   // Get the effective class ID for filtering
   const effectiveClassId = getEffectiveClassId();
@@ -353,10 +311,13 @@ const useAssignmentData = () => {
     fetchAllAssignments();
   }, []);
   
-  // Filter workshops based on effective class ID (client-side filtering for testing)
+  // Calculate grouped classes for filtering
+  const groupedClasses = useMemo(() => {
+    return groupCrcClasses(classes);
+  }, [classes]);
+  
+  // Filter workshops based on selected class (client-side filtering)
   useEffect(() => {
-
-    
     if (!effectiveClassId) {
       // If no class selected, show all workshops
       setWorkshops(allWorkshops);
@@ -371,13 +332,9 @@ const useAssignmentData = () => {
     
     // Filter workshops that belong to the selected class
     const filteredWorkshops = allWorkshops.filter(workshop => {
-      const hasMatchingClass = workshop.crc_classes?.some(crcClass => crcClass.id === effectiveClassId);
-      console.log('🔍 Testing: Workshop filtering:', {
-        workshopTitle: workshop.title,
-        workshopClasses: workshop.crc_classes,
-        effectiveClassId,
-        hasMatchingClass
-      });
+      const hasMatchingClass = workshop.crc_classes?.some(crcClass => 
+        crcClass.id === effectiveClassId
+      );
       return hasMatchingClass;
     });
     
@@ -496,20 +453,10 @@ export default function AdminAssignmentsManagement() {
   const [selectedSubmission, setSelectedSubmission] = useState<Row | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   
-  // Group classes for display
+  // Group classes for display by grade_group
   const groupedClasses = useMemo(() => {
     return groupCrcClasses(data.classes);
   }, [data.classes]);
-  
-  // Check if current selection needs sub-class
-  const needsSubClassSelection = shouldShowSubClassSelection(navigation.selectedClass, groupedClasses);
-  
-  // Get current class options for sub-selection
-  const subClassOptions = useMemo(() => {
-    if (!needsSubClassSelection || !navigation.selectedClass) return [];
-    const group = groupedClasses.find(g => g.id === navigation.selectedClass);
-    return group?.classes || [];
-  }, [needsSubClassSelection, navigation.selectedClass, groupedClasses]);
   
   // Get workshop options
   const workshopOptions = useMemo(() => {
@@ -699,7 +646,7 @@ export default function AdminAssignmentsManagement() {
                 <Button variant="outline" className="w-48 justify-between">
                   <span className="truncate text-left">
                   {navigation.selectedClass ? (
-                    groupedClasses.find(g => g.id === navigation.selectedClass)?.name || navigation.selectedClass
+                    data.classes.find(c => c.id === navigation.selectedClass)?.name || navigation.selectedClass
                     ) : "Select Class"}
                   </span>
                   <ChevronsUpDown className="h-4 w-4 opacity-50" />
@@ -718,77 +665,42 @@ export default function AdminAssignmentsManagement() {
                     </div>
                   ) : (
                     groupedClasses.map((classGroup) => (
-                    <button
-                      key={classGroup.id}
-                      onClick={() => {
-                        navigation.updateNavigation({ selectedClass: classGroup.id });
-                        // Clear signed URLs cache when switching classes
-                        clearSignedUrlsCache();
-                      }}
-                      className={`flex w-full items-center gap-2 px-3 py-2 text-sm text-left hover:bg-neutral-50 rounded-md ${navigation.selectedClass === classGroup.id ? 'bg-neutral-50' : ''}`}
-                    >
-                      <Check className={`h-4 w-4 ${navigation.selectedClass === classGroup.id ? 'opacity-100' : 'opacity-0'}`} />
-                      <span>{classGroup.name}</span>
-                      {classGroup.isGroup && (
-                        <span className="ml-auto text-xs text-gray-500">
-                          ({classGroup.classes?.length || 0})
-                        </span>
-                      )}
-                    </button>
-                  ))
+                      <div key={classGroup.id} className="space-y-1">
+                        {/* Grade Group Header (non-clickable, just for organization) */}
+                        <div className="flex items-center gap-2 px-3 py-2 text-sm text-left">
+                          <span className="font-medium text-gray-700">{classGroup.name}</span>
+                      
+                        </div>
+                        {/* Individual Classes (clickable) */}
+                        {classGroup.classes && classGroup.classes.length > 0 && (
+                          <div className="pl-4 space-y-0.5">
+                            {classGroup.classes.map((cls) => (
+                              <button
+                                key={cls.id}
+                                onClick={() => {
+                                  navigation.updateNavigation({ selectedClass: cls.id });
+                                  // Clear signed URLs cache when switching classes
+                                  clearSignedUrlsCache();
+                                }}
+                                className={`flex w-full items-center gap-2 px-3 py-2 text-sm text-left hover:bg-neutral-50 rounded-md ${navigation.selectedClass === cls.id ? 'bg-neutral-50' : ''}`}
+                              >
+                                <Check className={`h-4 w-4 ${navigation.selectedClass === cls.id ? 'opacity-100' : 'opacity-0'}`} />
+                                <span className="flex-1">{cls.name}</span>
+                                <span className="text-xs text-gray-500">
+                                  ({cls.num_students})
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))
                   )}
                 </div>
               </PopoverContent>
             </Popover>
 
-          {/* Step 2: Sub-Class Selection (only show when needed) */}
-          {needsSubClassSelection && (
-            <Popover>
-                <PopoverTrigger asChild>
-                <Button variant="outline" className="w-48 justify-between">
-                    <span className="truncate text-left">
-                    {navigation.selectedSubClass ? (
-                      data.classes.find(c => c.id === navigation.selectedSubClass)?.name || navigation.selectedSubClass
-                      ) : "Select Specific Class"}
-                    </span>
-                    <ChevronsUpDown className="h-4 w-4 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                                <PopoverContent className="w-64 p-2">
-                  <div className="space-y-1">
-                   {data.classesLoading ? (
-                     <div className="py-6 text-center text-sm text-neutral-500">
-                       <div className="animate-spin h-6 w-6 border-2 border-current border-t-transparent rounded-full mx-auto mb-2" />
-                       Loading classes...
-                     </div>
-                   ) : subClassOptions.length === 0 ? (
-                     <div className="py-6 text-center text-sm text-neutral-500">
-                       No subclasses found
-                     </div>
-                   ) : (
-                     subClassOptions.map((subClass) => (
-                        <button
-                          key={subClass.id}
-                          onClick={() => {
-                        navigation.updateNavigation({ selectedSubClass: subClass.id });
-                        // Clear signed URLs cache when switching subclasses
-                        clearSignedUrlsCache();
-                      }}
-                      className={`flex w-full items-center gap-2 px-3 py-2 text-sm text-left hover:bg-neutral-50 rounded-md ${navigation.selectedSubClass === subClass.id ? 'bg-neutral-50' : ''}`}
-                    >
-                      <Check className={`h-4 w-4 ${navigation.selectedSubClass === subClass.id ? 'opacity-100' : 'opacity-0'}`} />
-                          <span>{subClass.name}</span>
-                          <span className="ml-auto text-xs text-gray-500">
-                            ({subClass.num_students})
-                          </span>
-                        </button>
-                  )))}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            )}
-
-          {/* Step 3: Workshop Selection */}
+          {/* Step 2: Workshop Selection */}
             <Popover open={workshopPopoverOpen} onOpenChange={setWorkshopPopoverOpen}>
               <PopoverTrigger asChild>
                 <Button 
@@ -824,12 +736,6 @@ export default function AdminAssignmentsManagement() {
                   if (!navigation.getEffectiveClassId()) {
                       return <div className="py-6 text-center text-sm text-neutral-500">
                         Select a class first
-                      </div>;
-                    }
-                    
-                  if (needsSubClassSelection && !navigation.selectedSubClass) {
-                      return <div className="py-6 text-center text-sm text-neutral-500">
-                        Select a specific class first
                       </div>;
                     }
                     
@@ -871,7 +777,7 @@ export default function AdminAssignmentsManagement() {
               </PopoverContent>
     </Popover>
 
-          {/* Step 4: Assignment Selection */}
+          {/* Step 3: Assignment Selection */}
             <Popover open={assignmentPopoverOpen} onOpenChange={setAssignmentPopoverOpen}>
               <PopoverTrigger asChild>
               <Button variant="outline" className="w-64 justify-between" disabled={!navigation.selectedWorkshop}>
@@ -928,12 +834,10 @@ export default function AdminAssignmentsManagement() {
           <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-700 mb-2">Select an Assignment</h3>
           <p className="text-gray-500 mb-4">
-            Choose a class, then specific class, then workshop, then assignment to view student submission data.
+            Choose a class, then workshop, then assignment to view student submission data.
           </p>
           <div className="flex items-center justify-center gap-2 text-sm text-gray-400">
             <span className="px-2 py-1 bg-white rounded border">Class</span>
-            <span>→</span>
-            <span className="px-2 py-1 bg-white rounded border text-gray-300">(Specific Class)</span>
             <span>→</span>
             <span className="px-2 py-1 bg-white rounded border">Workshop</span>
             <span>→</span>

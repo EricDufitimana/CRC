@@ -8,7 +8,6 @@ import MultipleAnnouncementsBanner from "@/components/Banner/MultipleAnnouncemen
 import { Fragment } from "react";
 import { getEnglishLanguageLearning, subscribeToEnglishLanguageLearning } from "@/lib/supabase-queries";
 import { BookOpen } from "lucide-react";
-import { filterExpiredResources } from "@/utils/filterExpiredResources";
 import ConditionalHeader from "../../../../components/other/ConditionalHeader";
 import { useRealtimeData } from "@/hooks/useRealTimeData";
 
@@ -26,7 +25,6 @@ export default function Home() {
   const { data, loading, error, refetch } = useRealtimeData<EnglishResource>({
     fetchFunction: getEnglishLanguageLearning,
     subscribeFunction: subscribeToEnglishLanguageLearning,
-    filterFunction: filterExpiredResources,
   });
 
   return (

@@ -7,7 +7,6 @@ import Layout from "@/components/other/ResourceLayout";
 import { Fragment } from "react";
 import { getRecurringOpportunities, subscribeToRecurringOpportunities } from "@/lib/supabase-queries";
 import { RotateCcw } from "lucide-react";
-import { filterExpiredResources } from "@/utils/filterExpiredResources";
 import ConditionalHeader from "../../../../components/other/ConditionalHeader";
 import { useRealtimeData } from "@/hooks/useRealTimeData";
 
@@ -25,7 +24,6 @@ export default function RecurringOpportunities() {
   const { data, loading, error, refetch } = useRealtimeData<Opportunity>({
     fetchFunction: getRecurringOpportunities,
     subscribeFunction: subscribeToRecurringOpportunities,
-    filterFunction: filterExpiredResources,
   });
   
   return (

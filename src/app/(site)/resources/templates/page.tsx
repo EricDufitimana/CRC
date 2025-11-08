@@ -16,7 +16,6 @@ import { getTemplates, subscribeToTemplates } from "@/lib/supabase-queries";
 import GridSkeleton from "@/components/ui/GridSkeleton";
 import ResourceSkeleton from "@/components/ui/ResourceSkeleton";
 import { FileText } from "lucide-react";
-import { filterExpiredResources } from "@/utils/filterExpiredResources";
 import ConditionalHeader from "../../../../components/other/ConditionalHeader";
 import { useRealtimeData } from "@/hooks/useRealTimeData";
 
@@ -36,7 +35,6 @@ export default function Home() {
   const { data, loading, error, refetch } = useRealtimeData<Template>({
     fetchFunction: getTemplates,
     subscribeFunction: subscribeToTemplates,
-    filterFunction: filterExpiredResources,
   });
   
   return (

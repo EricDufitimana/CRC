@@ -8,7 +8,6 @@ import MultipleAnnouncementsBanner from "@/components/Banner/MultipleAnnouncemen
 import { Fragment } from "react";
 import { getInternships, subscribeToInternships } from "@/lib/supabase-queries";
 import { Briefcase } from "lucide-react";
-import { filterExpiredResources } from "@/utils/filterExpiredResources";
 import ConditionalHeader from "../../../../components/other/ConditionalHeader";
 import { useRealtimeData } from "@/hooks/useRealTimeData";
 
@@ -27,7 +26,6 @@ export default function Internships() {
   const { data, loading, error, refetch } = useRealtimeData<Internship>({
     fetchFunction: getInternships,
     subscribeFunction: subscribeToInternships,
-    filterFunction: filterExpiredResources,
   });
 
   return (

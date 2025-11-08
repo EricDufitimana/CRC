@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import WorkshopsNotificationBanner from "@/components/Banner/WorkshopsNotificationBanner";
 import WorkshopCard from "@/components/workshops/WorkshopCard";
 import { Card, CardContent } from "@/components/ui/card";
+import Image from "next/image";
 
 
 interface Workshop {
@@ -11,6 +12,7 @@ interface Workshop {
   description: string;
   date: string;
   presentation_url?: string;
+  google_slide_url?: string;
   assignments?: Array<{
     id: string;
     title: string;
@@ -110,10 +112,14 @@ export default function EYWorkshopsPage() {
 
       {!loading && workshops.length === 0 && (
         <div className="text-center py-12">
-          <div className="text-gray-400 mb-4">
-            <svg className="mx-auto h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
+          <div className="mb-4 flex justify-center">
+            <Image
+              src="/images/empty-state/empty-state-workshops.svg"
+              alt="No workshops"
+              width={256}
+              height={256}
+              className="h-64 w-64 mx-auto"
+            />
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">No Workshops Found</h3>
           <p className="text-gray-500">There are currently no workshops available for Enrichment Year students.</p>

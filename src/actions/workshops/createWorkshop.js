@@ -9,6 +9,7 @@ const workshopSchema = z.object({
   title: z.string().min(1, "Title is required").max(100, "Title must be less than 100 characters"),
   description: z.string().min(1, "Description is required").max(500, "Description must be less than 500 characters"),
   presentation_pdf_url: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  google_slide_url: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   workshop_date: z.string().min(1, "Workshop date is required"),
   workshop_group: z.string().min(1, "CRC class is required"),
 });
@@ -22,6 +23,7 @@ export async function createWorkshopAction(prevState, formData) {
       title: formData.get("title"),
       description: formData.get("description"),
       presentation_pdf_url: formData.get("presentation_pdf_url"),
+      google_slide_url: formData.get("google_slide_url"),
       workshop_date: formData.get("workshop_date"),
       workshop_group: formData.get("workshop_group"),
     };
@@ -33,16 +35,6 @@ export async function createWorkshopAction(prevState, formData) {
     }
     
     console.log("🔧 Extracted formValue:", formValue);
-
-    // Get file if uploaded
-    const file = formData.get("presentation_file");
-
-    console.log("📋 Form data:", formValue);
-    console.log("📁 File data:", file ? {
-      name: file.name,
-      size: file.size,
-      type: file.type
-    } : 'No file');
 
     // Validate the form data
     const validatedData = await workshopSchema.parseAsync(formValue);
@@ -58,8 +50,29 @@ export async function createWorkshopAction(prevState, formData) {
     const selectedValue = validatedData.workshop_group;
     let crcClasses = [];
     
-    // Check if the selected value is a grade group name (Enrichment Year, Senior 4)
-    if (selectedValue === 'Enrichment Year' || selectedValue === 'Senior 4') {
+    // Check if the selected value is a class ID (format: class:123)
+    if (selectedValue.startsWith('class:')) {
+      // For individual class IDs, get that specific class by ID
+      const classId = selectedValue.replace('class:', '');
+      console.log("🔍 Fetching specific class by ID:", classId);
+      
+      const { data: specificClass, error: specificError } = await supabase
+        .from('crc_class')
+        .select('id, name, grade_group')
+        .eq('id', classId)
+        .single(); // Use single() to get only one result
+
+      if (specificError) {
+        throw new Error(`Failed to fetch CRC class: ${specificError.message}`);
+      }
+
+      if (!specificClass) {
+        throw new Error(`CRC class not found with ID: ${classId}`);
+      }
+
+      crcClasses = [specificClass];
+      console.log("📋 Found specific CRC class by ID:", crcClasses.map(c => c.name));
+    } else if (selectedValue === 'Enrichment Year' || selectedValue === 'Senior 4') {
       // For grade groups, get all classes in that grade group
       console.log("🔍 Fetching all classes for grade group:", selectedValue);
       
@@ -79,13 +92,14 @@ export async function createWorkshopAction(prevState, formData) {
       crcClasses = gradeGroupClasses;
       console.log("📋 Found CRC classes for grade group:", crcClasses.map(c => c.name));
     } else {
-      // For individual class names, get that specific class
-      console.log("🔍 Fetching specific class:", selectedValue);
+      // Fallback: try to find by name (for backward compatibility)
+      console.log("🔍 Fetching specific class by name:", selectedValue);
       
       const { data: specificClass, error: specificError } = await supabase
         .from('crc_class')
         .select('id, name, grade_group')
-        .eq('name', selectedValue);
+        .eq('name', selectedValue)
+        .limit(1); // Limit to 1 to avoid matching multiple classes with same name
 
       if (specificError) {
         throw new Error(`Failed to fetch CRC class: ${specificError.message}`);
@@ -96,66 +110,12 @@ export async function createWorkshopAction(prevState, formData) {
       }
 
       crcClasses = specificClass;
-      console.log("📋 Found specific CRC class:", crcClasses.map(c => c.name));
+      console.log("📋 Found specific CRC class by name:", crcClasses.map(c => c.name));
     }
 
-    let presentationUrl = validatedData.presentation_pdf_url?.trim() || null;
-
-    // Handle file upload if a file is provided
-    if (file && file.name) {
-      console.log('🔍 Processing file upload...');
-      try {
-        // Validate file type
-        if (!file.type.includes('pdf')) {
-          throw new Error('Only PDF files are allowed for presentations');
-        }
-
-        // Create a safe filename from workshop title
-        const safeTitle = validatedData.title.trim().replace(/[^a-zA-Z0-9_-]/g, '_');
-        const ext = file.name.split('.').pop() ?? 'pdf';
-        const key = crypto.randomUUID();
-        const currentDate = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
-        const path = `workshops/${safeTitle}/${currentDate}/${key}.${ext}`;
-
-        console.log('🔍 File upload details:', {
-          originalName: file.name,
-          extension: ext,
-          generatedKey: key,
-          currentDate,
-          uploadPath: path,
-          fileSize: file.size,
-          fileType: file.type
-        });
-
-        console.log('🔍 Uploading file to Supabase storage...');
-        const { error: uploadError } = await supabase.storage
-          .from("presentation_pdfs")
-          .upload(path, file, {
-            cacheControl: "3600",
-            upsert: false,
-            contentType: file.type || "application/pdf",
-          });
-
-        if (uploadError) {
-          console.error('❌ File upload failed:', uploadError);
-          throw new Error(uploadError.message || "Upload failed");
-        }
-
-        console.log('✅ File uploaded successfully to path:', path);
-
-        // Get public URL
-        console.log('🔍 Getting public URL for uploaded file...');
-        const { data: publicUrlData } = supabase.storage
-          .from("presentation_pdfs")
-          .getPublicUrl(path);
-        presentationUrl = publicUrlData?.publicUrl || null;
-        console.log('✅ Public URL generated:', presentationUrl);
-
-      } catch (uploadError) {
-        console.error('❌ File upload error:', uploadError);
-        throw new Error(`File upload error: ${uploadError.message}`);
-      }
-    }
+    // Get Google Slides URL
+    const googleSlideUrl = validatedData.google_slide_url?.trim() || null;
+    const presentationUrl = validatedData.presentation_pdf_url?.trim() || null;
 
     // Prepare workshop data for database
     const workshopData = {
@@ -163,6 +123,7 @@ export async function createWorkshopAction(prevState, formData) {
       description: validatedData.description.trim(),
       date: new Date(validatedData.workshop_date),
       presentation_url: presentationUrl,
+      google_slide_url: googleSlideUrl,
       has_assignment: false,
     };
 
