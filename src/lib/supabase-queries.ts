@@ -138,9 +138,15 @@ export async function getRecentResources() {
 // Event queries (unchanged)
 // Helper function to get gallery images from a folder
 async function getGalleryImagesFromFolder(folderPath: string | null | undefined): Promise<string[]> {
-  if (!folderPath) return [];
+  console.log('[Gallery Debug] getGalleryImagesFromFolder called with folderPath:', folderPath);
+  
+  if (!folderPath) {
+    console.log('[Gallery Debug] No folder path provided, returning empty array');
+    return [];
+  }
   
   try {
+    console.log('[Gallery Debug] Listing files from storage bucket "events-gallery" in folder:', folderPath);
     const { data: files, error } = await supabase.storage
       .from('events-gallery')
       .list(folderPath, {
@@ -149,21 +155,119 @@ async function getGalleryImagesFromFolder(folderPath: string | null | undefined)
       });
 
     if (error) {
-      console.error('Error listing gallery images:', error);
+      console.error('[Gallery Debug] Error listing gallery images:', error);
       return [];
     }
 
-    if (!files || files.length === 0) return [];
+    console.log('[Gallery Debug] Files found:', files?.length || 0);
+    if (files && files.length > 0) {
+      console.log('[Gallery Debug] Raw file objects:', JSON.stringify(files, null, 2));
+      console.log('[Gallery Debug] File names:', files.map(f => f.name));
+      console.log('[Gallery Debug] File details:', files.map(f => ({
+        name: f.name,
+        nameType: typeof f.name,
+        nameLength: f.name?.length,
+        hasName: !!f.name,
+        id: f.id,
+        metadata: f.metadata,
+        updated_at: f.updated_at
+      })));
+    }
+
+    if (!files || files.length === 0) {
+      console.log('[Gallery Debug] No files found, returning empty array');
+      return [];
+    }
 
     // Construct public URLs for each image
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    if (!supabaseUrl) return [];
+    if (!supabaseUrl) {
+      console.error('[Gallery Debug] NEXT_PUBLIC_SUPABASE_URL is not set');
+      return [];
+    }
 
-    return files
-      .filter(file => file.name && /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name))
-      .map(file => `${supabaseUrl}/storage/v1/object/public/events-gallery/${folderPath}/${file.name}`);
+    // Test the regex pattern and mimetype check
+    const imageExtensionRegex = /\.(jpg|jpeg|png|gif|webp)$/i;
+    const imageMimeTypeRegex = /^image\/(jpeg|jpg|png|gif|webp)$/i;
+    console.log('[Gallery Debug] Testing regex pattern:', imageExtensionRegex.toString());
+    console.log('[Gallery Debug] Testing mimetype pattern:', imageMimeTypeRegex.toString());
+    
+    // Log which files match and which don't
+    files.forEach((file, index) => {
+      const hasName = !!file.name;
+      const matchesExtensionRegex = file.name ? imageExtensionRegex.test(file.name) : false;
+      const matchesMimeType = file.metadata?.mimetype ? imageMimeTypeRegex.test(file.metadata.mimetype) : false;
+      const isImage = matchesExtensionRegex || matchesMimeType;
+      console.log(`[Gallery Debug] File ${index + 1}:`, {
+        name: file.name,
+        hasName,
+        matchesExtensionRegex,
+        matchesMimeType,
+        mimetype: file.metadata?.mimetype,
+        isImage
+      });
+    });
+
+    const imageFiles = files.filter(file => {
+      // Check if it's a folder (folders typically don't have an id or have metadata indicating they're folders)
+      const isFolder = !file.id || (file.metadata && file.metadata.mimetype === null);
+      const hasName = !!file.name;
+      // Check both file extension and mimetype to support files with or without extensions
+      const matchesExtensionRegex = file.name ? imageExtensionRegex.test(file.name) : false;
+      const matchesMimeType = file.metadata?.mimetype ? imageMimeTypeRegex.test(file.metadata.mimetype) : false;
+      const isImage = matchesExtensionRegex || matchesMimeType;
+      const result = !isFolder && hasName && isImage;
+      
+      if (!result && file.name) {
+        console.log(`[Gallery Debug] File "${file.name}" filtered out:`, {
+          isFolder,
+          hasName,
+          matchesExtensionRegex,
+          matchesMimeType,
+          mimetype: file.metadata?.mimetype,
+          id: file.id,
+          metadata: file.metadata
+        });
+      }
+      return result;
+    });
+    console.log('[Gallery Debug] Image files after filtering:', imageFiles.length);
+    if (imageFiles.length > 0) {
+      console.log('[Gallery Debug] Filtered image file names:', imageFiles.map(f => f.name));
+    } else {
+      console.log('[Gallery Debug] WARNING: No files passed the filter! All files:', files.map(f => ({ name: f.name, type: typeof f.name })));
+    }
+    
+    // Separate hero image from other images
+    const heroImageFile = imageFiles.find(file => file.name === 'hero-image' || file.name.startsWith('hero-image'));
+    const otherImageFiles = imageFiles.filter(file => file.name !== 'hero-image' && !file.name.startsWith('hero-image'));
+    
+    // Sort other images by name to ensure consistent ordering
+    otherImageFiles.sort((a, b) => {
+      if (!a.name || !b.name) return 0;
+      return a.name.localeCompare(b.name);
+    });
+    
+    // Build URL array with hero image first (if it exists), then other images
+    const imageUrls: string[] = [];
+    if (heroImageFile) {
+      const heroUrl = `${supabaseUrl}/storage/v1/object/public/events-gallery/${folderPath}/${heroImageFile.name}`;
+      imageUrls.push(heroUrl);
+      console.log('[Gallery Debug] Hero image found:', heroImageFile.name);
+    }
+    
+    // Add other images
+    otherImageFiles.forEach(file => {
+      const url = `${supabaseUrl}/storage/v1/object/public/events-gallery/${folderPath}/${file.name}`;
+      imageUrls.push(url);
+    });
+    
+    console.log('[Gallery Debug] Generated image URLs (hero first):', imageUrls);
+    console.log('[Gallery Debug] Hero image URL:', imageUrls[0] || 'none');
+    
+    return imageUrls;
   } catch (error) {
-    console.error('Error fetching gallery images:', error);
+    console.error('[Gallery Debug] Error fetching gallery images:', error);
     return [];
   }
 }
@@ -192,24 +296,44 @@ export async function getPreviousEvents() {
 }
 
 export async function getUpcomingEvents() {
+  console.log('[Gallery Debug] getUpcomingEvents: Starting to fetch events from database');
+  
   const { data, error } = await supabase
     .from('events')
     .select('*')
     .eq('type', 'upcoming_events')
     .order('created_at', { ascending: false });
 
-  if (error) throw error;
+  if (error) {
+    console.error('[Gallery Debug] getUpcomingEvents: Database error:', error);
+    throw error;
+  }
+  
+  console.log('[Gallery Debug] getUpcomingEvents: Found', data?.length || 0, 'events');
   
   // Fetch gallery images for each event
   const eventsWithGallery = await Promise.all(
-    (data || []).map(async (event) => {
+    (data || []).map(async (event, index) => {
+      console.log(`[Gallery Debug] getUpcomingEvents: Processing event ${index + 1}/${data?.length || 0}:`, {
+        id: event.id,
+        title: event.title,
+        gallery_folder: event.gallery_folder,
+        has_gallery: !!event.gallery,
+        gallery_length: event.gallery?.length || 0
+      });
+      
       const galleryImages = await getGalleryImagesFromFolder(event.gallery_folder);
+      
+      console.log(`[Gallery Debug] getUpcomingEvents: Event "${event.title}" - gallery_images count:`, galleryImages.length);
+      
       return {
         ...event,
         gallery_images: galleryImages
       };
     })
   );
+  
+  console.log('[Gallery Debug] getUpcomingEvents: Returning', eventsWithGallery.length, 'events with gallery data');
   
   return eventsWithGallery;
 }

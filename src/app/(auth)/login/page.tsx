@@ -134,7 +134,7 @@ export default function SignInForm() {
                     </div>
                     <div className="flex-1">
                       <h3 className="font-semibold text-gray-900 dark:text-gray-100">Student</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">Access resources and submit essays</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Access resources and submit assignments</p>
                     </div>
                     <ArrowRight className="w-5 h-5 text-gray-400 transition-all duration-300 group-hover:translate-x-1 group-hover:scale-110 group-hover:text-green-500" />
                   </div>

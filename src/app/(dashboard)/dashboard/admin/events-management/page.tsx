@@ -883,8 +883,11 @@ export default function EventsManagement() {
   const getEventImage = (event: SupabaseEvent) => {
     try {
       // First check gallery_images from folder (new method)
+      // Hero image is returned first, or check for hero-image in URL
       if (event.gallery_images && event.gallery_images.length > 0) {
-        return event.gallery_images[0];
+        // Look for hero-image explicitly, or use first image (which should be hero-image)
+        const heroImageUrl = event.gallery_images.find(url => url.includes('hero-image'));
+        return heroImageUrl || event.gallery_images[0];
       }
 
       // Fallback to old gallery structure
@@ -1495,6 +1498,7 @@ export default function EventsManagement() {
                                  <Users className="h-4 w-4" />
                                  <span className="truncate">{event.event_organizer.name}</span>
                                </div>
+                               
                              )}
                              {((event.gallery_images && event.gallery_images.length > 0) || (event.gallery && event.gallery.length > 0)) && (
                                <div className="flex items-center gap-2">

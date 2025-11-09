@@ -38,16 +38,6 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Debug logging for authentication state
-  console.log('🔍 Middleware Debug:', {
-    pathname: request.nextUrl.pathname,
-    hasUser: !!user,
-    userId: user?.id || 'no-user',
-    userEmail: user?.email || 'no-email',
-    timestamp: new Date().toISOString(),
-    userAgent: request.headers.get('user-agent')?.substring(0, 100) || 'no-user-agent'
-  });
-
   // Check if user is trying to access protected routes
   const isAdminRoute = request.nextUrl.pathname.startsWith('/dashboard/admin');
   const isStudentRoute = request.nextUrl.pathname.startsWith('/dashboard/student');
@@ -56,12 +46,6 @@ export async function updateSession(request: NextRequest) {
   const isSetupRoute = request.nextUrl.pathname.startsWith('/setup');
 
   if (!user && isProtectedRoute && !isSetupRoute) {
-    console.log('🚫 Unauthorized access attempt:', {
-      pathname: request.nextUrl.pathname,
-      redirectingTo: '/login',
-      timestamp: new Date().toISOString()
-    });
-    
     // no user, redirect to login page
     const url = request.nextUrl.clone()
     url.pathname = '/login'
@@ -84,24 +68,11 @@ export async function updateSession(request: NextRequest) {
         }
         
         if (user.id !== ALLOWED_USER_ID) {
-          console.log('🚫 Admin creation access denied:', {
-            pathname: request.nextUrl.pathname,
-            userId: user.id,
-            allowedUserId: ALLOWED_USER_ID,
-            timestamp: new Date().toISOString()
-          });
-          
           // User is not authorized to create admins, redirect to unauthorized page
           const url = request.nextUrl.clone()
           url.pathname = '/unauthorized'
           return NextResponse.redirect(url)
         }
-
-        console.log('✅ Admin creation access granted:', {
-          pathname: request.nextUrl.pathname,
-          userId: user.id,
-          timestamp: new Date().toISOString()
-        });
       }
 
       if (isAdminRoute) {
@@ -113,25 +84,11 @@ export async function updateSession(request: NextRequest) {
           .single();
 
         if (adminError || !admin) {
-          console.log('🚫 Admin access denied:', {
-            pathname: request.nextUrl.pathname,
-            userId: user.id,
-            error: adminError?.message || 'Admin not found',
-            timestamp: new Date().toISOString()
-          });
-          
           // User is not an admin, redirect to admin-verification page
           const url = request.nextUrl.clone()
           url.pathname = '/admin-verification'
           return NextResponse.redirect(url)
         }
-
-        console.log('✅ Admin access granted:', {
-          pathname: request.nextUrl.pathname,
-          userId: user.id,
-          adminId: admin.id,
-          timestamp: new Date().toISOString()
-        });
       }
 
       if (isStudentRoute) {
@@ -143,13 +100,6 @@ export async function updateSession(request: NextRequest) {
           .single();
 
         if (studentError || !student) {
-          console.log('🚫 Student access denied:', {
-            pathname: request.nextUrl.pathname,
-            userId: user.id,
-            error: studentError?.message || 'Student not found',
-            timestamp: new Date().toISOString()
-          });
-          
           // User is not a student, redirect to admin-verification page
           const url = request.nextUrl.clone()
           url.pathname = '/admin-verification'
@@ -164,13 +114,6 @@ export async function updateSession(request: NextRequest) {
           .single();
 
         if (profileError || !profile) {
-          console.log('🚫 Profile not found:', {
-            pathname: request.nextUrl.pathname,
-            userId: user.id,
-            error: profileError?.message || 'Profile not found',
-            timestamp: new Date().toISOString()
-          });
-          
           // Profile not found, redirect to setup
           const url = request.nextUrl.clone()
           url.pathname = '/setup'
@@ -179,30 +122,13 @@ export async function updateSession(request: NextRequest) {
 
         // Check if student has completed setup
         if (!profile.has_setup) {
-          console.log('🚫 Student setup not completed:', {
-            pathname: request.nextUrl.pathname,
-            userId: user.id,
-            studentId: student.id,
-            hasCompletedSetup: profile.has_setup,
-            timestamp: new Date().toISOString()
-          });
-          
           // Student hasn't completed setup, redirect to setup page
           const url = request.nextUrl.clone()
           url.pathname = '/setup'
           return NextResponse.redirect(url)
         }
-
-        console.log('✅ Student access granted:', {
-          pathname: request.nextUrl.pathname,
-          userId: user.id,
-          studentId: student.id,
-          hasCompletedSetup: profile.has_setup,
-          timestamp: new Date().toISOString()
-        });
       }
     } catch (error) {
-      console.log('❌ Middleware authorization error:', error);
       // On error, redirect to admin-verification page
       const url = request.nextUrl.clone()
       url.pathname = '/admin-verification'
@@ -235,30 +161,13 @@ export async function updateSession(request: NextRequest) {
           .single();
 
         if (profile && !profileError && profile.has_setup) {
-          console.log('🚫 Setup already completed, redirecting to dashboard:', {
-            pathname: request.nextUrl.pathname,
-            userId: user.id,
-            studentId: student.id,
-            hasCompletedSetup: profile.has_setup,
-            timestamp: new Date().toISOString()
-          });
-          
           // Setup already completed, redirect to student dashboard
           const url = request.nextUrl.clone()
           url.pathname = '/dashboard/student'
           return NextResponse.redirect(url)
         }
-
-        console.log('✅ Student accessing setup page:', {
-          pathname: request.nextUrl.pathname,
-          userId: user.id,
-          studentId: student.id,
-          hasCompletedSetup: profile?.has_setup || false,
-          timestamp: new Date().toISOString()
-        });
       }
     } catch (error) {
-      console.log('❌ Setup route middleware error:', error);
       // On error, allow access to setup page
     }
   }

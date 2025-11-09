@@ -9,6 +9,7 @@ type Notification = {
   end_time: string | null;
   created_at: string;
   page: string;
+  is_active?: boolean;
 };
 
 type PageKey = 
@@ -100,6 +101,11 @@ export default function MultipleAnnouncementsBanner({
         // Filter active announcements and limit to maxAnnouncements
         const activeNotifications = rawNotifications
           .filter((notif: Notification) => {
+            // Only show announcements with is_active: true
+            if (notif.is_active !== true) {
+              return false;
+            }
+            
             // Handle null end_time (never expires) or future end_time
             if (!notif.end_time) {
               console.log(`⏰ Announcement ${notif.id}: endTime=null (never expires), isActive=true`);

@@ -98,16 +98,14 @@ export async function GET(request) {
       return NextResponse.json({ notification });
     }
 
-    // Default: list announcements (optionally by page) for admin UI compatibility
+    // Default: list announcements (optionally by page)
+    // If page is provided, it's a site page request - filter by is_active: true
+    // If no page is provided, it's admin dashboard - show all announcements
     const listWhereClause = {
-      AND: [
-        { OR: [{ is_active: true }, { is_active: null }] },
-        { OR: [
-          { end_time: null }, // Never expires
-          { end_time: { gt: new Date(nowIso) } } // Or hasn't expired yet
-        ]}
-      ],
-      ...(page ? { page } : {}),
+      ...(page ? { 
+        page,
+        is_active: true // Site pages should only show active announcements
+      } : {}),
     };
     
     const list = await prisma.announcements.findMany({

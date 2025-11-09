@@ -195,16 +195,20 @@ export default function PreviousEventsPage() {
                       date: event.date,
                       location: event.location,
                       category: event.category,
-                      gallery: event.gallery_images?.map((url, index) => ({
-                        _key: `img-${index}`,
-                        _type: "image" as const,
-                        asset: {
-                          _id: `asset-${index}`,
-                          url: url,
-                          metadata: {}
-                        },
-                        isHero: index === 0
-                      })) || event.gallery || [],
+                      gallery: event.gallery_images?.map((url, index) => {
+                        // Check if URL contains "hero-image" to identify hero image
+                        const isHero = url.includes('hero-image') || index === 0;
+                        return {
+                          _key: `img-${index}`,
+                          _type: "image" as const,
+                          asset: {
+                            _id: `asset-${index}`,
+                            url: url,
+                            metadata: {}
+                          },
+                          isHero: isHero
+                        };
+                      }) || event.gallery || [],
                       event_organizer: event.event_organizer ? {
                         name: event.event_organizer.name,
                         role: event.event_organizer.role,

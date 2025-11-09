@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { z } from "zod";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../zenith/src/components/ui/card";
@@ -8,19 +8,127 @@ import { Button } from "../../../zenith/src/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "../../../zenith/src/components/ui/avatar";
 import { Skeleton } from "../../../zenith/src/components/ui/skeleton";
 import { Input } from "../../../zenith/src/components/ui/input";
-import { FileUpload } from "../../../zenith/src/components/ui/file-upload";
+import { FileUpload as FileUploadBase, getFileIconType, getReadableFileSize } from "@/components/application/file-upload/file-upload-base";
 import { BackgroundGradientAnimation } from "@/components/ui/background-gradient-animation";
 import { useUserData } from "@/hooks/useUserData";
 import { useRouter } from "next/navigation";
 import { ArrowRight, User, FileText, Upload, Image as ImageIcon, Camera, ArrowLeft, Link, Loader2 } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { FileEditIcon, Link06Icon } from "@hugeicons/core-free-icons";
 import { getAvatars, AvatarData as BaseAvatarData } from "@/actions/avatars/getAvatars";
 import { getAvatarsWithSignedUrls, AvatarData } from "@/actions/avatars/getAvatarsWithSignedUrls";
 import { useAvatarFetch } from "@/hooks/useAvatarFetch";
 import { AnimatedText } from "@/components/animation/AnimatedText";
 import imageCompression from "browser-image-compression";
+import React from "react";
 
 // URL validation schema
 const urlSchema = z.string().url("Please enter a valid URL");
+
+// FileUpload wrapper component to match old API
+interface FileUploadProps {
+  multiple?: boolean;
+  accept?: string;
+  maxFiles?: number;
+  value?: File[];
+  onChange?: (files: File[]) => void;
+  onRemove?: (index: number) => void;
+  className?: string;
+  disabled?: boolean;
+  placeholder?: React.ReactNode;
+  helperText?: React.ReactNode;
+}
+
+function FileUpload({
+  multiple = false,
+  accept = "image/*",
+  maxFiles = 10,
+  value = [],
+  onChange,
+  onRemove,
+  className,
+  disabled = false,
+  placeholder = "Drop files here or click to upload",
+  helperText,
+}: FileUploadProps) {
+  const [files, setFiles] = useState<Array<{ id: string; file: File; progress: number; failed: boolean }>>(
+    value.map((file, index) => ({
+      id: `${file.name}-${index}`,
+      file,
+      progress: 100,
+      failed: false,
+    }))
+  );
+
+  // Sync with external value prop
+  React.useEffect(() => {
+    const newFiles = value.map((file, index) => ({
+      id: `${file.name}-${index}-${Date.now()}`,
+      file,
+      progress: 100,
+      failed: false,
+    }));
+    setFiles(newFiles);
+  }, [value]);
+
+  const handleDropFiles = useCallback((fileList: FileList) => {
+    const newFiles = Array.from(fileList);
+    
+    if (!multiple && newFiles.length > 0) {
+      // Single file mode - replace existing file
+      const updatedFiles = [newFiles[0]];
+      onChange?.(updatedFiles);
+    } else if (multiple) {
+      // Multiple file mode - add to existing files
+      const updatedFiles = [...value, ...newFiles].slice(0, maxFiles);
+      onChange?.(updatedFiles);
+    }
+  }, [multiple, value, onChange, maxFiles]);
+
+  const handleDelete = useCallback((id: string) => {
+    const fileIndex = files.findIndex(f => f.id === id);
+    if (fileIndex !== -1) {
+      if (onRemove) {
+        onRemove(fileIndex);
+      } else {
+        const updatedFiles = value.filter((_, index) => index !== fileIndex);
+        onChange?.(updatedFiles);
+      }
+    }
+  }, [files, value, onChange, onRemove]);
+
+  const hintText = typeof helperText === 'string' ? helperText : (typeof placeholder === 'string' ? placeholder : undefined);
+
+  return (
+    <div className={className}>
+      <FileUploadBase.DropZone
+        accept={accept}
+        allowsMultiple={multiple}
+        isDisabled={disabled}
+        hint={hintText}
+        onDropFiles={handleDropFiles}
+      />
+      {files.length > 0 && (
+        <FileUploadBase.Root className="mt-4">
+          <FileUploadBase.List>
+            {files.map((fileItem) => (
+              <FileUploadBase.ListItem
+                key={fileItem.id}
+                name={fileItem.file.name}
+                size={fileItem.file.size}
+                progress={fileItem.progress}
+                failed={fileItem.failed}
+                type={getFileIconType(fileItem.file.name)}
+                onDelete={() => handleDelete(fileItem.id)}
+                className="!p-2.5 !gap-2 [&_p]:!text-sm [&_hr]:!h-2.5 [&>svg]:!size-8 [&>div>div>div>div>svg]:!size-3"
+              />
+            ))}
+          </FileUploadBase.List>
+        </FileUploadBase.Root>
+      )}
+    </div>
+  );
+}
 
 export default function StudentSetupPage() {
   const [studentData, setStudentData] = useState<any>(null);
@@ -453,7 +561,7 @@ export default function StudentSetupPage() {
 
         {/* Main Content - Above illustrations */}
         <div className="relative z-20 w-full">
-      <Card className="w-full max-w-lg shadow-lg border-0 relative z-50 ring-1 ring-white/20 backdrop-blur-sm bg-white/90 mx-auto">
+      <Card className="w-full max-w-lg border border-gray-300/30 rounded-2xl relative z-50 ring-1 ring-white/20 backdrop-blur-sm bg-white/90 mx-auto">
         <CardHeader className="text-center pb-4">
           <CardTitle className="text-xl font-semibold text-gray-900 mb-2">
             {currentStep === 0 && (
@@ -791,7 +899,7 @@ export default function StudentSetupPage() {
                 {/* Academic Reports Upload */}
                 <div className="space-y-3">
                   <div className="flex items-center space-x-2">
-                    <FileText className="h-5 w-5 text-gray-600" />
+                    <HugeiconsIcon icon={FileEditIcon} size={20} color="currentColor" className="text-gray-600" />
                     <h4 className="text-base font-medium text-gray-900">Academic Reports</h4>
                     <span className="text-red-500 text-xs">*Required</span>
                   </div>
@@ -816,13 +924,13 @@ export default function StudentSetupPage() {
                 {/* Resume Link Input */}
                 <div className="space-y-3">
                   <div className="flex items-center space-x-2">
-                    <Link className="h-5 w-5 text-gray-600" />
+                    <HugeiconsIcon icon={Link06Icon} size={20} color="currentColor" className="text-gray-600" />
                     <h4 className="text-base font-medium text-gray-900">Resume/CV Link</h4>
                     <span className="text-gray-400 text-xs">(Optional)</span>
                   </div>
                   <Input
                     type="url"
-                    placeholder="https://docs.google.com/document/..."
+                    placeholder="https://docs.google.com/document/..."  
                     value={resumeLink}
                     onChange={(e) => {
                       console.log('🔗 Setup: Resume link changed:', e.target.value);
@@ -848,16 +956,7 @@ export default function StudentSetupPage() {
                 </div>
               </div>
 
-              <div className="bg-green-50 rounded-lg p-3 border border-green-200">
-                <div className="flex items-center space-x-2">
-                  <svg className="h-4 w-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <p className="text-xs text-green-700">
-                    Don&apos;t worry! You can always update these documents later from your dashboard.
-                  </p>
-                </div>
-              </div>
+             
             </div>
           )}
 
@@ -903,7 +1002,7 @@ export default function StudentSetupPage() {
                   onClick={handleContinue}
                   size="sm"
                   disabled={isUploading}
-                  className="group inline-flex items-center justify-center gap-3 px-7 py-3 bg-dark border border-dark text-white font-medium rounded-md hover:bg-gray-800 shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition-all duration-200 ease-linear disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="group inline-flex items-center justify-center gap-3 px-7 py-3 bg-dark border border-dark text-white font-medium rounded-2xl hover:bg-gray-800 shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition-all duration-200 ease-linear disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span>Continue</span>
                   <ArrowRight className="w-5 h-5 transition-all duration-300 group-hover:translate-x-1 group-hover:scale-110" />
@@ -921,7 +1020,7 @@ export default function StudentSetupPage() {
                   onClick={handleContinue}
                   size="sm"
                   disabled={isUploading}
-                  className="group inline-flex items-center justify-center gap-3 px-7 py-3 bg-dark border border-dark text-white font-medium rounded-md hover:bg-gray-800 shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition-all duration-200 ease-linear disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="group inline-flex items-center justify-center gap-3 px-7 py-3 bg-dark border border-dark text-white font-medium rounded-2xl hover:bg-gray-800 shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition-all duration-200 ease-linear disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span>
                     {isUploading 
@@ -954,7 +1053,7 @@ export default function StudentSetupPage() {
                 onClick={handleBack}
                 variant="outline"
                 size="sm"
-                className="group inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 border-gray-300 hover:bg-gray-50 transition-all duration-200"
+                className="group inline-flex items-center justify-center gap-2 px-4 rounded-2xl py-2 text-sm font-medium text-gray-600 border border-gray-300/30 hover:bg-gray-50 transition-all duration-200"
               >
                 <ArrowLeft className="w-4 h-4 transition-all duration-300 group-hover:-translate-x-1" />
                 <span>Back</span>
@@ -965,7 +1064,7 @@ export default function StudentSetupPage() {
                 onClick={handleContinue}
                 size="sm"
                 disabled={isUploading}
-                className="group inline-flex items-center justify-center gap-3 px-7 py-3 bg-dark border border-dark text-white font-medium rounded-md hover:bg-gray-800 shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition-all duration-200 ease-linear disabled:opacity-50 disabled:cursor-not-allowed"
+                className="group inline-flex items-center justify-center gap-3 px-7 py-3 bg-dark border border-dark text-white font-medium rounded-2xl hover:bg-gray-800 shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition-all duration-200 ease-linear disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span>
                   {isUploading 

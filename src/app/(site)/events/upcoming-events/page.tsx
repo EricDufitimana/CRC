@@ -63,31 +63,58 @@ export default function UpcomingEventsPage() {
     const fetchEvents = async () => {
       try {
         setLoading(true);
+        console.log('[Gallery Debug] Starting to fetch events from API...');
         const response = await fetch('/api/events/upcoming');
+        console.log('[Gallery Debug] API Response status:', response.status, response.statusText);
+        
         const data = await response.json();
+        console.log('[Gallery Debug] Raw API response data:', JSON.stringify(data, null, 2));
         
         if (!response.ok) {
           throw new Error(data.error || 'Failed to fetch events');
         }
         
         setEvents(data.events || []);
-        console.log('Fetched events:', data.events);
+        console.log('[Gallery Debug] Total events fetched:', data.events?.length || 0);
         
         // Debug gallery images for each event
         data.events?.forEach((event: Event, index: number) => {
-          console.log(`Event ${index + 1} - ${event.title}:`);
-          console.log('  Gallery length:', event.gallery?.length);
-          console.log('  Hero images:', event.gallery?.filter(img => img.isHero).length);
-          console.log('  Gallery images:', event.gallery?.map(img => ({
-            url: img.asset?.url,
-            isHero: img.isHero
-          })));
+          console.log(`\n[Gallery Debug] ===== Event ${index + 1}: ${event.title} =====`);
+          console.log('[Gallery Debug] Event ID:', event.id);
+          console.log('[Gallery Debug] Gallery folder:', event.gallery_folder);
+          console.log('[Gallery Debug] Gallery images array:', event.gallery_images);
+          console.log('[Gallery Debug] Gallery images length:', event.gallery_images?.length || 0);
+          console.log('[Gallery Debug] Gallery array:', event.gallery);
+          console.log('[Gallery Debug] Gallery array length:', event.gallery?.length || 0);
+          
+          if (event.gallery) {
+            console.log('[Gallery Debug] Gallery details:');
+            event.gallery.forEach((img, imgIndex) => {
+              console.log(`  [Gallery Debug] Image ${imgIndex + 1}:`, {
+                _key: img._key,
+                _type: img._type,
+                asset_id: img.asset?._id,
+                asset_url: img.asset?.url,
+                isHero: img.isHero,
+                metadata: img.asset?.metadata
+              });
+            });
+            console.log('[Gallery Debug] Hero images count:', event.gallery.filter(img => img.isHero).length);
+          }
+          
+          if (event.gallery_images) {
+            console.log('[Gallery Debug] Gallery images URLs:');
+            event.gallery_images.forEach((url, urlIndex) => {
+              console.log(`  [Gallery Debug] URL ${urlIndex + 1}:`, url);
+            });
+          }
         });
       } catch (err) {
-        console.error('Error fetching events:', err);
+        console.error('[Gallery Debug] Error fetching events:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch events');
       } finally {
         setLoading(false);
+        console.log('[Gallery Debug] Finished fetching events, loading set to false');
       }
     };
 
@@ -189,19 +216,35 @@ export default function UpcomingEventsPage() {
                   </div>
                 </div>
               ) : events && events.length > 0 ? (
-                events.map((event) => (
-                  <EventCard
-                    key={event.id}
-                    event={{
-                      _id: String(event.id),
-                      _type: "events",
-                      title: event.title,
-                      description: event.description,
-                      type: event.type,
-                      date: event.date,
-                      location: event.location,
-                      category: event.category,
-                      gallery: event.gallery_images?.map((url, index) => ({
+                events.map((event) => {
+                  // Process gallery for this event
+                  console.log(`[Gallery Debug] Rendering event "${event.title}":`, {
+                    has_gallery_images: !!event.gallery_images,
+                    gallery_images_length: event.gallery_images?.length || 0,
+                    gallery_images: event.gallery_images,
+                    has_gallery: !!event.gallery,
+                    gallery_length: event.gallery?.length || 0,
+                    gallery: event.gallery
+                  });
+                  
+                  // Check if gallery_images exists and has items, otherwise fall back to gallery
+                  let processedGallery: Array<{
+                    _key: string;
+                    _type: "image";
+                    asset: {
+                      _id: string;
+                      url: string;
+                      metadata: any;
+                    };
+                    isHero?: boolean;
+                  }> = [];
+                  
+                  if (event.gallery_images && event.gallery_images.length > 0) {
+                    console.log(`[Gallery Debug] Using gallery_images for event "${event.title}"`);
+                    processedGallery = event.gallery_images.map((url, index) => {
+                      // Check if URL contains "hero-image" to identify hero image
+                      const isHero = url.includes('hero-image') || index === 0;
+                      const galleryItem = {
                         _key: `img-${index}`,
                         _type: "image" as const,
                         asset: {
@@ -209,18 +252,48 @@ export default function UpcomingEventsPage() {
                           url: url,
                           metadata: {}
                         },
-                        isHero: index === 0
-                      })) || event.gallery || [],
-                      event_organizer: event.event_organizer ? {
-                        name: event.event_organizer.name,
-                        role: event.event_organizer.role,
-                        image: typeof event.event_organizer.image === 'string' 
-                          ? event.event_organizer.image 
-                          : event.event_organizer.image?.asset?.url
-                      } : undefined
-                    }}
-                  />
-                ))
+                        isHero: isHero
+                      };
+                      console.log(`[Gallery Debug] Processing gallery_images[${index}] for event "${event.title}":`, galleryItem);
+                      return galleryItem;
+                    });
+                  } else if (event.gallery && event.gallery.length > 0) {
+                    console.log(`[Gallery Debug] Using gallery array for event "${event.title}"`);
+                    processedGallery = event.gallery;
+                  } else {
+                    console.log(`[Gallery Debug] No gallery data available for event "${event.title}"`);
+                  }
+                  
+                  console.log(`[Gallery Debug] Final processed gallery for event "${event.title}":`, {
+                    source: event.gallery_images && event.gallery_images.length > 0 ? 'gallery_images' : event.gallery && event.gallery.length > 0 ? 'gallery' : 'empty',
+                    gallery_length: processedGallery.length,
+                    gallery: processedGallery
+                  });
+                  
+                  return (
+                    <EventCard
+                      key={event.id}
+                      event={{
+                        _id: String(event.id),
+                        _type: "events",
+                        title: event.title,
+                        description: event.description,
+                        type: event.type,
+                        date: event.date,
+                        location: event.location,
+                        category: event.category,
+                        gallery: processedGallery,
+                        event_organizer: event.event_organizer ? {
+                          name: event.event_organizer.name,
+                          role: event.event_organizer.role,
+                          image: typeof event.event_organizer.image === 'string' 
+                            ? event.event_organizer.image 
+                            : event.event_organizer.image?.asset?.url
+                        } : undefined
+                      }}
+                    />
+                  );
+                })
               ) : (
                 <div className="col-span-full text-center py-16">
                   <div className="max-w-md mx-auto">

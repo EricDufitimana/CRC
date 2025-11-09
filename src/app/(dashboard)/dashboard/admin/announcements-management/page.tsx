@@ -10,6 +10,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "../../../../../../zenith/src/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "../../../../../../zenith/src/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../../../zenith/src/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../../../../../../zenith/src/components/ui/dropdown-menu";
 import { Label } from "../../../../../../zenith/src/components/ui/label";
 import { Textarea } from "../../../../../../zenith/src/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../../../../../../zenith/src/components/ui/alert-dialog";
@@ -323,13 +329,78 @@ export default function AnnouncementsManagement() {
     return announcement.is_active ? "active" : "inactive";
   };
 
-  // Get status badge variant
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
-      case "active": return "default";
-      case "inactive": return "destructive";
-      default: return "outline";
-    }
+  // Get status badge with dropdown for active/inactive toggle
+  const getStatusBadge = (announcement: Announcement) => {
+    const statusOptions = [
+      { value: true, label: 'Active', className: 'bg-blue-100 text-blue-600 hover:bg-blue-100 text-blue-600' },
+      { value: false, label: 'Inactive', className: 'bg-red-100 text-red-600 hover:bg-red-100 text-red-600' }
+    ];
+
+    const currentStatus = statusOptions.find(option => option.value === announcement.is_active);
+    const currentClassName = currentStatus?.className || 'bg-gray-100 text-gray-800';
+
+    const handleStatusChange = async (newStatus: boolean) => {
+      const updatePromise = (async () => {
+        const response = await fetch('/api/announcements/update-status', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            id: announcement.id,
+            is_active: newStatus,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to update announcement status');
+        }
+
+        // Update the local state to reflect the change
+        setAnnouncements(prev =>
+          prev.map(ann =>
+            ann.id === announcement.id
+              ? { ...ann, is_active: newStatus }
+              : ann
+          )
+        );
+
+        return response.json();
+      })();
+
+      showToastPromise({
+        promise: updatePromise,
+        loadingText: 'Updating announcement status...',
+        successText: 'Announcement status updated successfully',
+        successHeaderText: 'Status Updated',
+        errorText: 'Failed to update announcement status. Please try again.',
+        errorHeaderText: 'Update Failed',
+        direction: 'right'
+      });
+    };
+
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Badge className={`${currentClassName} cursor-pointer hover:scale-105 transition-all duration-200 flex items-center gap-1 px-2 py-1 w-fit`}>
+            {currentStatus?.label || (announcement.is_active ? 'Active' : 'Inactive')}
+            <ChevronDown className="h-3 w-3 stroke-2" />
+          </Badge>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {statusOptions.map((option) => (
+            <DropdownMenuItem
+              key={option.value.toString()}
+              onClick={() => handleStatusChange(option.value)}
+              className="cursor-pointer"
+            >
+              <div className={`w-3 h-3 rounded-full mr-2 ${option.value ? 'bg-blue-300' : 'bg-red-300'}`}></div>
+              {option.label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
   };
 
   // Format date for display
@@ -393,7 +464,7 @@ export default function AnnouncementsManagement() {
           message: formData.message,
           page: formData.page,
           end_time: formData.end_time && formData.end_time.trim() !== '' ? formData.end_time : null,
-          is_active: formData.is_active,
+          is_active: editingAnnouncement.is_active, // Keep existing status, don't change it in edit
         }),
       }).then(async (response) => {
         if (!response.ok) {
@@ -505,7 +576,7 @@ export default function AnnouncementsManagement() {
       message: announcement.message,
       page: announcement.page,
       end_time: formatDateTimeLocal(announcement.end_time),
-      is_active: announcement.is_active
+      is_active: true // Not used in edit form anymore, but keeping for formData structure
     });
     setIsEditDialogOpen(true);
   };
@@ -910,14 +981,7 @@ export default function AnnouncementsManagement() {
                         </Badge>
                       </TableCell>
                       <TableCell className="bg-white/80">
-                        <Badge 
-                          className={`${status === "active" 
-                            ? "bg-blue-100 text-blue-600 border-blue-600" 
-                            : "bg-red-100 text-red-600 border-red-600"
-                          } hover:no-underline hover:bg-opacity-100 hover:scale-100 transition-none`}
-                        >
-                          {status.charAt(0).toUpperCase() + status.slice(1)}
-                        </Badge>
+                        {getStatusBadge(announcement)}
                       </TableCell>
                       <TableCell className="bg-white/80">
                         <div className="flex items-center gap-1 text-sm text-gray-600">
@@ -1123,17 +1187,6 @@ export default function AnnouncementsManagement() {
                   placeholder="Leave empty for indefinite duration"
                 />
                 <p className="text-xs text-gray-500 mt-1">Leave empty if the announcement should remain active indefinitely</p>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="edit-is-active"
-                  checked={formData.is_active}
-                  onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.target.checked }))}
-                  className="rounded"
-                />
-                <Label htmlFor="edit-is-active">Active</Label>
               </div>
              
               <div className="flex justify-end gap-2">

@@ -405,10 +405,18 @@ export const addEvent = async(state: any, form:FormData) => {
       
       const eventFolderName = `${cleanTitle}-${formattedDate}-${Date.now()}`;
       
+      // Parse hero image index
+      const heroIndex = heroImageIndex ? parseInt(heroImageIndex as string, 10) : -1;
+      console.log("🎯 Hero image index (parsed):", heroIndex);
+      
       // Upload images to Supabase Storage
+      let imageCounter = 1;
       for (let i = 0; i < images.length; i++) {
         const image = images[i];
-        const fileName = `image-${i + 1}-${image.name}`;
+        // If this is the hero image, name it "hero-image" instead of numbered
+        const fileName = i === heroIndex 
+          ? `hero-image` 
+          : `image-${imageCounter}-${image.name}`;
         const filePath = `${eventFolderName}/${fileName}`;
         
         const { error: uploadError } = await supabase.storage
@@ -418,7 +426,12 @@ export const addEvent = async(state: any, form:FormData) => {
         if (uploadError) {
           console.error(`❌ Error uploading image ${i + 1}:`, uploadError);
         } else {
-          console.log(`✅ Uploaded image ${i + 1}: ${fileName}`);
+          console.log(`✅ Uploaded image ${i + 1}: ${fileName}${i === heroIndex ? ' (HERO)' : ''}`);
+        }
+        
+        // Only increment counter for non-hero images
+        if (i !== heroIndex) {
+          imageCounter++;
         }
       }
       
@@ -504,9 +517,27 @@ export const updateEvent = async(form: FormData) => {
       .filter(([key]) => key === 'newImages')
       .map(([, value]) => value as File);
     
+    // Extract hero image index for new images
+    const heroImageIndex = form.get('heroImageIndex') as string;
+    
     console.log("📝 Extracted values:", { eventId, title, category, date, description, location, type });
     console.log("🖼️ Existing images count:", existingImages.length);
     console.log("🖼️ New images count:", newImages.length);
+    console.log("🎯 Hero image index:", heroImageIndex);
+    
+    // Get current event to access gallery_folder
+    const { data: currentEvent, error: fetchError } = await supabase
+      .from('events')
+      .select('gallery_folder')
+      .eq('id', parseInt(eventId))
+      .single();
+    
+    if (fetchError) {
+      console.error("❌ Error fetching current event:", fetchError);
+    }
+    
+    const currentGalleryFolder = currentEvent?.gallery_folder;
+    console.log("📁 Current gallery folder:", currentGalleryFolder);
     
     // Validate required fields
     if (!eventId || !title || !category || !date || !description || !location || !type) {
@@ -520,6 +551,103 @@ export const updateEvent = async(form: FormData) => {
       image: event_organizer_image || undefined
     } : undefined;
 
+    // Handle renaming existing images if hero selection changed
+    if (currentGalleryFolder && existingImages.length > 0) {
+      console.log("🔄 Processing existing images for hero image renaming...");
+      
+      // Find the hero image from existing images
+      const heroImage = existingImages.find((img: any) => img.isHero);
+      const currentHeroImageUrl = heroImage?.asset?.url;
+      
+      console.log("👑 Hero image from existing images:", currentHeroImageUrl);
+      
+      if (currentHeroImageUrl) {
+        // Extract filename from URL
+        // URL format: https://.../storage/v1/object/public/events-gallery/{folder}/{filename}
+        const urlParts = currentHeroImageUrl.split('/');
+        const currentFileName = urlParts[urlParts.length - 1];
+        
+        console.log("📄 Current hero image filename:", currentFileName);
+        
+        // Check if current hero image is already named "hero-image"
+        if (currentFileName !== 'hero-image' && !currentFileName.startsWith('hero-image')) {
+          // List all files in the folder to find existing hero-image and get next number
+          const { data: folderFiles, error: listError } = await supabase.storage
+            .from('events-gallery')
+            .list(currentGalleryFolder);
+          
+          if (!listError && folderFiles) {
+            // Find existing hero-image if any
+            const existingHeroImageFile = folderFiles.find(f => f.name === 'hero-image' || f.name.startsWith('hero-image'));
+            
+            // Get the highest image number to determine next number
+            const imageFiles = folderFiles.filter(f => 
+              f.name.startsWith('image-') && f.name !== currentFileName
+            );
+            const imageNumbers = imageFiles.map(f => {
+              const match = f.name.match(/^image-(\d+)-/);
+              return match ? parseInt(match[1], 10) : 0;
+            });
+            const nextImageNumber = imageNumbers.length > 0 ? Math.max(...imageNumbers) + 1 : 1;
+            
+            // Rename existing hero-image to numbered name if it exists
+            if (existingHeroImageFile) {
+              const oldHeroPath = `${currentGalleryFolder}/${existingHeroImageFile.name}`;
+              const newHeroPath = `${currentGalleryFolder}/image-${nextImageNumber}-${existingHeroImageFile.name}`;
+              
+              console.log(`🔄 Renaming old hero-image from "${existingHeroImageFile.name}" to "image-${nextImageNumber}-${existingHeroImageFile.name}"`);
+              
+              const { error: copyError } = await supabase.storage
+                .from('events-gallery')
+                .copy(oldHeroPath, newHeroPath);
+              
+              if (!copyError) {
+                // Delete old file after successful copy
+                const { error: deleteError } = await supabase.storage
+                  .from('events-gallery')
+                  .remove([oldHeroPath]);
+                
+                if (deleteError) {
+                  console.error("⚠️ Error deleting old hero-image:", deleteError);
+                } else {
+                  console.log("✅ Old hero-image renamed successfully");
+                }
+              } else {
+                console.error("❌ Error renaming old hero-image:", copyError);
+              }
+            }
+            
+            // Rename current hero image to "hero-image"
+            const currentHeroPath = `${currentGalleryFolder}/${currentFileName}`;
+            const newHeroPath = `${currentGalleryFolder}/hero-image`;
+            
+            console.log(`🔄 Renaming current hero image from "${currentFileName}" to "hero-image"`);
+            
+            const { error: renameError } = await supabase.storage
+              .from('events-gallery')
+              .copy(currentHeroPath, newHeroPath);
+            
+            if (!renameError) {
+              // Delete old file after successful copy
+              const { error: deleteError } = await supabase.storage
+                .from('events-gallery')
+                .remove([currentHeroPath]);
+              
+              if (deleteError) {
+                console.error("⚠️ Error deleting old hero image file:", deleteError);
+              } else {
+                console.log("✅ Hero image renamed to 'hero-image' successfully");
+              }
+            } else {
+              console.error("❌ Error renaming hero image:", renameError);
+            }
+          }
+        } else {
+          console.log("✅ Hero image is already named 'hero-image', no renaming needed");
+        }
+      }
+    }
+
     // Process new images for gallery
     let gallery = [...existingImages]; // Start with existing images
     
@@ -530,26 +658,99 @@ export const updateEvent = async(form: FormData) => {
     }
 
     // Handle new images upload to Supabase Storage if any
-    let galleryFolder = null;
+    let galleryFolder = currentGalleryFolder; // Use existing folder if available
     if (newImages && newImages.length > 0) {
       console.log("📤 Uploading new images to Supabase Storage...");
       
-      // Create meaningful folder name with event title and date
-      const cleanTitle = (title as string)
-        .replace(/[^a-zA-Z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
-        .replace(/\s+/g, '-') // Replace spaces with hyphens
-        .toLowerCase()
-        .substring(0, 50); // Limit to 50 characters
+      // Use existing gallery folder if available, otherwise create new one
+      let eventFolderName = currentGalleryFolder;
       
-      // Format date for folder name (YYYY-MM-DD)
-      const formattedDate = new Date(date as string).toISOString().split('T')[0];
+      if (!eventFolderName) {
+        // Create meaningful folder name with event title and date
+        const cleanTitle = (title as string)
+          .replace(/[^a-zA-Z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
+          .replace(/\s+/g, '-') // Replace spaces with hyphens
+          .toLowerCase()
+          .substring(0, 50); // Limit to 50 characters
+        
+        // Format date for folder name (YYYY-MM-DD)
+        const formattedDate = new Date(date as string).toISOString().split('T')[0];
+        
+        eventFolderName = `${cleanTitle}-${formattedDate}-${Date.now()}`;
+      }
       
-      const eventFolderName = `${cleanTitle}-${formattedDate}-${Date.now()}`;
+      // Parse hero image index for new images
+      const heroIndex = heroImageIndex ? parseInt(heroImageIndex, 10) : -1;
+      console.log("🎯 Hero image index for new images (parsed):", heroIndex);
+      
+      // If a new image is selected as hero, rename existing hero-image first
+      if (heroIndex >= 0 && heroIndex < newImages.length && eventFolderName) {
+        const { data: folderFiles } = await supabase.storage
+          .from('events-gallery')
+          .list(eventFolderName);
+        
+        if (folderFiles) {
+          const existingHeroImageFile = folderFiles.find(f => f.name === 'hero-image' || f.name.startsWith('hero-image'));
+          
+          if (existingHeroImageFile) {
+            // Get the highest image number to determine next number
+            const imageFiles = folderFiles.filter(f => f.name.startsWith('image-'));
+            const imageNumbers = imageFiles.map(f => {
+              const match = f.name.match(/^image-(\d+)-/);
+              return match ? parseInt(match[1], 10) : 0;
+            });
+            const nextImageNumber = imageNumbers.length > 0 ? Math.max(...imageNumbers) + 1 : 1;
+            
+            const oldHeroPath = `${eventFolderName}/${existingHeroImageFile.name}`;
+            const newHeroPath = `${eventFolderName}/image-${nextImageNumber}-${existingHeroImageFile.name}`;
+            
+            console.log(`🔄 Renaming existing hero-image to make room for new hero: "${existingHeroImageFile.name}" -> "image-${nextImageNumber}-${existingHeroImageFile.name}"`);
+            
+            const { error: copyError } = await supabase.storage
+              .from('events-gallery')
+              .copy(oldHeroPath, newHeroPath);
+            
+            if (!copyError) {
+              const { error: deleteError } = await supabase.storage
+                .from('events-gallery')
+                .remove([oldHeroPath]);
+              
+              if (deleteError) {
+                console.error("⚠️ Error deleting old hero-image:", deleteError);
+              } else {
+                console.log("✅ Existing hero-image renamed successfully");
+              }
+            } else {
+              console.error("❌ Error renaming existing hero-image:", copyError);
+            }
+          }
+        }
+      }
+      
+      // Get current image count for numbering
+      let imageCounter = 1;
+      if (eventFolderName) {
+        const { data: folderFiles } = await supabase.storage
+          .from('events-gallery')
+          .list(eventFolderName);
+        
+        if (folderFiles) {
+          const imageFiles = folderFiles.filter(f => f.name.startsWith('image-'));
+          const imageNumbers = imageFiles.map(f => {
+            const match = f.name.match(/^image-(\d+)-/);
+            return match ? parseInt(match[1], 10) : 0;
+          });
+          imageCounter = imageNumbers.length > 0 ? Math.max(...imageNumbers) + 1 : 1;
+        }
+      }
       
       // Upload new images to Supabase Storage
       for (let i = 0; i < newImages.length; i++) {
         const image = newImages[i];
-        const fileName = `image-${i + 1}-${image.name}`;
+        // If this is the hero image, name it "hero-image" instead of numbered
+        const fileName = i === heroIndex 
+          ? `hero-image` 
+          : `image-${imageCounter}-${image.name}`;
         const filePath = `${eventFolderName}/${fileName}`;
         
         const { error: uploadError } = await supabase.storage
@@ -559,7 +760,12 @@ export const updateEvent = async(form: FormData) => {
         if (uploadError) {
           console.error(`❌ Error uploading new image ${i + 1}:`, uploadError);
         } else {
-          console.log(`✅ Uploaded new image ${i + 1}: ${fileName}`);
+          console.log(`✅ Uploaded new image ${i + 1}: ${fileName}${i === heroIndex ? ' (HERO)' : ''}`);
+        }
+        
+        // Only increment counter for non-hero images
+        if (i !== heroIndex) {
+          imageCounter++;
         }
       }
       
