@@ -288,7 +288,7 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
                 <AvatarImage 
                   src={profileImageUrl || ""} 
                   alt={studentData?.full_name || "Student"} 
-                  className={isAvatar ? "object-contain mt-2" : "object-cover"} 
+                  className={isAvatar ? "object-cover mb-2" : "object-cover"} 
                 />
                 <AvatarFallback className={isAvatar ? `bg-${profileBackground}` : 'bg-gradient-to-br from-gray-100 to-gray-200'}>
                   {studentData ? 
