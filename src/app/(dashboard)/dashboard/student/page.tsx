@@ -1705,7 +1705,7 @@ export default function AspenDashboard() {
             src="/images/popup/eye.png" 
             alt="Popup Eye" 
             width={30} 
-            height={30} 
+            height={30}
             className="absolute z-10 top-[-62px] right-[285px]"
           />
           
@@ -1715,7 +1715,7 @@ export default function AspenDashboard() {
             src="/images/popup/eye.png" 
             alt="Popup Eye" 
             width={30} 
-            height={30} 
+            height={30}
             className="absolute z-10 top-[-62px] right-[255px]"
           />
         </div>

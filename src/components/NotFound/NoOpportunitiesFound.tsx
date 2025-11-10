@@ -7,13 +7,13 @@ const NoOpportunitiesFound = () => {
        <Image
          src="/images/illustrations/no-opportunities-image.svg"
         alt="No Opportunities Found"
-        width={200}
-        height={200}
+        width={300}
+        height={300}
         className="w-32 pointer-events-none z-0"
         /> 
       
       {/* Text content */}
-      <div className="space-y-4 max-w-md">
+      <div className="space-y-4 max-w-md mt-4">
         <h3 className="text-xl font-bold text-gray-800">
           No Opportunities Found
         </h3>
