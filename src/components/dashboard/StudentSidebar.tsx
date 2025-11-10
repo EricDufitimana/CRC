@@ -69,12 +69,20 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
   // Fetch student data from useUserData hook
   useEffect(() => {
     const fetchStudentData = async () => {
-      if (!studentId) {
-        console.log('No studentId available');
+      // If userData is still loading, keep isLoading as true and don't proceed
+      if (userDataLoading) {
+        setIsLoading(true);
+        return;
+      }
+      
+      // If no studentId yet after userData is done loading, we're done (no student account)
+      if (!studentId || !userId) {
+        console.log('No studentId or userId available after userData loaded');
         setIsLoading(false);
         return;
       }
       
+      // We have studentId and userId, proceed to fetch student data
       setIsLoading(true);
       setError(null);
       
@@ -104,7 +112,7 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
     };
 
     fetchStudentData();
-  }, [studentId, userId]);
+  }, [studentId, userId, userDataLoading]);
 
   const processProfilePicture = async (profilePicturePath: string) => {
     console.log('Processing profile picture:', { profilePicturePath, studentId });
@@ -327,11 +335,12 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
                   <p className="text-lg font-medium">{studentData.full_name || 'Unknown Name'}</p>
                   <p className="text-sm text-neutral-500">{studentData.email || 'No email'}</p>
                 </>
-              ) : !isLoading && !userDataLoading ? (
+              ) : (
+                // Only show "No profile data" when loading is completely done and there's no data
                 <>
                   <p className="text-sm text-neutral-500">No profile data</p>
                 </>
-              ) : null}
+              )}
             </div>
           </div>
         </div>
