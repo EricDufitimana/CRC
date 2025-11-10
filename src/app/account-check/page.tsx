@@ -292,7 +292,7 @@ export default function AccountCheckPage() {
           <div className="mb-12 flex flex-col items-center justify-center gap-6 sm:flex-row">
             <Link
               href="/register"
-              className="group inline-flex items-center rounded-xl bg-[#74BAAB] px-6 py-2 text-lg font-medium text-white shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition-all duration-300 hover:bg-[#74BAAB]/60"
+              className="group inline-flex items-center rounded-xl bg-[#274D76] px-6 py-2 text-lg font-medium text-white shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition-all duration-300 hover:bg-[#274D76]/80"
             >
               <ArrowLeft className="mr-3 h-5 w-5 text-sm transition-transform duration-300 group-hover:-translate-x-1 group-hover:scale-110" />
               Create Account
