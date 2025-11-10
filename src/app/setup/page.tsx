@@ -138,7 +138,6 @@ export default function StudentSetupPage() {
   const [activeTab, setActiveTab] = useState<'upload' | 'existing'>('upload');
   const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null);
   const [selectedAvatarPath, setSelectedAvatarPath] = useState<string | null>(null);
-  const [selectedBackground, setSelectedBackground] = useState<string>('statColors-1');
   
   // Use the useAvatarFetch hook
   const { 
@@ -247,8 +246,7 @@ export default function StudentSetupPage() {
           activeTab,
           uploadedAvatarFile: uploadedAvatarFile.length,
           academicReportFile: academicReportFile.length,
-          resumeLink,
-          selectedBackground
+          resumeLink
         });
         
         // Update profile with all selected data using unified API
@@ -288,9 +286,6 @@ export default function StudentSetupPage() {
           formData.append('resume_link', resumeLink.trim());
         }
         
-        // Add profile background
-        console.log('🎨 Setup: Adding profile background:', selectedBackground);
-        formData.append('profile_background', selectedBackground);
 
         // Log FormData contents
         console.log('📋 Setup: FormData contents (Profile Update with AI Processing):');
@@ -300,7 +295,6 @@ export default function StudentSetupPage() {
         console.log('  avatar:', formData.get('avatar') ? 'File present' : 'No file');
         console.log('  academic_report:', formData.get('academic_report') ? 'File present' : 'No file');
         console.log('  resume_link:', formData.get('resume_link'));
-        console.log('  profile_background:', formData.get('profile_background'));
         console.log('📋 Setup: Update-profile API will handle AI processing of documents');
 
         console.log('🌐 Setup: Sending request to /api/students/update-profile...');
@@ -442,18 +436,6 @@ export default function StudentSetupPage() {
   
   const avatarsToShow = fetchedAvatars.length > 0 ? fetchedAvatars : sampleAvatars;
 
-  // Background color options from statColors
-  const backgroundColors = [
-    { id: 'statColors-1', name: 'Green', class: 'bg-statColors-1' },
-    { id: 'statColors-2', name: 'Teal', class: 'bg-statColors-2' },
-    { id: 'statColors-3', name: 'Orange', class: 'bg-statColors-3' },
-    { id: 'statColors-4', name: 'Cream', class: 'bg-statColors-4' },
-    { id: 'statColors-5', name: 'Light Cream', class: 'bg-statColors-5' },
-    { id: 'statColors-6', name: 'Pale Yellow', class: 'bg-statColors-6' },
-    { id: 'statColors-7', name: 'Light Blue', class: 'bg-statColors-7' },
-    { id: 'statColors-8', name: 'Coral', class: 'bg-statColors-8' },
-    { id: 'statColors-9', name: 'Dark Orange', class: 'bg-statColors-9' },
-  ];
 
   if (userDataLoading || isLoading) {
     return (
@@ -657,7 +639,7 @@ export default function StudentSetupPage() {
               {/* Avatar Preview */}
               <div className="flex justify-center">
                 <div className="relative">
-                  <Avatar className={`h-28 w-28 ring-4 ring-white/30 shadow-2xl bg-${selectedBackground}`}>
+                  <Avatar className="h-28 w-28 ring-4 ring-white/30 shadow-2xl">
                     <AvatarImage 
                       src={
                         activeTab === 'upload' && uploadedAvatarFile.length > 0
@@ -764,121 +746,75 @@ export default function StudentSetupPage() {
                       </div>
                     ) : (
                       <div className="space-y-6">
-                        {/* Avatar and Background Selection Layout */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                          {/* Avatar Selection */}
-                          <div className="space-y-4">
-                            <h4 className="text-sm font-medium text-gray-900 text-center">Choose Avatar</h4>
-                            
-                            {/* Show folder organization if we have many avatars */}
-                            {avatarsToShow.length > 8 && (
-                              <div className="text-center">
-                                <p className="text-xs text-gray-500">
-                                  {avatarsToShow.length} available avatars
-                                </p>
-                              </div>
-                            )}
-                            
-                            {/* Avatar Grid - Bigger */}
-                            <div className="grid grid-cols-4 gap-3 max-w-md mx-auto">
-                              {avatarsToShow.map((avatar, index) => (
-                                <button
-                                  key={avatar.id}
-                                  onClick={() => {
-                                    const filePath = 'filePath' in avatar && avatar.filePath ? avatar.filePath : `default/${avatar.folder}/${'fileName' in avatar ? avatar.fileName : avatar.name.toLowerCase().replace(/\s+/g, '-')}.png`;
-                                    console.log('🖼️ Setup: Avatar selected:', { 
-                                      id: avatar.id, 
-                                      src: avatar.src, 
-                                      name: avatar.name,
-                                      folder: avatar.folder,
-                                      filePath: filePath
-                                    });
-                                    setSelectedAvatar(avatar.src); // For display
-                                    setSelectedAvatarPath(filePath); // For storage
-                                  }}
-                                  className={`relative aspect-square rounded-lg overflow-hidden transition-all duration-200 transform hover:scale-105 ${
-                                    selectedAvatar === avatar.src
-                                      ? 'ring-2 ring-blue-500 shadow-lg scale-105'
-                                      : 'hover:ring-2 hover:ring-gray-300 hover:shadow-md'
-                                  }`}
-                                >
-                                  <Avatar className="h-full w-full">
-                                    <AvatarImage 
-                                      src={avatar.src} 
-                                      alt={avatar.name}
-                                      className="object-cover"
-                                      onLoad={() => {
-                                        // Avatar loaded successfully
-                                      }}
-                                      onError={() => {
-                                        // Handle avatar load error
-                                        console.warn('Failed to load avatar:', avatar.src);
-                                      }}
-                                    />
-                                    <AvatarFallback className="bg-gradient-to-br from-gray-100 to-gray-200 text-gray-600 text-xs font-medium animate-pulse">
-                                      <div className="w-full h-full flex items-center justify-center">
-                                        <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
-                                      </div>
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  
-                                  {/* Selection indicator */}
-                                  {selectedAvatar === avatar.src && (
-                                    <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center">
-                                      <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center shadow-lg">
-                                        <svg className="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                        </svg>
-                                      </div>
+                        {/* Avatar Selection */}
+                        <div className="space-y-4">
+                          <h4 className="text-sm font-medium text-gray-900 text-center">Choose Avatar</h4>
+                          
+                          {/* Show folder organization if we have many avatars */}
+                          {avatarsToShow.length > 8 && (
+                            <div className="text-center">
+                              <p className="text-xs text-gray-500">
+                                {avatarsToShow.length} available avatars
+                              </p>
+                            </div>
+                          )}
+                          
+                          {/* Avatar Grid - Bigger */}
+                          <div className="grid grid-cols-4 gap-3 max-w-md mx-auto">
+                            {avatarsToShow.map((avatar, index) => (
+                              <button
+                                key={avatar.id}
+                                onClick={() => {
+                                  const filePath = 'filePath' in avatar && avatar.filePath ? avatar.filePath : `default/${avatar.folder}/${'fileName' in avatar ? avatar.fileName : avatar.name.toLowerCase().replace(/\s+/g, '-')}.png`;
+                                  console.log('🖼️ Setup: Avatar selected:', { 
+                                    id: avatar.id, 
+                                    src: avatar.src, 
+                                    name: avatar.name,
+                                    folder: avatar.folder,
+                                    filePath: filePath
+                                  });
+                                  setSelectedAvatar(avatar.src); // For display
+                                  setSelectedAvatarPath(filePath); // For storage
+                                }}
+                                className={`relative aspect-square rounded-lg overflow-hidden transition-all duration-200 transform hover:scale-105 ${
+                                  selectedAvatar === avatar.src
+                                    ? 'ring-2 ring-blue-500 shadow-lg scale-105'
+                                    : 'hover:ring-2 hover:ring-gray-300 hover:shadow-md'
+                                }`}
+                              >
+                                <Avatar className="h-full w-full">
+                                  <AvatarImage 
+                                    src={avatar.src} 
+                                    alt={avatar.name}
+                                    className="object-cover"
+                                    onLoad={() => {
+                                      // Avatar loaded successfully
+                                    }}
+                                    onError={() => {
+                                      // Handle avatar load error
+                                      console.warn('Failed to load avatar:', avatar.src);
+                                    }}
+                                  />
+                                  <AvatarFallback className="bg-gradient-to-br from-gray-100 to-gray-200 text-gray-600 text-xs font-medium animate-pulse">
+                                    <div className="w-full h-full flex items-center justify-center">
+                                      <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
                                     </div>
-                                  )}
-                                 
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Background Color Selection */}
-                          <div className="space-y-4">
-                            <h4 className="text-sm font-medium text-gray-900 text-center">Choose Background</h4>
-                            
-                            {/* Background Color Grid */}
-                            <div className="grid grid-cols-3 gap-3 max-w-sm mx-auto">
-                              {backgroundColors.map((color) => (
-                                <button
-                                  key={color.id}
-                                  onClick={() => {
-                                    console.log('🎨 Setup: Background color selected:', { 
-                                      id: color.id, 
-                                      name: color.name,
-                                      class: color.class 
-                                    });
-                                    setSelectedBackground(color.id);
-                                  }}
-                                  className={`relative aspect-square rounded-lg overflow-hidden transition-all duration-200 transform hover:scale-105 ${
-                                    selectedBackground === color.id
-                                      ? 'ring-2 ring-blue-500 shadow-lg scale-105'
-                                      : 'hover:ring-2 hover:ring-gray-300 hover:shadow-md'
-                                  }`}
-                                >
-                                  <div className={`h-full w-full ${color.class} flex items-center justify-center`}>
-                                    {/* Selection indicator */}
-                                    {selectedBackground === color.id && (
-                                      <div className="w-6 h-6 bg-white/80 rounded-full flex items-center justify-center shadow-lg">
-                                        <svg className="h-4 w-4 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
-                                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                        </svg>
-                                      </div>
-                                    )}
+                                  </AvatarFallback>
+                                </Avatar>
+                                
+                                {/* Selection indicator */}
+                                {selectedAvatar === avatar.src && (
+                                  <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center">
+                                    <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center shadow-lg">
+                                      <svg className="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                      </svg>
+                                    </div>
                                   </div>
-                                  
-                                  {/* Color name */}
-                                  <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 text-center">
-                                    {color.name}
-                                  </div>
-                                </button>
-                              ))}
-                            </div>
+                                )}
+                               
+                              </button>
+                            ))}
                           </div>
                         </div>
                         

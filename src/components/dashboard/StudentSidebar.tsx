@@ -41,7 +41,6 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
   const [activeTab, setActiveTab] = useState<'upload' | 'existing'>('upload');
   const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null);
   const [selectedAvatarPath, setSelectedAvatarPath] = useState<string | null>(null);
-  const [selectedBackground, setSelectedBackground] = useState<string>('statColors-4');
   
   // Replace avatar fetching state with custom hook
 
@@ -150,7 +149,7 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
         studentId: studentId.toString(),
         userId,
         avatarFile: uploadedAvatarFile[0],
-        profileBackground: selectedBackground
+        profileBackground: null
       });
 
       if (!result.success) {
@@ -201,7 +200,7 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
         studentId: studentId.toString(),
         userId,
         avatarPath,
-        profileBackground: selectedBackground
+        profileBackground: null
       });
 
       if (!result.success) {
@@ -243,7 +242,6 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
       fetchAvatars();
       console.log('🔍 StudentSidebar: fetchAvatars called');
       setSelectedAvatar(profileImageUrl);
-      setSelectedBackground(profileBackground);
     } else {
       console.log('📂 StudentSidebar: Dialog closing - resetting state...');
       setUploadedAvatarFile([]);
@@ -438,7 +436,7 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
               {/* Avatar Preview */}
               <div className="flex justify-center">
                 <div className="relative">
-                  <Avatar className={`h-28 w-28 ring-4 ring-white/30 shadow-2xl bg-${selectedBackground}`}>
+                  <Avatar className="h-28 w-28 ring-4 ring-white/30 shadow-2xl">
                     <AvatarImage src={selectedAvatar || profileImageUrl || '/images/avatars/avatar-001.png'} />
                     <AvatarFallback className="text-3xl font-bold bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500 text-white">
                       {studentData?.first_name?.charAt(0) || 'U'}
@@ -539,99 +537,75 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
                         <p className="text-xs text-gray-400 text-center mt-1">Try uploading your own image instead</p>
                       </div>
                     ) : (
-                      <div className="space-y-2">
-                        {/* Side-by-side Avatar and Background Selection */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
-                          {/* Avatar Selection Column */}
-                          <div className="space-y-4">
-                            <h4 className="text-sm font-medium text-gray-900 text-center">Choose Avatar</h4>
-                            
-                            {/* Show folder organization if we have many avatars */}
-                            {fetchedAvatars.length > 8 && (
-                              <div className="text-center">
-                                <p className="text-xs text-gray-500">
-                                  {fetchedAvatars.length} available avatars
-                                </p>
-                              </div>
-                            )}
-                            
-                            {/* Avatar Grid - Bigger */}
-                            <div className="grid grid-cols-4 gap-3 max-w-md mx-auto">
-                              {fetchedAvatars.map((avatar, index) => (
-                                <button
-                                  key={avatar.id}
-                                  onClick={() => {
-                                    const filePath = 'filePath' in avatar && avatar.filePath ? avatar.filePath : `default/${avatar.folder}/${avatar.name.toLowerCase().replace(/\s+/g, '-')}.png`;
-                                    console.log('🖼️ StudentSidebar: Avatar selected:', { 
-                                      id: avatar.id, 
-                                      src: avatar.src, 
-                                      name: avatar.name,
-                                      folder: avatar.folder,
-                                      filePath: filePath
-                                    });
-                                    setSelectedAvatar(avatar.src); // For display
-                                    setSelectedAvatarPath(filePath); // For storage
+                      <div className="space-y-4">
+                        <h4 className="text-sm font-medium text-gray-900 text-center">Choose Avatar</h4>
+                        
+                        {/* Show folder organization if we have many avatars */}
+                        {fetchedAvatars.length > 8 && (
+                          <div className="text-center">
+                            <p className="text-xs text-gray-500">
+                              {fetchedAvatars.length} available avatars
+                            </p>
+                          </div>
+                        )}
+                        
+                        {/* Avatar Grid - Bigger */}
+                        <div className="grid grid-cols-4 gap-3 max-w-md mx-auto">
+                          {fetchedAvatars.map((avatar, index) => (
+                            <button
+                              key={avatar.id}
+                              onClick={() => {
+                                const filePath = 'filePath' in avatar && avatar.filePath ? avatar.filePath : `default/${avatar.folder}/${avatar.name.toLowerCase().replace(/\s+/g, '-')}.png`;
+                                console.log('🖼️ StudentSidebar: Avatar selected:', { 
+                                  id: avatar.id, 
+                                  src: avatar.src, 
+                                  name: avatar.name,
+                                  folder: avatar.folder,
+                                  filePath: filePath
+                                });
+                                setSelectedAvatar(avatar.src); // For display
+                                setSelectedAvatarPath(filePath); // For storage
+                              }}
+                              className={`relative aspect-square rounded-lg overflow-hidden transition-all duration-200 transform hover:scale-105 ${
+                                selectedAvatar === avatar.src
+                                  ? 'ring-2 ring-blue-500 shadow-lg scale-105'
+                                  : 'hover:ring-2 hover:ring-gray-300 hover:shadow-md'
+                              }`}
+                            >
+                              <Avatar className="h-full w-full">
+                                <AvatarImage 
+                                  src={avatar.src} 
+                                  alt={avatar.name}
+                                  className="object-cover"
+                                  onLoad={() => {
+                                    // Avatar loaded successfully
                                   }}
-                                  className={`relative aspect-square rounded-lg overflow-hidden transition-all duration-200 transform hover:scale-105 ${
-                                    selectedAvatar === avatar.src
-                                      ? 'ring-2 ring-blue-500 shadow-lg scale-105'
-                                      : 'hover:ring-2 hover:ring-gray-300 hover:shadow-md'
-                                  }`}
-                                >
-                                  <Avatar className="h-full w-full">
-                                    <AvatarImage 
-                                      src={avatar.src} 
-                                      alt={avatar.name}
-                                      className="object-cover"
-                                      onLoad={() => {
-                                        // Avatar loaded successfully
-                                      }}
-                                      onError={() => {
-                                        // Handle avatar load error
-                                        console.warn('Failed to load avatar:', avatar.src);
-                                      }}
-                                    />
-                                    <AvatarFallback className="bg-gradient-to-br from-gray-100 to-gray-200 text-gray-600 text-xs font-medium animate-pulse">
-                                      <div className="w-full h-full flex items-center justify-center">
-                                        <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
-                                      </div>
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  
-                                  {/* Selection indicator */}
-                                  {selectedAvatar === avatar.src && (
-                                    <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center">
-                                      <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center shadow-lg">
-                                        <svg className="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                        </svg>
-                                      </div>
-                                    </div>
-                                  )}
-                                  
+                                  onError={() => {
+                                    // Handle avatar load error
+                                    console.warn('Failed to load avatar:', avatar.src);
+                                  }}
+                                />
+                                <AvatarFallback className="bg-gradient-to-br from-gray-100 to-gray-200 text-gray-600 text-xs font-medium animate-pulse">
+                                  <div className="w-full h-full flex items-center justify-center">
+                                    <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+                                  </div>
+                                </AvatarFallback>
+                              </Avatar>
+                              
+                              {/* Selection indicator */}
+                              {selectedAvatar === avatar.src && (
+                                <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center">
+                                  <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center shadow-lg">
+                                    <svg className="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                    </svg>
+                                  </div>
+                                </div>
+                              )}
+                              
                          
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Background Selection Column */}
-                          <div className="space-y-4">
-                            <h4 className="text-sm font-medium text-gray-900 text-center">Choose Background</h4>
-                            <div className="flex justify-center">
-                              <div className="grid grid-cols-4 gap-2 max-w-xs">
-                                {['statColors-1', 'statColors-2', 'statColors-3', 'statColors-4', 'statColors-5', 'statColors-6', 'statColors-7'].map((color) => (
-                                  <button
-                                    key={color}
-                                    onClick={() => setSelectedBackground(color)}
-                                    className={`w-12 h-12 rounded-full border-3 transition-all duration-200 hover:scale-110 ${
-                                      selectedBackground === color ? 'border-gray-900 ring-2 ring-blue-500 ring-offset-2' : 'border-gray-300 hover:border-gray-400'
-                                    } bg-${color}`}
-                                  />
-                                ))}
-                              </div>
-                            </div>
-                          </div>
+                            </button>
+                          ))}
                         </div>
                       </div>
                     )}
@@ -660,7 +634,6 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
                       activeTab,
                       selectedAvatar,
                       selectedAvatarPath,
-                      selectedBackground,
                       uploadedAvatarFile: uploadedAvatarFile.length
                     });
                     

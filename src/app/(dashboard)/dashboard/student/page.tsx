@@ -1347,30 +1347,64 @@ export default function AspenDashboard() {
     </Dialog>
     {/* Submit Essay - Multi-step */}
     <Dialog open={submitEssayOpen} onOpenChange={(open) => { setSubmitEssayOpen(open); if (!open) { setEssayStep('select-fellow'); setSelectedEssayFellow(null);} }}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto bg-white rounded-2xl shadow-2xl border-0 [&>button]:!hidden">
-        <DialogHeader className="pb-6">
-          <DialogTitle className="text-xl pb-4 font-bold text-gray-900 text-center">
-            {essayStep === 'select-fellow' && 'Choose your CRC Fellow'}
-            {essayStep === 'details' && 'Essay details'}
-            {essayStep === 'final' && 'Deadline & link'}
-          </DialogTitle>
-          <div className="flex items-center justify-center space-x-6 mt-4">
-            <div className={`flex items-center ${essayStep === 'select-fellow' ? 'text-statColors-1' : 'text-gray-400'}`}>
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${essayStep === 'select-fellow' ? 'bg-statColors-1 text-white' : 'bg-gray-200 text-gray-500'}`}>1</div>
-              <span className="ml-2 text-sm font-medium">Fellow</span>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-visible bg-white rounded-2xl shadow-2xl border-0 [&>button]:!hidden">
+        <div className="relative overflow-visible">
+          {/* This is your reference point for the eyes */}
+          <div ref={anchorRef} className="absolute top-0 right-0 w-4 h-4"></div>
+          
+          <Image 
+            src="/images/popup/popup-illustration-009.png" 
+            alt="Popup Illustration" 
+            width={2000}
+            height={2000}
+            className="absolute top-[140px] right-[-132px] w-32 pointer-events-none z-0"
+          />
+          
+          {/* Left eye */}
+          <Image 
+            ref={(el) => { eyesRef.current[0] = el; }}
+            src="/images/popup/eye.png" 
+            alt="Popup Eye" 
+            width={30} 
+            height={30} 
+            className="absolute z-10 top-[180px] right-[-72px]"
+          />
+          
+          {/* Right eye */}
+          <Image 
+            ref={(el) => { eyesRef.current[1] = el; }}
+            src="/images/popup/eye.png" 
+            alt="Popup Eye" 
+            width={30} 
+            height={30} 
+            className="absolute z-10 top-[193px] right-[-100px]"
+          />
+        </div>
+
+        <div className="overflow-y-auto max-h-[calc(85vh-120px)]">
+          <DialogHeader className="pb-6">
+            <DialogTitle className="text-xl pb-4 font-bold text-gray-900 text-center">
+              {essayStep === 'select-fellow' && 'Choose your CRC Fellow'}
+              {essayStep === 'details' && 'Essay details'}
+              {essayStep === 'final' && 'Deadline & link'}
+            </DialogTitle>
+            <div className="flex items-center justify-center space-x-6 mt-4">
+              <div className={`flex items-center ${essayStep === 'select-fellow' ? 'text-statColors-1' : 'text-gray-400'}`}>
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${essayStep === 'select-fellow' ? 'bg-statColors-1 text-white' : 'bg-gray-200 text-gray-500'}`}>1</div>
+                <span className="ml-2 text-sm font-medium">Fellow</span>
+              </div>
+              <div className={`w-6 h-px ${essayStep === 'details' ? 'bg-statColors-1' : 'bg-gray-200'}`}></div>
+              <div className={`flex items-center ${essayStep === 'details' ? 'text-statColors-1' : 'text-gray-400'}`}>
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${essayStep === 'details' ? 'bg-statColors-1 text-white' : 'bg-gray-200 text-gray-500'}`}>2</div>
+                <span className="ml-2 text-sm font-medium">Details</span>
+              </div>
+              <div className={`w-6 h-px bg-gray-200`}></div>
+              <div className={`flex items-center ${essayStep === 'final' ? 'text-statColors-1' : 'text-gray-400'}`}>
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${essayStep === 'final' ? 'bg-statColors-1 text-white' : 'bg-gray-200 text-gray-500'}`}>3</div>
+                <span className="ml-2 text-sm font-medium">Finish</span>
+              </div>
             </div>
-            <div className={`w-6 h-px ${essayStep === 'details' ? 'bg-statColors-1' : 'bg-gray-200'}`}></div>
-            <div className={`flex items-center ${essayStep === 'details' ? 'text-statColors-1' : 'text-gray-400'}`}>
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${essayStep === 'details' ? 'bg-statColors-1 text-white' : 'bg-gray-200 text-gray-500'}`}>2</div>
-              <span className="ml-2 text-sm font-medium">Details</span>
-            </div>
-            <div className={`w-6 h-px bg-gray-200`}></div>
-            <div className={`flex items-center ${essayStep === 'final' ? 'text-statColors-1' : 'text-gray-400'}`}>
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${essayStep === 'final' ? 'bg-statColors-1 text-white' : 'bg-gray-200 text-gray-500'}`}>3</div>
-              <span className="ml-2 text-sm font-medium">Finish</span>
-            </div>
-          </div>
-        </DialogHeader>
+          </DialogHeader>
 
         {essayStep === 'select-fellow' && (
           <div className="space-y-6">
@@ -1480,6 +1514,7 @@ export default function AspenDashboard() {
             </div>
           </form>
         )}
+        </div>
       </DialogContent>
     </Dialog>
 
@@ -1651,30 +1686,64 @@ export default function AspenDashboard() {
       setRequestSessionOpen(open);
       if (!open) { setBookingStep('select-admin'); setSelectedAdmin(null); setSelectedTime(""); }
     }}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto bg-white rounded-2xl shadow-2xl border-0 [&>button]:!hidden">
-        <DialogHeader className="pb-6">
-          <DialogTitle className="text-xl pb-4 font-bold text-gray-900 text-center">
-            {bookingStep === 'select-admin' && 'Choose your CRC Fellow'}
-            {bookingStep === 'select-time' && 'Select your session time'}
-            {bookingStep === 'booking' && 'Confirm your booking'}
-          </DialogTitle>
-          <div className="flex items-center justify-center space-x-6 mt-4">
-            <div className={`flex items-center ${bookingStep === 'select-admin' ? 'text-statColors-2' : 'text-gray-400'}`}>
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${bookingStep === 'select-admin' ? 'bg-statColors-2 text-white' : 'bg-gray-200 text-gray-500'}`}>1</div>
-              <span className="ml-2 text-sm font-medium">Fellow</span>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-visible bg-white rounded-2xl shadow-2xl border-0 [&>button]:!hidden">
+        <div className="relative overflow-visible">
+          {/* This is your reference point for the eyes */}
+          <div ref={anchorRef} className="absolute top-0 right-0 w-4 h-4"></div>
+          
+          <Image 
+            src="/images/popup/popup-illustration-008.png" 
+            alt="Popup Illustration" 
+            width={2000}
+            height={2000}
+            className="absolute -top-[110px] right-[220px] w-32 pointer-events-none z-0"
+          />
+          
+          {/* Left eye */}
+          <Image 
+            ref={(el) => { eyesRef.current[0] = el; }}
+            src="/images/popup/eye.png" 
+            alt="Popup Eye" 
+            width={30} 
+            height={30} 
+            className="absolute z-10 top-[-62px] right-[285px]"
+          />
+          
+          {/* Right eye */}
+          <Image 
+            ref={(el) => { eyesRef.current[1] = el; }}
+            src="/images/popup/eye.png" 
+            alt="Popup Eye" 
+            width={30} 
+            height={30} 
+            className="absolute z-10 top-[-62px] right-[255px]"
+          />
+        </div>
+
+        <div className="overflow-y-auto max-h-[calc(85vh-120px)]">
+          <DialogHeader className="pb-6">
+            <DialogTitle className="text-xl pb-4 font-bold text-gray-900 text-center">
+              {bookingStep === 'select-admin' && 'Choose your CRC Fellow'}
+              {bookingStep === 'select-time' && 'Select your session time'}
+              {bookingStep === 'booking' && 'Confirm your booking'}
+            </DialogTitle>
+            <div className="flex items-center justify-center space-x-6 mt-4">
+              <div className={`flex items-center ${bookingStep === 'select-admin' ? 'text-statColors-2' : 'text-gray-400'}`}>
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${bookingStep === 'select-admin' ? 'bg-statColors-2 text-white' : 'bg-gray-200 text-gray-500'}`}>1</div>
+                <span className="ml-2 text-sm font-medium">Fellow</span>
+              </div>
+              <div className={`w-6 h-px ${bookingStep === 'select-time' ? 'bg-statColors-2' : 'bg-gray-200'}`}></div>
+              <div className={`flex items-center ${bookingStep === 'select-time' ? 'text-statColors-2' : 'text-gray-400'}`}>
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${bookingStep === 'select-time' ? 'bg-statColors-2 text-white' : 'bg-gray-200 text-gray-500'}`}>2</div>
+                <span className="ml-2 text-sm font-medium">Time</span>
+              </div>
+              <div className={`w-6 h-px bg-gray-200`}></div>
+              <div className={`flex items-center ${bookingStep === 'booking' ? 'text-statColors-2' : 'text-gray-400'}`}>
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${bookingStep === 'booking' ? 'bg-statColors-2 text-white' : 'bg-gray-200 text-gray-500'}`}>3</div>
+                <span className="ml-2 text-sm font-medium">Book</span>
+              </div>
             </div>
-            <div className={`w-6 h-px ${bookingStep === 'select-time' ? 'bg-statColors-2' : 'bg-gray-200'}`}></div>
-            <div className={`flex items-center ${bookingStep === 'select-time' ? 'text-statColors-2' : 'text-gray-400'}`}>
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${bookingStep === 'select-time' ? 'bg-statColors-2 text-white' : 'bg-gray-200 text-gray-500'}`}>2</div>
-              <span className="ml-2 text-sm font-medium">Time</span>
-            </div>
-            <div className={`w-6 h-px bg-gray-200`}></div>
-            <div className={`flex items-center ${bookingStep === 'booking' ? 'text-statColors-2' : 'text-gray-400'}`}>
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${bookingStep === 'booking' ? 'bg-statColors-2 text-white' : 'bg-gray-200 text-gray-500'}`}>3</div>
-              <span className="ml-2 text-sm font-medium">Book</span>
-            </div>
-          </div>
-        </DialogHeader>
+          </DialogHeader>
 
         {bookingStep === 'select-admin' && (
           <div className="space-y-8">
@@ -1766,6 +1835,7 @@ export default function AspenDashboard() {
             </div>
           </div>
         )}
+        </div>
       </DialogContent>
     </Dialog>
     </div>
