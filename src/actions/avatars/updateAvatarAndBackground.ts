@@ -8,7 +8,7 @@ interface UpdateAvatarAndBackgroundParams {
   userId: string;
   avatarPath?: string;
   avatarFile?: File;
-  profileBackground: string;
+  profileBackground?: string;
 }
 
 interface UpdateAvatarAndBackgroundResult {
@@ -99,13 +99,15 @@ export async function updateAvatarAndBackground({
     }
 
     // Update student record with new avatar and background
-    const updateData: any = {
-      profile_background: profileBackground
-    };
+    const updateData: any = {};
 
     if (finalAvatarPath) {
       updateData.profile_picture = finalAvatarPath;
+    }
 
+    // Only update profile_background if provided
+    if (profileBackground) {
+      updateData.profile_background = profileBackground;
     }
 
     console.log('💾 updateAvatarAndBackground: Updating student record:', updateData);
@@ -128,7 +130,7 @@ export async function updateAvatarAndBackground({
       success: true,
       data: {
         avatarPath: updatedStudent.profile_picture || '',
-        profileBackground: updatedStudent.profile_background || profileBackground
+        profileBackground: updatedStudent.profile_background || profileBackground || ''
       }
     };
 

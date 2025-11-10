@@ -1,12 +1,12 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "../../../zenith/src/components/ui/avatar";
 import { Skeleton } from "../../../zenith/src/components/ui/skeleton";
 import { Button } from "../../../zenith/src/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../../../zenith/src/components/ui/dialog";
-import { FileUpload } from "../../../zenith/src/components/ui/file-upload";
+import { FileUpload as FileUploadBase, getFileIconType, getReadableFileSize } from "@/components/application/file-upload/file-upload-base";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { LayoutDashboard, ClipboardList, Briefcase, FileText, LogOut, Home, Edit3, Camera, Folder, Loader2 } from "lucide-react";
 import { useSupabase } from "@/hooks/useSupabase";
@@ -17,9 +17,115 @@ import { getAvatars, AvatarData as BaseAvatarData } from "@/actions/avatars/getA
 import { getAvatarsWithSignedUrls, AvatarData } from "@/actions/avatars/getAvatarsWithSignedUrls";
 import { useAvatarFetch } from "@/hooks/useAvatarFetch";
 import { updateAvatarAndBackground } from "@/actions/avatars/updateAvatarAndBackground";
+import React from "react";
 
 interface StudentSidebarProps {
   className?: string;
+}
+
+// FileUpload wrapper component to match old API
+interface FileUploadProps {
+  multiple?: boolean;
+  accept?: string;
+  maxFiles?: number;
+  value?: File[];
+  onChange?: (files: File[]) => void;
+  onRemove?: (index: number) => void;
+  className?: string;
+  disabled?: boolean;
+  placeholder?: React.ReactNode;
+  helperText?: React.ReactNode;
+}
+
+function FileUpload({
+  multiple = false,
+  accept = "image/*",
+  maxFiles = 10,
+  value = [],
+  onChange,
+  onRemove,
+  className,
+  disabled = false,
+  placeholder = "Drop files here or click to upload",
+  helperText,
+}: FileUploadProps) {
+  const [files, setFiles] = useState<Array<{ id: string; file: File; progress: number; failed: boolean }>>(
+    value.map((file, index) => ({
+      id: `${file.name}-${index}`,
+      file,
+      progress: 100,
+      failed: false,
+    }))
+  );
+
+  // Sync with external value prop
+  React.useEffect(() => {
+    const newFiles = value.map((file, index) => ({
+      id: `${file.name}-${index}-${Date.now()}`,
+      file,
+      progress: 100,
+      failed: false,
+    }));
+    setFiles(newFiles);
+  }, [value]);
+
+  const handleDropFiles = useCallback((fileList: FileList) => {
+    const newFiles = Array.from(fileList);
+    
+    if (!multiple && newFiles.length > 0) {
+      // Single file mode - replace existing file
+      const updatedFiles = [newFiles[0]];
+      onChange?.(updatedFiles);
+    } else if (multiple) {
+      // Multiple file mode - add to existing files
+      const updatedFiles = [...value, ...newFiles].slice(0, maxFiles);
+      onChange?.(updatedFiles);
+    }
+  }, [multiple, value, onChange, maxFiles]);
+
+  const handleDelete = useCallback((id: string) => {
+    const fileIndex = files.findIndex(f => f.id === id);
+    if (fileIndex !== -1) {
+      if (onRemove) {
+        onRemove(fileIndex);
+      } else {
+        const updatedFiles = value.filter((_, index) => index !== fileIndex);
+        onChange?.(updatedFiles);
+      }
+    }
+  }, [files, value, onChange, onRemove]);
+
+  const hintText = typeof helperText === 'string' ? helperText : (typeof placeholder === 'string' ? placeholder : undefined);
+
+  return (
+    <div className={className}>
+      <FileUploadBase.DropZone
+        accept={accept}
+        allowsMultiple={multiple}
+        isDisabled={disabled}
+        hint={hintText}
+        onDropFiles={handleDropFiles}
+      />
+      {files.length > 0 && (
+        <FileUploadBase.Root className="mt-4">
+          <FileUploadBase.List>
+            {files.map((fileItem) => (
+              <FileUploadBase.ListItem
+                key={fileItem.id}
+                name={fileItem.file.name}
+                size={fileItem.file.size}
+                progress={fileItem.progress}
+                failed={fileItem.failed}
+                type={getFileIconType(fileItem.file.name)}
+                onDelete={() => handleDelete(fileItem.id)}
+                className="!p-2.5 !gap-2 [&_p]:!text-sm [&_hr]:!h-2.5 [&>svg]:!size-8 [&>div>div>div>div>svg]:!size-3"
+              />
+            ))}
+          </FileUploadBase.List>
+        </FileUploadBase.Root>
+      )}
+    </div>
+  );
 }
 
 export default function StudentSidebar({ className = "" }: StudentSidebarProps) {
@@ -156,8 +262,7 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
       const result = await updateAvatarAndBackground({
         studentId: studentId.toString(),
         userId,
-        avatarFile: uploadedAvatarFile[0],
-        profileBackground: null
+        avatarFile: uploadedAvatarFile[0]
       });
 
       if (!result.success) {
@@ -207,8 +312,7 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
       const result = await updateAvatarAndBackground({
         studentId: studentId.toString(),
         userId,
-        avatarPath,
-        profileBackground: null
+        avatarPath
       });
 
       if (!result.success) {
