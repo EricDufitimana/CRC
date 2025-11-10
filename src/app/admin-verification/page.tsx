@@ -2,10 +2,24 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Shield, ArrowLeft, Loader2, Send, Mail, User, MessageSquare } from "lucide-react";
+import {
+  Shield,
+  ArrowLeft,
+  Loader2,
+  Send,
+  Mail,
+  User,
+  MessageSquare,
+} from "lucide-react";
 import Image from "next/image";
 import { useUserData } from "../../hooks/useUserData";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,14 +29,15 @@ export default function AdminVerificationPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [verificationComplete, setVerificationComplete] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
-  const [debugInfo, setDebugInfo] = useState('');
+  const [debugInfo, setDebugInfo] = useState("");
   const [checkComplete, setCheckComplete] = useState(false);
-  const [shouldShowAdminVerification, setShouldShowAdminVerification] = useState(false);
+  const [shouldShowAdminVerification, setShouldShowAdminVerification] =
+    useState(false);
   const [isContactDialogOpen, setIsContactDialogOpen] = useState(false);
   const [contactForm, setContactForm] = useState({
     name: "",
     email: "",
-    message: ""
+    message: "",
   });
   const [isSubmittingContact, setIsSubmittingContact] = useState(false);
   const { userId, adminId, isLoading: userDataLoading } = useUserData();
@@ -30,75 +45,80 @@ export default function AdminVerificationPage() {
   const checkSpecificAdmin = async () => {
     try {
       if (!userId) {
-        console.log('No userId available');
+        console.log("No userId available");
         return false;
       }
 
       // Call the check-super-admin API with userId as query parameter
       const response = await fetch(`/api/check-super-admin?userId=${userId}`, {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Content-Type': 'application/json'
-        }
+          "Content-Type": "application/json",
+        },
       });
 
       if (response.ok) {
-        console.log('Specific admin user detected, redirecting...');
-        setDebugInfo(`Authorized admin user detected (ID: ${userId}), redirecting...`);
+        console.log("Specific admin user detected, redirecting...");
+        setDebugInfo(
+          `Authorized admin user detected (ID: ${userId}), redirecting...`,
+        );
         setRedirecting(true);
         setIsLoading(false);
-        
+
         // Redirect to admin dashboard after a short delay
         setTimeout(() => {
-          window.location.href = '/dashboard/admin';
+          window.location.href = "/dashboard/admin";
         }, 1500);
-        
+
         return true;
       } else {
         const data = await response.json();
-        console.log('User is not the specific admin:', data.message);
+        console.log("User is not the specific admin:", data.message);
         return false;
       }
     } catch (error) {
-      console.error('Error checking specific admin:', error);
+      console.error("Error checking specific admin:", error);
       return false;
     }
   };
 
   useEffect(() => {
-    console.log('Admin verification page: useEffect triggered');
-    console.log('userId:', userId);
-    console.log('adminId:', adminId);
-    console.log('userDataLoading:', userDataLoading);
-    
+    console.log("Admin verification page: useEffect triggered");
+    console.log("userId:", userId);
+    console.log("adminId:", adminId);
+    console.log("userDataLoading:", userDataLoading);
+
     // Simulate verification process
     const timer = setTimeout(async () => {
-      console.log('Admin verification page: Timer completed, checking authorization...');
-      
+      console.log(
+        "Admin verification page: Timer completed, checking authorization...",
+      );
+
       // First check if user is the specific admin
       const isSpecificAdmin = await checkSpecificAdmin();
-      
+
       if (isSpecificAdmin) {
         return; // Already handled in checkSpecificAdmin
       }
-      
+
       // Check if user should be redirected (existing logic)
       if (adminId) {
-        console.log('Admin verification page: User is admin, should redirect to admin dashboard');
+        console.log(
+          "Admin verification page: User is admin, should redirect to admin dashboard",
+        );
         setDebugInfo(`Admin user detected (ID: ${adminId}), redirecting...`);
-        
+
         // Show redirect loader for admin users directly
         setRedirecting(true);
         setIsLoading(false);
-        
+
         // Redirect to admin dashboard after a short delay
         setTimeout(() => {
-          window.location.href = '/dashboard/admin';
+          window.location.href = "/dashboard/admin";
         }, 1500);
-        
       } else {
-        console.log('Admin verification page: No userId or adminId available');
-        setDebugInfo('No userId or adminId available - please log in first');
+        console.log("Admin verification page: No userId or adminId available");
+        setDebugInfo("No userId or adminId available - please log in first");
         setIsLoading(false);
         setCheckComplete(true);
         setShouldShowAdminVerification(true);
@@ -113,12 +133,12 @@ export default function AdminVerificationPage() {
     setIsSubmittingContact(true);
 
     try {
-      console.log('📤 Sending help support request:', contactForm);
-      
-      const response = await fetch('/api/send-help-message', {
-        method: 'POST',
+      console.log("📤 Sending help support request:", contactForm);
+
+      const response = await fetch("/api/send-help-message", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(contactForm),
       });
@@ -126,32 +146,31 @@ export default function AdminVerificationPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to send help request');
+        throw new Error(data.error || "Failed to send help request");
       }
 
-      console.log('✅ Help support request sent successfully:', data);
-      
+      console.log("✅ Help support request sent successfully:", data);
+
       // Show success toast
       showToastSuccess({
-        headerText: 'Help Message Sent Successfully!',
+        headerText: "Help Message Sent Successfully!",
         paragraphText: "We'll get back to you soon!",
-        direction: 'left'
+        direction: "left",
       });
-      
+
       // Reset form and close dialog on success
       setContactForm({ name: "", email: "", message: "" });
       setTimeout(() => {
         setIsContactDialogOpen(false);
       }, 1000);
-      
     } catch (error) {
-      console.error('❌ Error sending help support request:', error);
-      
+      console.error("❌ Error sending help support request:", error);
+
       // Show error toast
       showToastError({
-        headerText: 'Failed to Send Request',
-        paragraphText: 'Failed to send message. Please try again.',
-        direction: 'left'
+        headerText: "Failed to Send Request",
+        paragraphText: "Failed to send message. Please try again.",
+        direction: "left",
       });
     } finally {
       setIsSubmittingContact(false);
@@ -159,19 +178,19 @@ export default function AdminVerificationPage() {
   };
 
   const handleContactFormChange = (field: string, value: string) => {
-    setContactForm(prev => ({
+    setContactForm((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
   // Show loading state
   if (isLoading || userDataLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
+      <div className="flex min-h-screen items-center justify-center bg-white dark:bg-gray-900">
         <div className="text-center">
-          <div className="inline-block w-12 h-12 border-2 border-gray-200 dark:border-gray-700 border-t-primary rounded-full animate-spin"></div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+          <div className="inline-block h-12 w-12 animate-spin rounded-full border-2 border-gray-200 border-t-primary dark:border-gray-700"></div>
+          <h2 className="mb-2 text-xl font-semibold text-gray-900 dark:text-white">
             Checking Account...
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
@@ -185,10 +204,10 @@ export default function AdminVerificationPage() {
   // Show redirect state
   if (redirecting) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
+      <div className="flex min-h-screen items-center justify-center bg-white dark:bg-gray-900">
         <div className="text-center">
-          <div className="inline-block w-12 h-12 border-2 border-gray-200 dark:border-gray-700 border-t-primary rounded-full animate-spin"></div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+          <div className="inline-block h-12 w-12 animate-spin rounded-full border-2 border-gray-200 border-t-primary dark:border-gray-700"></div>
+          <h2 className="mb-2 text-xl font-semibold text-gray-900 dark:text-white">
             Redirecting...
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
@@ -203,13 +222,13 @@ export default function AdminVerificationPage() {
   if (checkComplete && shouldShowAdminVerification) {
     return (
       <>
-        <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900 p-4 h-short:p-0">
-          <div className="max-w-4xl w-full text-center">
+        <div className="flex min-h-screen items-center justify-center bg-white p-4 dark:bg-gray-900 h-short:p-0">
+          <div className="w-full max-w-4xl text-center">
             {/* Large Illustration */}
             <div className="mb-12 ml-8">
-              <div className="relative w-128 h-96 mx-auto mb-8">
+              <div className="w-108 relative mx-auto mb-8 h-96">
                 <Image
-                  src="/images/illustrations/unauthorized-access.png"
+                  src="/images/illustrations/unauthorized.svg"
                   alt="Unauthorized Access"
                   fill
                   className="object-contain"
@@ -218,30 +237,32 @@ export default function AdminVerificationPage() {
             </div>
 
             {/* Minimal Message */}
-            <div className="mb-12">
-              <h1 className="text-4xl font-bold font-cal-sans text-gray-900 dark:text-white mb-4">
+            <div className="mb-4">
+              <h1 className="mb-4 font-cal-sans text-4xl font-bold text-gray-900 dark:text-white">
                 Oops! Access Restricted
               </h1>
-              <p className="text-md text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
-                You don&apos;t have permission to access this area. Please check your credentials or contact support if you believe this is an error.
+              <p className="text-md mx-auto max-w-2xl leading-relaxed text-gray-600 dark:text-gray-400">
+                You don&apos;t have permission to access this area. Please check
+                your credentials or contact support if you believe this is an
+                error.
               </p>
             </div>
 
             {/* Minimal Action Buttons */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-12">
+            <div className="mb-12 flex flex-col items-center justify-center gap-6 sm:flex-row">
               <Link
                 href="/login"
-                className="inline-flex items-center px-6 py-4 bg-primary text-white text-md font-medium rounded-xl shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition-all duration-300 hover:bg-primary/80 group"
+                className="text-md group inline-flex items-center rounded-xl bg-[#F56843] px-6 py-4 font-medium text-white shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition-all duration-300 hover:bg-[#F56843]/80"
               >
-                <ArrowLeft className="w-5 h-5 mr-3 transition-transform duration-300 text-sm group-hover:-translate-x-1 group-hover:scale-110" />
+                <ArrowLeft className="mr-3 h-5 w-5 text-sm transition-transform duration-300 group-hover:-translate-x-1 group-hover:scale-110" />
                 Back to Login
               </Link>
-              
+
               <button
                 onClick={() => setIsContactDialogOpen(true)}
-                className="inline-flex items-center px-6 py-[15px] bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-md font-medium rounded-xl hover:bg-gray-200 border border-gray-300 shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition duration-200"
+                className="text-md inline-flex items-center rounded-xl border border-gray-300 bg-gray-100 px-6 py-[15px] font-medium text-gray-700 shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition duration-200 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300"
               >
-                <Shield className="w-5 h-5 mr-3 text-sm" />
+                <Shield className="mr-3 h-5 w-5 text-sm" />
                 Contact Support
               </button>
             </div>
@@ -249,7 +270,10 @@ export default function AdminVerificationPage() {
         </div>
 
         {/* Contact Support Dialog */}
-        <Dialog open={isContactDialogOpen} onOpenChange={setIsContactDialogOpen}>
+        <Dialog
+          open={isContactDialogOpen}
+          onOpenChange={setIsContactDialogOpen}
+        >
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
@@ -257,18 +281,20 @@ export default function AdminVerificationPage() {
                 Contact Support
               </DialogTitle>
             </DialogHeader>
-            
+
             <form onSubmit={handleContactSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Name</Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
                   <Input
                     id="name"
                     type="text"
                     placeholder="Your full name"
                     value={contactForm.name}
-                    onChange={(e) => handleContactFormChange("name", e.target.value)}
+                    onChange={(e) =>
+                      handleContactFormChange("name", e.target.value)
+                    }
                     className="pl-10"
                     required
                   />
@@ -278,13 +304,15 @@ export default function AdminVerificationPage() {
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
                   <Input
                     id="email"
                     type="email"
                     placeholder="your.email@example.com"
                     value={contactForm.email}
-                    onChange={(e) => handleContactFormChange("email", e.target.value)}
+                    onChange={(e) =>
+                      handleContactFormChange("email", e.target.value)
+                    }
                     className="pl-10"
                     required
                   />
@@ -297,8 +325,10 @@ export default function AdminVerificationPage() {
                   id="message"
                   placeholder="Describe your issue or question..."
                   value={contactForm.message}
-                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleContactFormChange("message", e.target.value)}
-                  className="min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                    handleContactFormChange("message", e.target.value)
+                  }
+                  className="min-h-[100px] w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   required
                 />
               </div>
@@ -315,12 +345,17 @@ export default function AdminVerificationPage() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={isSubmittingContact || !contactForm.name || !contactForm.email || !contactForm.message}
+                  disabled={
+                    isSubmittingContact ||
+                    !contactForm.name ||
+                    !contactForm.email ||
+                    !contactForm.message
+                  }
                   className="flex-1 bg-dark hover:bg-dark/90"
                 >
                   {isSubmittingContact ? (
                     <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
                       Sending...
                     </div>
                   ) : (
