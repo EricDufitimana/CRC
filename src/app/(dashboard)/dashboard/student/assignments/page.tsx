@@ -111,11 +111,12 @@ export default function StudentAssignmentsPage() {
       formData.append('google_doc_link', link);
       console.log('🔗 Adding Google link to form:', link);
     } else if (submissionStyle === 'file_upload') {
-      if (!fileToUpload) {
+      const fileForAssignment = files[assignment.id];
+      if (!fileForAssignment) {
         return { success: false, message: 'Please select a file to upload.' };
       }
-      formData.append('file', fileToUpload);
-      console.log('📁 Adding file to form:', fileToUpload.name, fileToUpload.size, fileToUpload.type);
+      formData.append('file', fileForAssignment);
+      console.log('📁 Adding file to form:', fileForAssignment.name, fileForAssignment.size, fileForAssignment.type);
     }
     
     console.log('📤 Final FormData contents:', Array.from(formData.entries()));
@@ -173,7 +174,6 @@ export default function StudentAssignmentsPage() {
       setOpenFormFor(null);
       setGoogleLinks((s) => ({ ...s, [assignmentId]: '' }));
       setFiles((s) => ({ ...s, [assignmentId]: null }));
-      setFileToUpload(null);
       setRefreshKey((k) => k + 1);
     }).catch(() => {
       console.log('❌ handleFormSubmit: Promise rejected, assignment submission failed');
@@ -608,18 +608,15 @@ export default function StudentAssignmentsPage() {
                                         } : 'Compression failed');
                                         
                                         setFiles((s) => ({ ...s, [a.id]: compressedImage }));
-                                        setFileToUpload(compressedImage);
                                         console.log('✅ FileUpload: File state updated for assignment:', a.id);
                                       } else {
                                         console.log('🔍 FileUpload: No file selected, clearing state');
                                         setFiles((s) => ({ ...s, [a.id]: null }));
-                                        setFileToUpload(null);
                                       }
                                     }}
                                     onRemove={() => {
                                       console.log('🗑️ FileUpload onRemove: Removing file for assignment:', a.id);
                                       setFiles((s) => ({ ...s, [a.id]: null }));
-                                      setFileToUpload(null);
                                     }}
                                     placeholder={<span><strong>Click to upload</strong> or drag and drop</span>}
                                     helperText={<span>SVG, PNG, JPG, GIF, WebP, or PDF</span>}
@@ -633,7 +630,7 @@ export default function StudentAssignmentsPage() {
                                   <Button 
                                     type="submit"
                                     size="sm" 
-                                    disabled={isAssignmentPending || !fileToUpload} 
+                                    disabled={isAssignmentPending || !files[a.id]} 
                                     className="bg-green-500 hover:bg-green-500/70 text-white  rounded-xl shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition duration-200 "
                                   >
                                   <Upload className="h-4 w-4 mr-1" />
@@ -652,36 +649,29 @@ export default function StudentAssignmentsPage() {
               })}
             </div>
           )}
-          {!loading && rows.filter((a) => {
-            if (!query.trim()) return true;
-            const q = query.toLowerCase();
+          {!loading && (() => {
+            const filteredRows = rows.filter((a) => {
+              if (!query.trim()) return true;
+              const q = query.toLowerCase();
+              return (
+                a.title.toLowerCase().includes(q) ||
+                (a.workshop?.title?.toLowerCase() || "").includes(q)
+              );
+            });
+            const totalPages = Math.ceil(filteredRows.length / pageSize);
+            
+            if (filteredRows.length <= pageSize) return null;
+            
             return (
-              a.title.toLowerCase().includes(q) ||
-              (a.workshop?.title?.toLowerCase() || "").includes(q)
-            );
-          }).length > pageSize && (
-            <div className="mt-4 flex items-center justify-between">
-              <Button variant="ghost" size="sm" disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Previous</Button>
-              <div className="text-xs text-neutral-500">
-                Page {page} of {Math.ceil(rows.filter((a) => {
-                  if (!query.trim()) return true;
-                  const q = query.toLowerCase();
-                  return (
-                    a.title.toLowerCase().includes(q) ||
-                    (a.workshop?.title?.toLowerCase() || "").includes(q)
-                  );
-                }).length / pageSize)}
+              <div className="mt-4 flex items-center justify-between">
+                <Button variant="ghost" size="sm" disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Previous</Button>
+                <div className="text-xs text-neutral-500">
+                  Page {page} of {totalPages}
+                </div>
+                <Button variant="ghost" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next</Button>
               </div>
-              <Button variant="ghost" size="sm" disabled={page * pageSize >= rows.filter((a) => {
-                if (!query.trim()) return true;
-                const q = query.toLowerCase();
-                return (
-                  a.title.toLowerCase().includes(q) ||
-                  (a.workshop?.title?.toLowerCase() || "").includes(q)
-                );
-              }).length} onClick={() => setPage((p) => p + 1)}>Next</Button>
-            </div>
-          )}
+            );
+          })()}
             </ScrollArea>
 
         <Dialog open={isContactDialogOpen} onOpenChange={setIsContactDialogOpen}>

@@ -135,7 +135,7 @@ export default function StudentSetupPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
-  const [activeTab, setActiveTab] = useState<'upload' | 'existing'>('upload');
+  const [activeTab, setActiveTab] = useState<'upload' | 'existing'>('existing');
   const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null);
   const [selectedAvatarPath, setSelectedAvatarPath] = useState<string | null>(null);
   
@@ -658,17 +658,11 @@ export default function StudentSetupPage() {
               <div className="flex justify-center">
                 <div className="inline-flex bg-gray-100 rounded-lg p-1">
                   <button
-                    onClick={() => setActiveTab('upload')}
-                    className={`px-6 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
-                      activeTab === 'upload'
-                        ? 'bg-white text-gray-900 shadow-sm'
-                        : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    Upload New
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('existing')}
+                    onClick={() => {
+                      setActiveTab('existing');
+                      // Clear upload when switching to choose avatar
+                      setUploadedAvatarFile([]);
+                    }}
                     className={`px-6 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
                       activeTab === 'existing'
                         ? 'bg-white text-gray-900 shadow-sm'
@@ -677,54 +671,27 @@ export default function StudentSetupPage() {
                   >
                     Choose Avatar
                   </button>
+                  <button
+                    onClick={() => {
+                      setActiveTab('upload');
+                      // Clear selection when switching to upload
+                      setSelectedAvatar(null);
+                      setSelectedAvatarPath(null);
+                    }}
+                    className={`px-6 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
+                      activeTab === 'upload'
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Upload New
+                  </button>
                 </div>
               </div>
 
               {/* Minimalist Content */}
               <div className="min-h-[160px]">
-                {activeTab === 'upload' ? (
-                  <div className="space-y-4">
-                    <div className="text-center">
-                      <p className="text-sm text-gray-600 mb-4">Upload your own profile picture</p>
-                      <FileUpload
-                        multiple={false}
-                        accept="image/*"
-                        value={uploadedAvatarFile}
-                        onChange={async (files) => {
-                          console.log('📤 Setup: Avatar file selected:', files.length > 0 ? {
-                            fileName: files[0].name,
-                            fileSize: files[0].size,
-                            fileType: files[0].type
-                          } : 'No files');
-                          
-                          if (files.length > 0 && activeTab === 'upload') {
-                            console.log('🔧 Setup: Starting image compression for avatar upload...');
-                            try {
-                              const compressedImage = await compressImage(files[0]);
-                              console.log('✅ Setup: Avatar compression result:', {
-                                name: compressedImage.name,
-                                size: compressedImage.size,
-                                type: compressedImage.type
-                              });
-                              setUploadedAvatarFile([compressedImage]);
-                            } catch (error) {
-                              console.error('❌ Setup: Error compressing avatar image:', error);
-                              // Fallback to original file if compression fails
-                              setUploadedAvatarFile(files);
-                            }
-                          } else {
-                            setUploadedAvatarFile(files);
-                          }
-                        }}
-                        placeholder="Drop your photo here or click to upload"
-                        helperText="JPEG, PNG, GIF, WebP up to 2MB"
-                        className="max-w-md mx-auto"
-                      />
-                    </div>
-                    
-           
-                  </div>
-                ) : (
+                {activeTab === 'existing' ? (
                   <div className="space-y-6">
                     {isLoadingAvatars ? (
                       <div className="flex flex-col justify-center items-center py-16">
@@ -820,6 +787,46 @@ export default function StudentSetupPage() {
                         
                      </div>
                     )}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="text-center">
+                      <p className="text-sm text-gray-600 mb-4">Upload your own profile picture</p>
+                      <FileUpload
+                        multiple={false}
+                        accept="image/*"
+                        value={uploadedAvatarFile}
+                        onChange={async (files) => {
+                          console.log('📤 Setup: Avatar file selected:', files.length > 0 ? {
+                            fileName: files[0].name,
+                            fileSize: files[0].size,
+                            fileType: files[0].type
+                          } : 'No files');
+                          
+                          if (files.length > 0 && activeTab === 'upload') {
+                            console.log('🔧 Setup: Starting image compression for avatar upload...');
+                            try {
+                              const compressedImage = await compressImage(files[0]);
+                              console.log('✅ Setup: Avatar compression result:', {
+                                name: compressedImage.name,
+                                size: compressedImage.size,
+                                type: compressedImage.type
+                              });
+                              setUploadedAvatarFile([compressedImage]);
+                            } catch (error) {
+                              console.error('❌ Setup: Error compressing avatar image:', error);
+                              // Fallback to original file if compression fails
+                              setUploadedAvatarFile(files);
+                            }
+                          } else {
+                            setUploadedAvatarFile(files);
+                          }
+                        }}
+                        placeholder="Drop your photo here or click to upload"
+                        helperText="JPEG, PNG, GIF, WebP up to 2MB"
+                        className="max-w-md mx-auto"
+                      />
+                    </div>
                   </div>
                 )}
               </div>
@@ -999,7 +1006,7 @@ export default function StudentSetupPage() {
               <Button 
                 onClick={handleContinue}
                 size="sm"
-                disabled={isUploading}
+                disabled={isUploading || (currentStep === 2 && !selectedAvatarPath && uploadedAvatarFile.length === 0)}
                 className="group inline-flex items-center justify-center gap-3 px-7 py-3 bg-dark border border-dark text-white font-medium rounded-2xl hover:bg-gray-800 shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition-all duration-200 ease-linear disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span>

@@ -1110,11 +1110,11 @@ export default function AdminAssignmentsManagement() {
 
         {/* Pagination */}
         <div className="flex items-center justify-center gap-2 mt-4">
-          <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))}>
+          <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <div className="text-xs text-neutral-600">Page {page} of {totalPages}</div>
-          <Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)}>
+          <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>

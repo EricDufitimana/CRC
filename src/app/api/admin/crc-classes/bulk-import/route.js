@@ -147,9 +147,21 @@ export async function POST(request) {
     const unmatchedNames = [];
 
     extractedNames.forEach(extractedName => {
+      // Normalize the extracted name to lowercase for comparison
+      const normalizedExtractedName = extractedName.trim().toLowerCase();
+      
       const foundStudent = allStudents.find(student => {
-        const fullName = `${student.first_name || ''} ${student.last_name || ''}`.trim();
-        return fullName.toLowerCase() === extractedName.toLowerCase();
+        // Get first and last names, normalize to lowercase
+        const firstName = (student.first_name || '').trim().toLowerCase();
+        const lastName = (student.last_name || '').trim().toLowerCase();
+        
+        // Try both name orders: "FirstName LastName" and "LastName FirstName"
+        const fullNameNormal = `${firstName} ${lastName}`.trim();
+        const fullNameReversed = `${lastName} ${firstName}`.trim();
+        
+        // Match if either order matches
+        return fullNameNormal === normalizedExtractedName || 
+               fullNameReversed === normalizedExtractedName;
       });
 
       if (foundStudent) {

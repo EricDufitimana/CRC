@@ -26,6 +26,7 @@ import { useUserData } from "@/hooks/useUserData";
 import { showToastPromise } from "@/components/toasts";
 import MarkdownIt from 'markdown-it';
 import useFollowEyes from "@/components/other/useFollowEyes";
+import { z } from "zod";
 
 import {useSpring, animated} from "@react-spring/web";
 import AnimateOnScroll from "@/components/animation/animateOnScroll";
@@ -115,6 +116,23 @@ export default function AspenDashboard() {
   const [fileToUpload, setFileToUpload] = useState<File | null>(null);
   const [latestAssignments, setLatestAssignments] = useState<Assignment[]>([]);
   const [isAssignmentsLoading, setIsAssignmentsLoading] = useState(true);
+  
+  // Validation schemas
+  const googleLinkSchema = z.string().url("Please enter a valid URL").refine(
+    (url) => {
+      try {
+        const urlObj = new URL(url);
+        return urlObj.hostname.includes('google.com') || urlObj.hostname.includes('docs.google.com');
+      } catch {
+        return false;
+      }
+    },
+    { message: "Please enter a valid Google Docs link" }
+  );
+  
+  // Validation error states
+  const [googleLinkError, setGoogleLinkError] = useState<string | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
 
   // Submit Essay (multi-step)
   const [essayStep, setEssayStep] = useState<'select-fellow' | 'details' | 'final'>("select-fellow");
@@ -539,80 +557,215 @@ export default function AspenDashboard() {
   // Fetch assignments when workshop changes
   useEffect(() => {
     if (!selectedWorkshop) {
+      console.log('🔄 [Dashboard] selectedWorkshop useEffect: No workshop selected, clearing assignments');
       setAssignments([]);
       return;
     }
+    console.log('✅ [Dashboard] selectedWorkshop useEffect: Workshop selected, loading assignments:', {
+      workshopId: selectedWorkshop.id,
+      workshopTitle: selectedWorkshop.title,
+      assignmentsCount: selectedWorkshop.assignments?.length || 0
+    });
     setAssignments(selectedWorkshop.assignments || []);
   }, [selectedWorkshop]);
+  
+  // Log assignment step changes
+  useEffect(() => {
+    console.log('📋 [Dashboard] assignmentStep changed to:', assignmentStep);
+    console.log('🔍 [Dashboard] Current state:', {
+      selectedWorkshop: selectedWorkshop ? { id: selectedWorkshop.id, title: selectedWorkshop.title } : null,
+      selectedAssignment: selectedAssignment ? { id: selectedAssignment.id, title: selectedAssignment.title } : null,
+      assignmentsCount: assignments.length
+    });
+  }, [assignmentStep, selectedWorkshop, selectedAssignment, assignments.length]);
 
   const handleAssignmentSubmission = async (prevState: any, formData: FormData) => {
+    console.log('🚀 [Dashboard] handleAssignmentSubmission: Starting submission process');
+    console.log('🔍 [Dashboard] handleAssignmentSubmission: prevState:', prevState);
+    console.log('🔍 [Dashboard] handleAssignmentSubmission: FormData entries:', Array.from(formData.entries()));
+    console.log('🔍 [Dashboard] handleAssignmentSubmission: Current state:', {
+      studentId,
+      selectedAssignment: selectedAssignment ? {
+        id: selectedAssignment.id,
+        title: selectedAssignment.title,
+        submission_style: selectedAssignment.submission_style
+      } : null,
+      googleDocLink,
+      fileToUpload: fileToUpload ? {
+        name: fileToUpload.name,
+        size: fileToUpload.size,
+        type: fileToUpload.type
+      } : null
+    });
+    
     // Validate student ID
     if (!studentId) {
+      console.error('❌ [Dashboard] handleAssignmentSubmission: Student ID not found');
       return { success: false, message: 'Student ID not found.' };
     }
+    console.log('✅ [Dashboard] handleAssignmentSubmission: Student ID validated:', studentId);
     
     // Validate assignment selection
     if (!selectedAssignment) {
+      console.error('❌ [Dashboard] handleAssignmentSubmission: No assignment selected');
       return { success: false, message: 'Please choose an assignment.' };
     }
+    console.log('✅ [Dashboard] handleAssignmentSubmission: Assignment validated:', selectedAssignment.id);
     
     // Build FormData
+    console.log('📝 [Dashboard] handleAssignmentSubmission: Building FormData...');
     formData.append('student_id', String(studentId));
     formData.append('assignment_id', String(selectedAssignment.id));
+    console.log('📝 [Dashboard] handleAssignmentSubmission: Added student_id and assignment_id to FormData');
     
     if (selectedAssignment.submission_style === 'google_link') {
+      console.log('🔗 [Dashboard] handleAssignmentSubmission: Processing Google link submission');
       formData.append('submission_style', 'google_link');
       formData.append('google_doc_link', googleDocLink);
+      console.log('🔗 [Dashboard] handleAssignmentSubmission: Added Google link:', googleDocLink);
     } else {
+      console.log('📁 [Dashboard] handleAssignmentSubmission: Processing file upload submission');
       formData.append('submission_style', 'file_upload');
       if (fileToUpload) {
         formData.append('file', fileToUpload);
+        console.log('📁 [Dashboard] handleAssignmentSubmission: Added file to FormData:', {
+          name: fileToUpload.name,
+          size: fileToUpload.size,
+          type: fileToUpload.type
+        });
       } else {
+        console.error('❌ [Dashboard] handleAssignmentSubmission: No file selected for file_upload submission');
         return { success: false, message: 'Please select a file to upload.' };
       }
     }
     
+    console.log('📤 [Dashboard] handleAssignmentSubmission: Final FormData contents:', Array.from(formData.entries()).map(([key, value]) => {
+      if (value instanceof File) {
+        return [key, { name: value.name, size: value.size, type: value.type }];
+      }
+      return [key, value];
+    }));
+    
     try {
+      console.log('🌐 [Dashboard] handleAssignmentSubmission: Calling submitAssignmentHandler...');
       const result = await submitAssignmentHandler(prevState, formData);
+      console.log('✅ [Dashboard] handleAssignmentSubmission: submitAssignmentHandler returned:', result);
       return result;
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('❌ [Dashboard] handleAssignmentSubmission: Error caught:', error);
+      console.error('❌ [Dashboard] handleAssignmentSubmission: Error message:', errorMessage);
+      if (error instanceof Error) {
+        console.error('❌ [Dashboard] handleAssignmentSubmission: Error stack:', error.stack);
+      }
       return { success: false, message: `Submission error: ${errorMessage}` };
     }
   };
 
   const handleAssignmentFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    console.log('🚀 [Dashboard] handleAssignmentFormSubmit: Form submitted');
+    console.log('🔍 [Dashboard] handleAssignmentFormSubmit: Current state:', {
+      studentId,
+      selectedAssignment: selectedAssignment ? {
+        id: selectedAssignment.id,
+        title: selectedAssignment.title,
+        submission_style: selectedAssignment.submission_style
+      } : null,
+      googleDocLink,
+      fileToUpload: fileToUpload ? {
+        name: fileToUpload.name,
+        size: fileToUpload.size,
+        type: fileToUpload.type
+      } : null,
+      googleLinkError,
+      fileError
+    });
+    
+    // Validate inputs before submission
+    console.log('🔍 [Dashboard] handleAssignmentFormSubmit: Starting validation...');
+    if (selectedAssignment?.submission_style === 'google_link') {
+      console.log('🔗 [Dashboard] handleAssignmentFormSubmit: Validating Google link');
+      const validation = googleLinkSchema.safeParse(googleDocLink.trim());
+      if (!validation.success) {
+        console.error('❌ [Dashboard] handleAssignmentFormSubmit: Google link validation failed:', validation.error.errors);
+        setGoogleLinkError(validation.error.errors[0].message);
+        return;
+      }
+      console.log('✅ [Dashboard] handleAssignmentFormSubmit: Google link validation passed');
+      setGoogleLinkError(null);
+    } else if (selectedAssignment?.submission_style === 'file_upload') {
+      console.log('📁 [Dashboard] handleAssignmentFormSubmit: Validating file upload');
+      if (!fileToUpload) {
+        console.error('❌ [Dashboard] handleAssignmentFormSubmit: No file selected');
+        setFileError('Please select a file to upload.');
+        return;
+      }
+      // Validate file type
+      const allowedTypes = ['image/svg+xml', 'image/png', 'image/jpeg', 'image/gif', 'image/webp', 'application/pdf'];
+      console.log('🔍 [Dashboard] handleAssignmentFormSubmit: File type:', fileToUpload.type);
+      if (!allowedTypes.includes(fileToUpload.type)) {
+        console.error('❌ [Dashboard] handleAssignmentFormSubmit: Invalid file type:', fileToUpload.type);
+        setFileError('Invalid file type. Please upload SVG, PNG, JPG, GIF, WebP, or PDF.');
+        return;
+      }
+      // Validate file size (max 10MB)
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      console.log('🔍 [Dashboard] handleAssignmentFormSubmit: File size:', fileToUpload.size, 'bytes');
+      if (fileToUpload.size > maxSize) {
+        console.error('❌ [Dashboard] handleAssignmentFormSubmit: File too large:', fileToUpload.size);
+        setFileError('File size exceeds 10MB limit. Please upload a smaller file.');
+        return;
+      }
+      console.log('✅ [Dashboard] handleAssignmentFormSubmit: File validation passed');
+      setFileError(null);
+    }
+    
+    console.log('✅ [Dashboard] handleAssignmentFormSubmit: All validations passed, proceeding with submission');
     setIsAssignmentSubmitting(true);
     
     try {
+      console.log('📝 [Dashboard] handleAssignmentFormSubmit: Creating FormData from form element');
       const formData = new FormData(e.currentTarget);
+      console.log('🔍 [Dashboard] handleAssignmentFormSubmit: FormData from form:', Array.from(formData.entries()).map(([key, value]) => {
+        if (value instanceof File) {
+          return [key, { name: value.name, size: value.size, type: value.type }];
+        }
+        return [key, value];
+      }));
       
-      const assignmentPromise = submitAssignmentHandler(assignmentState, formData);
+      console.log('🌐 [Dashboard] handleAssignmentFormSubmit: Calling assignmentFormAction (useActionState)...');
+      console.log('🔍 [Dashboard] handleAssignmentFormSubmit: assignmentState before call:', assignmentState);
+      console.log('🔍 [Dashboard] handleAssignmentFormSubmit: isAssignmentPending before call:', isAssignmentPending);
       
-      showToastPromise({
-        promise: assignmentPromise,
-        loadingText: 'Submitting assignment...',
-        successText: 'Your assignment is in. Keep up the good work!',
-        errorText: 'Failed to submit assignment. Please try again.',
-        successHeaderText: 'Assignment Submitted Successfully',
-        errorHeaderText: 'Assignment Submission Failed',
-        direction: 'right'
-    });
+      // Use assignmentFormAction instead of calling submitAssignmentHandler directly
+      // Note: assignmentFormAction is from useActionState and triggers handleAssignmentSubmission
+      console.log('📞 [Dashboard] handleAssignmentFormSubmit: Invoking assignmentFormAction with FormData');
+      assignmentFormAction(formData);
       
-      // Wait for actual submission to complete
-      await assignmentPromise;
-      // Only reset on successful submission
-      resetAssignmentForm();
+      console.log('✅ [Dashboard] handleAssignmentFormSubmit: assignmentFormAction called (non-blocking)');
+      console.log('⏳ [Dashboard] handleAssignmentFormSubmit: Waiting for useActionState to update assignmentState...');
+      console.log('💡 [Dashboard] handleAssignmentFormSubmit: The useEffect watching assignmentState will handle success/error');
+      
+      // Note: The actual submission happens via useActionState, so we need to wait for assignmentState to update
+      // The toast and reset will be handled by the useEffect that watches assignmentState.success
+      
     } catch (error) {
+      console.error('❌ [Dashboard] handleAssignmentFormSubmit: Error caught:', error);
+      if (error instanceof Error) {
+        console.error('❌ [Dashboard] handleAssignmentFormSubmit: Error message:', error.message);
+        console.error('❌ [Dashboard] handleAssignmentFormSubmit: Error stack:', error.stack);
+      }
       // Handle error case
       resetAssignmentForm(); // Reset on error for consistent UX
     } finally {
+      console.log('🏁 [Dashboard] handleAssignmentFormSubmit: Setting isAssignmentSubmitting to false');
       setIsAssignmentSubmitting(false);
     }
   };
 
   const resetAssignmentForm = () => {
+    console.log('🔄 [Dashboard] resetAssignmentForm: Resetting assignment form state');
     setSubmitAssignmentOpen(false);
     setAssignmentStep('select-workshop');
     setSelectedWorkshop(null);
@@ -620,14 +773,31 @@ export default function AspenDashboard() {
     setAssignments([]);
     setGoogleDocLink('');
     setFileToUpload(null);
+    setGoogleLinkError(null);
+    setFileError(null);
+    console.log('✅ [Dashboard] resetAssignmentForm: Form reset complete');
   };
 
   const [assignmentState, assignmentFormAction, isAssignmentPending] = useActionState(handleAssignmentSubmission, {
     success: false,
     message: ''
   });
+  
   useEffect(() => {
+    console.log('🔍 [Dashboard] assignmentState useEffect: State changed:', {
+      success: assignmentState.success,
+      message: assignmentState.message,
+      isAssignmentPending,
+      fullState: assignmentState
+    });
+    
+    if (isAssignmentPending) {
+      console.log('⏳ [Dashboard] assignmentState useEffect: Submission is pending...');
+    }
+    
     if (assignmentState.success) {
+      console.log('✅ [Dashboard] assignmentState useEffect: Submission successful, resetting form...');
+      console.log('📊 [Dashboard] assignmentState useEffect: Success data:', assignmentState);
       setSubmitAssignmentOpen(false);
       setAssignmentStep('select-workshop');
       setSelectedWorkshop(null);
@@ -635,8 +805,14 @@ export default function AspenDashboard() {
       setAssignments([]);
       setGoogleDocLink("");
       setFileToUpload(null);
+      setGoogleLinkError(null);
+      setFileError(null);
+      console.log('✅ [Dashboard] assignmentState useEffect: Form reset complete');
+    } else if (assignmentState.message && !assignmentState.success) {
+      console.error('❌ [Dashboard] assignmentState useEffect: Submission failed:', assignmentState.message);
+      console.error('❌ [Dashboard] assignmentState useEffect: Full error state:', assignmentState);
     }
-  }, [assignmentState.success]);
+  }, [assignmentState.success, assignmentState.message, isAssignmentPending, assignmentState]);
 
   type RecentResource = { id: string; title: string; category: string | null; created_at?: string | null };
   const [recentResources, setRecentResources] = useState<RecentResource[]>([]);
@@ -1119,7 +1295,21 @@ export default function AspenDashboard() {
 
     {/* Dialogs ported from Cypress quick actions */}
     {/* Submit Assignment - Multi-step */}
-    <Dialog open={submitAssignmentOpen} onOpenChange={(open) => { setSubmitAssignmentOpen(open); if (!open) { setAssignmentStep('select-workshop'); setSelectedWorkshop(null); setSelectedAssignment(null);} }}>
+    <Dialog open={submitAssignmentOpen} onOpenChange={(open) => { 
+      console.log('🔔 [Dashboard] Dialog onOpenChange: submitAssignmentOpen changed to:', open);
+      setSubmitAssignmentOpen(open); 
+      if (!open) { 
+        console.log('🚪 [Dashboard] Dialog closing: Resetting assignment form state');
+        setAssignmentStep('select-workshop'); 
+        setSelectedWorkshop(null); 
+        setSelectedAssignment(null);
+        setGoogleLinkError(null);
+        setFileError(null);
+        console.log('✅ [Dashboard] Dialog closed: State reset complete');
+      } else {
+        console.log('🚪 [Dashboard] Dialog opening: Starting assignment submission flow');
+      }
+    }}>
       <DialogContent className="max-w-3xl  [&>button]:!top-8 [&>button]:!hidden    bg-white rounded-2xl shadow-2xl border-0">
         <div className="relative">
           {/* This is your reference point for the eyes */}
@@ -1204,8 +1394,10 @@ export default function AspenDashboard() {
                           key={w.id}
                           onSelect={() => {
                             if (selectedWorkshop?.id === w.id) {
+                              console.log('🔄 [Dashboard] Workshop deselected:', w.id);
                               setSelectedWorkshop(null);
                             } else {
+                              console.log('✅ [Dashboard] Workshop selected:', { id: w.id, title: w.title });
                               setSelectedWorkshop(w);
                             }
                           }}
@@ -1246,7 +1438,16 @@ export default function AspenDashboard() {
               >
                 Cancel
               </Button>
-              <Button onClick={() => setAssignmentStep('select-assignment')} disabled={!selectedWorkshop} className="bg-yearcolors-s6 hover:bg-yearcolors-s6/80 rounded-xl px-8 text-sm text-neutral-900 shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition duration-200">Continue</Button>
+              <Button 
+                onClick={() => {
+                  console.log('➡️ [Dashboard] Moving to select-assignment step, selectedWorkshop:', selectedWorkshop?.id);
+                  setAssignmentStep('select-assignment');
+                }} 
+                disabled={!selectedWorkshop} 
+                className="bg-yearcolors-s6 hover:bg-yearcolors-s6/80 rounded-xl px-8 text-sm text-neutral-900 shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition duration-200"
+              >
+                Continue
+              </Button>
             </div>
           </div>
         )}
@@ -1261,7 +1462,19 @@ export default function AspenDashboard() {
                 </div>
               ) : (
                 assignments.map((a) => (
-                  <div key={a.id} onClick={() => setSelectedAssignment(selectedAssignment?.id === a.id ? null : a)} className={`w-full max-w-md p-4 border rounded-xl cursor-pointer transition-all duration-200 ${selectedAssignment?.id === a.id ? 'border-yearcolors-s6 bg-yearcolors-s6/10 shadow-sm' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm bg-white'}`}>
+                  <div 
+                    key={a.id} 
+                    onClick={() => {
+                      if (selectedAssignment?.id === a.id) {
+                        console.log('🔄 [Dashboard] Assignment deselected:', a.id);
+                        setSelectedAssignment(null);
+                      } else {
+                        console.log('✅ [Dashboard] Assignment selected:', { id: a.id, title: a.title, submission_style: a.submission_style });
+                        setSelectedAssignment(a);
+                      }
+                    }} 
+                    className={`w-full max-w-md p-4 border rounded-xl cursor-pointer transition-all duration-200 ${selectedAssignment?.id === a.id ? 'border-yearcolors-s6 bg-yearcolors-s6/10 shadow-sm' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm bg-white'}`}
+                  >
                     <div className="flex items-start gap-3">
                       <span className="h-8 w-8 rounded-full bg-yearcolors-s6 grid place-items-center flex-shrink-0">
                         <ClipboardCheck className="h-4 w-4 text-neutral-900" />
@@ -1277,7 +1490,20 @@ export default function AspenDashboard() {
             </div>
             <div className="flex justify-between pt-2">
               <Button variant="outline" className="rounded-xl px-8 text-sm" onClick={() => setAssignmentStep('select-workshop')}>Back</Button>
-              <Button onClick={() => setAssignmentStep('submit')} disabled={!selectedAssignment} className="bg-yearcolors-s6 hover:bg-yearcolors-s6/80 rounded-xl px-8 text-sm text-neutral-900 shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition duration-200">Continue</Button>
+              <Button 
+                onClick={() => {
+                  console.log('➡️ [Dashboard] Moving to submit step, selectedAssignment:', selectedAssignment ? {
+                    id: selectedAssignment.id,
+                    title: selectedAssignment.title,
+                    submission_style: selectedAssignment.submission_style
+                  } : null);
+                  setAssignmentStep('submit');
+                }} 
+                disabled={!selectedAssignment} 
+                className="bg-yearcolors-s6 hover:bg-yearcolors-s6/80 rounded-xl px-8 text-sm text-neutral-900 shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition duration-200"
+              >
+                Continue
+              </Button>
             </div>
           </div>
         )}
@@ -1298,7 +1524,38 @@ export default function AspenDashboard() {
             {selectedAssignment.submission_style === 'google_link' ? (
               <div>
                 <Label htmlFor="assignment-google-link">Google Docs Link</Label>
-                <InputWithRing id="assignment-google-link" name="google_doc_link" type="url" placeholder="https://docs.google.com/document/..." value={googleDocLink} onChange={(e) => setGoogleDocLink(e.target.value)} disabled={isAssignmentSubmitting} required className="border border-neutral-200 transition-colors duration-200 ease-in-out rounded-xl" />
+                <InputWithRing 
+                  id="assignment-google-link" 
+                  name="google_doc_link" 
+                  type="url" 
+                  placeholder="https://docs.google.com/document/..." 
+                  value={googleDocLink} 
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setGoogleDocLink(value);
+                    // Real-time validation
+                    if (value.trim()) {
+                      const validation = googleLinkSchema.safeParse(value.trim());
+                      if (!validation.success) {
+                        setGoogleLinkError(validation.error.errors[0].message);
+                      } else {
+                        setGoogleLinkError(null);
+                      }
+                    } else {
+                      setGoogleLinkError(null);
+                    }
+                  }} 
+                  disabled={isAssignmentSubmitting} 
+                  required 
+                  className={`border transition-colors duration-200 ease-in-out rounded-xl ${
+                    googleLinkError 
+                      ? 'border-red-500 focus:border-red-500 focus:ring-red-500' 
+                      : 'border-neutral-200'
+                  }`}
+                />
+                {googleLinkError && (
+                  <p className="text-xs text-red-500 mt-1">{googleLinkError}</p>
+                )}
               </div>
             ) : (
               <div>
@@ -1311,23 +1568,60 @@ export default function AspenDashboard() {
                   onChange={(files) => {
                     const selectedFile = files?.[0] || null;
                     setFileToUpload(selectedFile);
+                    setFileError(null);
+                    
+                    // Validate file if selected
+                    if (selectedFile) {
+                      const allowedTypes = ['image/svg+xml', 'image/png', 'image/jpeg', 'image/gif', 'image/webp', 'application/pdf'];
+                      if (!allowedTypes.includes(selectedFile.type)) {
+                        setFileError('Invalid file type. Please upload SVG, PNG, JPG, GIF, WebP, or PDF.');
+                        return;
+                      }
+                      // Validate file size (max 10MB)
+                      const maxSize = 10 * 1024 * 1024; // 10MB
+                      if (selectedFile.size > maxSize) {
+                        setFileError('File size exceeds 10MB limit. Please upload a smaller file.');
+                        return;
+                      }
+                      setFileError(null);
+                    }
                   }}
                   onRemove={() => {
                     setFileToUpload(null);
+                    setFileError(null);
                   }}
                   placeholder={<span><strong>Click to upload</strong> or drag and drop</span>}
-                  helperText={<span>SVG, PNG, JPG, GIF, WebP, or PDF</span>}
+                  helperText={<span>SVG, PNG, JPG, GIF, WebP, or PDF (max 10MB)</span>}
                   disabled={isAssignmentSubmitting}
                   className="mt-2"
                 />
-               
+                {fileError && (
+                  <p className="text-xs text-red-500 mt-1">{fileError}</p>
+                )}
               </div>
             )}
             <div className="flex justify-between space-x-2 pt-2">
-              <Button variant="outline" className="rounded-xl px-8 text-sm" onClick={() => setAssignmentStep('select-assignment')} disabled={isAssignmentSubmitting}>Back</Button>
+              <Button 
+                variant="outline" 
+                className="rounded-xl px-8 text-sm" 
+                onClick={() => {
+                  setAssignmentStep('select-assignment');
+                  setGoogleLinkError(null);
+                  setFileError(null);
+                }} 
+                disabled={isAssignmentSubmitting}
+              >
+                Back
+              </Button>
               <Button 
                 type="submit" 
-                disabled={isAssignmentSubmitting || !studentId || (selectedAssignment.submission_style === 'google_link' ? !googleDocLink.trim() : !fileToUpload)} 
+                disabled={
+                  isAssignmentSubmitting || 
+                  !studentId || 
+                  (selectedAssignment.submission_style === 'google_link' 
+                    ? (!googleDocLink.trim() || !!googleLinkError)
+                    : (!fileToUpload || !!fileError))
+                } 
                 className="bg-yearcolors-s6 hover:bg-yearcolors-s6/80 rounded-xl px-8 text-sm text-neutral-900 shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition duration-200"
 
               >
