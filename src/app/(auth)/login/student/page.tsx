@@ -3,14 +3,33 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ChevronLeft, User } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
+import { useTRPC } from "@/trpc/client";
+import { useMutation } from "@tanstack/react-query";
 
 export default function StudentSignInForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const supabase = createClient();
+  const trpc = useTRPC();
 
+  const oauthMutation = useMutation({
+    ...trpc.auth.getOAuthUrl.mutationOptions(),
+    onSuccess: (result) => {
+      if (result.url) {
+        console.log("Google OAuth initiated successfully for student");
+        // Redirect to Google OAuth
+        window.location.href = result.url;
+        // Keep loading state true indefinitely until redirect happens
+      } else {
+        throw new Error("No OAuth URL returned");
+      }
+    },
+    onError: (error) => {
+      console.error("Something Went Wrong with Google sign-in:", error);
+      setError(error instanceof Error ? error.message : "An unexpected error occurred. Please try again.");
+      setIsLoading(false);
+    },
+  });
 
   const handleGoogleSignIn = async () => {
     try {
@@ -19,30 +38,15 @@ export default function StudentSignInForm() {
       setMessage("");
       
       console.log('Initiating Google OAuth for student...');
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/account-check`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          }
-        }
-      });
       
-      if (error) {
-        console.error("Google OAuth error:", error);
-        setError("Failed to sign in with Google. Please try again.");
-        setIsLoading(false);
-      } else {
-        console.log("Google OAuth initiated successfully for student");
-        // Keep loading state true indefinitely until redirect happens
-        // The redirect will happen automatically, so we don't need to set loading to false
-      }
+      // Get OAuth URL from tRPC
+      await oauthMutation.mutateAsync({
+        provider: "google",
+          redirectTo: `${window.location.origin}/account-check`,
+        role: "student",
+      });
     } catch (error) {
-      console.error("Something Went Wrong with Google sign-in:", error);
-      setError("An unexpected error occurred. Please try again.");
-      setIsLoading(false);
+      // Error is handled in onError callback
     }
   };
 

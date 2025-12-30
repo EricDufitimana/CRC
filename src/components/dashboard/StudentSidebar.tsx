@@ -10,7 +10,7 @@ import { FileUpload as FileUploadBase, getFileIconType, getReadableFileSize } fr
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { LayoutDashboard, ClipboardList, Briefcase, FileText, LogOut, Home, Edit3, Camera, Folder, Loader2 } from "lucide-react";
 import { useSupabase } from "@/hooks/useSupabase";
-import { signOut } from "@/actions/signOut";
+import { useAuth } from "@/hooks/useAuth";
 import { useUserData } from "@/hooks/useUserData";
 import { getProfilePicture } from "@/actions/avatars/getProfilePicture";
 import { getAvatars, AvatarData as BaseAvatarData } from "@/actions/avatars/getAvatars";
@@ -361,21 +361,15 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
     }
   };
 
-  const [isSigningOut, setIsSigningOut] = useState(false);
+  const { signOut, isSigningOut } = useAuth();
 
   const HandleSignOut = async () => {
     try {
-      setIsSigningOut(true);
-      const response = await signOut();
-      if (response.success) {
-        window.location.href = '/';
-      }
-      
+      signOut();
+      // The hook handles redirect and state management
     } catch (error) {
       console.error("Error logging out:", error);
-      // Keep loading state active since we'll redirect anyway
     }
-    // Don't reset isSigningOut - let it stay true for infinite loading
   }
 
   // Debug: Log key state for troubleshooting

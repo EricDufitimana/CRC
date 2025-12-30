@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import MobileOverflowWrapper from "@/components/MobileOverflowWrapper";
+import { TRPCReactProvider } from "@/trpc/client";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -15,9 +16,11 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning={true} className="!scroll-smooth">
       <body className={inter.className} suppressHydrationWarning={true}>
+        <TRPCReactProvider>
         <MobileOverflowWrapper>
           {children}
         </MobileOverflowWrapper>
+        </TRPCReactProvider>
       </body>
     </html>
   );

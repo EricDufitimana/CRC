@@ -18,7 +18,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../../../../../../zenith/src/components/ui/dialog";
-import { sendBulkEmails } from "@/actions/emails/sendBulkEmails";
 import { Plus, Edit, PowerOff, ExternalLink, Calendar, FileText, Briefcase, BookOpen } from "lucide-react";
 import { showToastSuccess, showToastError, showToastPromise } from "@/components/toasts";
 import { useActionState } from "react";

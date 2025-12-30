@@ -4,13 +4,14 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, Shield, X, Send, Mail, User, MessageSquare } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 // Using a simple textarea element instead of importing from zenith
 import { Label } from "@/components/ui/label";
 import { showToastSuccess, showToastError } from "@/components/toasts";
+import { useTRPC } from "@/trpc/client";
+import { useMutation } from "@tanstack/react-query";
 
 export default function AdminSignInForm() {
   const [isLoading, setIsLoading] = useState(false);
@@ -23,7 +24,26 @@ export default function AdminSignInForm() {
     message: ""
   });
   const [isSubmittingContact, setIsSubmittingContact] = useState(false);
-  const supabase = createClient();
+  const trpc = useTRPC();
+
+  const oauthMutation = useMutation({
+    ...trpc.auth.getOAuthUrl.mutationOptions(),
+    onSuccess: (result) => {
+      if (result.url) {
+        console.log("Google OAuth initiated successfully for admin");
+        // Redirect to Google OAuth
+        window.location.href = result.url;
+        // Keep loading state true indefinitely until redirect happens
+      } else {
+        throw new Error("No OAuth URL returned");
+      }
+    },
+    onError: (error) => {
+      console.error("Something Went Wrong with Google sign-in:", error);
+      setError(error instanceof Error ? error.message : "An unexpected error occurred. Please try again.");
+      setIsLoading(false);
+    },
+  });
 
   const handleGoogleSignIn = async () => {
     try {
@@ -32,30 +52,15 @@ export default function AdminSignInForm() {
       setMessage("");
       
       console.log('Initiating Google OAuth for admin...');
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/admin-verification`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          }
-        }
-      });
       
-      if (error) {
-        console.error("Google OAuth error:", error);
-        setError("Failed to sign in with Google. Please try again.");
-        setIsLoading(false);
-      } else {
-        console.log("Google OAuth initiated successfully for admin");
-        // Keep loading state true indefinitely until redirect happens
-        // The redirect will happen automatically, so we don't need to set loading to false
-      }
+      // Get OAuth URL from tRPC
+      await oauthMutation.mutateAsync({
+        provider: "google",
+          redirectTo: `${window.location.origin}/admin-verification`,
+        role: "admin",
+      });
     } catch (error) {
-      console.error("Something Went Wrong with Google sign-in:", error);
-      setError("An unexpected error occurred. Please try again.");
-      setIsLoading(false);
+      // Error is handled in onError callback
     }
   };
 

@@ -24,6 +24,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { showToastSuccess, showToastError } from "@/components/toasts";
+import { useTRPC } from "@/trpc/client";
+import { useQueryClient } from "@tanstack/react-query";
+import { createClient } from "@/utils/supabase/client";
 
 export default function AdminVerificationPage() {
   const [isLoading, setIsLoading] = useState(true);
@@ -34,6 +37,7 @@ export default function AdminVerificationPage() {
   const [shouldShowAdminVerification, setShouldShowAdminVerification] =
     useState(false);
   const [isContactDialogOpen, setIsContactDialogOpen] = useState(false);
+  const [isExchangingCode, setIsExchangingCode] = useState(true);
   const [contactForm, setContactForm] = useState({
     name: "",
     email: "",
@@ -41,6 +45,45 @@ export default function AdminVerificationPage() {
   });
   const [isSubmittingContact, setIsSubmittingContact] = useState(false);
   const { userId, adminId, isLoading: userDataLoading } = useUserData();
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const supabase = createClient();
+
+  // First: Exchange the OAuth code for a session
+  useEffect(() => {
+    const exchangeCodeForSession = async () => {
+      try {
+        const code = new URLSearchParams(window.location.search).get('code');
+        
+        if (code) {
+          console.log('🔄 [Admin Verification] Exchanging OAuth code for session');
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          
+          if (error) {
+            console.error('❌ [Admin Verification] Error exchanging code:', error);
+            setDebugInfo(`Error exchanging OAuth code: ${error.message}`);
+            setIsLoading(false);
+            setCheckComplete(true);
+            setShouldShowAdminVerification(true);
+          } else {
+            console.log('✅ [Admin Verification] Session established');
+          }
+        } else {
+          console.log('⚠️ [Admin Verification] No OAuth code found in URL');
+        }
+      } catch (error) {
+        console.error('❌ [Admin Verification] Error in code exchange:', error);
+        setDebugInfo(`Error in code exchange: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        setIsLoading(false);
+        setCheckComplete(true);
+        setShouldShowAdminVerification(true);
+      } finally {
+        setIsExchangingCode(false);
+      }
+    };
+
+    exchangeCodeForSession();
+  }, [supabase]);
 
   const checkSpecificAdmin = async () => {
     try {
@@ -49,15 +92,12 @@ export default function AdminVerificationPage() {
         return false;
       }
 
-      // Call the check-super-admin API with userId as query parameter
-      const response = await fetch(`/api/check-super-admin?userId=${userId}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      // Use tRPC to check if user is super admin
+      const result = await queryClient.fetchQuery(
+        trpc.auth.checkSuperAdmin.queryOptions({ userId })
+      );
 
-      if (response.ok) {
+      if (result.success) {
         console.log("Specific admin user detected, redirecting...");
         setDebugInfo(
           `Authorized admin user detected (ID: ${userId}), redirecting...`,
@@ -72,8 +112,7 @@ export default function AdminVerificationPage() {
 
         return true;
       } else {
-        const data = await response.json();
-        console.log("User is not the specific admin:", data.message);
+        console.log("User is not the specific admin:", result.message);
         return false;
       }
     } catch (error) {
@@ -82,7 +121,13 @@ export default function AdminVerificationPage() {
     }
   };
 
+  // Second: Only after code is exchanged, check user data and verify
   useEffect(() => {
+    // Don't proceed if still exchanging code
+    if (isExchangingCode) {
+      return;
+    }
+
     console.log("Admin verification page: useEffect triggered");
     console.log("userId:", userId);
     console.log("adminId:", adminId);
@@ -126,7 +171,7 @@ export default function AdminVerificationPage() {
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [userId, adminId, userDataLoading]);
+  }, [isExchangingCode, userId, adminId, userDataLoading, trpc, queryClient]);
 
   const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -184,8 +229,8 @@ export default function AdminVerificationPage() {
     }));
   };
 
-  // Show loading state
-  if (isLoading || userDataLoading) {
+  // Show loading state (including code exchange)
+  if (isLoading || userDataLoading || isExchangingCode) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white dark:bg-gray-900">
         <div className="text-center">

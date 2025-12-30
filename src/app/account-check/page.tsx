@@ -24,6 +24,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { showToastSuccess, showToastError } from "@/components/toasts";
+import { useTRPC } from "@/trpc/client";
+import { useQueryClient } from "@tanstack/react-query";
+import { createClient } from "@/utils/supabase/client";
 
 export default function AccountCheckPage() {
   const [isLoading, setIsLoading] = useState(true);
@@ -34,6 +37,7 @@ export default function AccountCheckPage() {
   const [hasSetup, setHasSetup] = useState<boolean | null>(null);
   const [checkComplete, setCheckComplete] = useState(false); // New state
   const [isContactDialogOpen, setIsContactDialogOpen] = useState(false);
+  const [isExchangingCode, setIsExchangingCode] = useState(true);
   const [contactForm, setContactForm] = useState({
     name: "",
     email: "",
@@ -42,8 +46,51 @@ export default function AccountCheckPage() {
   const [isSubmittingContact, setIsSubmittingContact] = useState(false);
   const { userId, isLoading: userDataLoading } = useUserData();
   const [hasCompletedSetup, setHasCompletedSetup] = useState(false);
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const supabase = createClient();
 
+  // First: Exchange the OAuth code for a session
   useEffect(() => {
+    const exchangeCodeForSession = async () => {
+      try {
+        const code = new URLSearchParams(window.location.search).get('code');
+        
+        if (code) {
+          console.log('🔄 [Account Check] Exchanging OAuth code for session');
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          
+          if (error) {
+            console.error('❌ [Account Check] Error exchanging code:', error);
+            setDebugInfo(`Error exchanging OAuth code: ${error.message}`);
+            setIsLoading(false);
+            setCheckComplete(true);
+          } else {
+            console.log('✅ [Account Check] Session established');
+          }
+        } else {
+          console.log('⚠️ [Account Check] No OAuth code found in URL');
+        }
+      } catch (error) {
+        console.error('❌ [Account Check] Error in code exchange:', error);
+        setDebugInfo(`Error in code exchange: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        setIsLoading(false);
+        setCheckComplete(true);
+      } finally {
+        setIsExchangingCode(false);
+      }
+    };
+
+    exchangeCodeForSession();
+  }, [supabase]);
+
+  // Second: Only after code is exchanged, check account status
+  useEffect(() => {
+    // Don't proceed if still exchanging code
+    if (isExchangingCode) {
+      return;
+    }
+
     console.log("Account check page: useEffect triggered");
     console.log("userId:", userId);
     console.log("userDataLoading:", userDataLoading);
@@ -58,101 +105,81 @@ export default function AccountCheckPage() {
           "Account check page: Checking if user exists in students table...",
         );
 
-        // Check if user exists in students table
-        const studentResponse = await fetch("/api/check-user-exists", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ userId, table: "students" }),
-        });
-
-        if (!studentResponse.ok) {
-          console.error(
-            "Account check page: API error:",
-            studentResponse.status,
+        try {
+          // Check if user exists in students table using tRPC
+          const studentData = await queryClient.fetchQuery(
+            trpc.auth.checkUserExists.queryOptions({
+              userId,
+              table: "students",
+            })
           );
-          setAccountExists(false);
-          setDebugInfo("Error checking account status");
-          setIsLoading(false);
-          setCheckComplete(true);
-          return;
-        }
 
-        const studentData = await studentResponse.json();
-        const studentExists = studentData.exists;
-        console.log("Account check page: Student exists:", studentExists);
+          const studentExists = studentData.exists;
+          console.log("Account check page: Student exists:", studentExists);
 
-        if (studentExists) {
-          console.log(
-            "Account check page: User account exists, checking setup status...",
-          );
-          setAccountExists(true);
-
-          // Check if user has completed setup
-          const setupResponse = await fetch("/api/check-setup-status", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ userId }),
-          });
-
-          if (!setupResponse.ok) {
-            console.error(
-              "Account check page: Setup status API error:",
-              setupResponse.status,
+          if (studentExists) {
+            console.log(
+              "Account check page: User account exists, checking setup status...",
             );
-            setDebugInfo("Error checking setup status");
+            setAccountExists(true);
+
+            // Check if user has completed setup using tRPC
+            const setupData = await queryClient.fetchQuery(
+              trpc.auth.checkSetupStatus.queryOptions({
+                userId,
+              })
+            );
+
+            const hasCompletedSetup = setupData.has_setup;
+            console.log(
+              "Account check page: Has completed setup:",
+              hasCompletedSetup,
+            );
+
+            if (hasCompletedSetup) {
+              console.log(
+                "Account check page: Setup completed, redirecting to student dashboard",
+              );
+              setDebugInfo(
+                `Setup completed, redirecting to student dashboard...`,
+              );
+
+              // Show redirect loader directly without showing the "not found" screen
+              setRedirecting(true);
+              setIsLoading(false);
+
+              // Redirect to student dashboard
+              setTimeout(() => {
+                window.location.href = "/dashboard/student";
+              }, 1500);
+            } else {
+              console.log(
+                "Account check page: Setup not completed, redirecting to setup page",
+              );
+              setDebugInfo(`Setup not completed, redirecting to setup page...`);
+
+              // Show redirect loader directly without showing the "not found" screen
+              setRedirecting(true);
+              setIsLoading(false);
+
+              // Redirect to setup page
+              setTimeout(() => {
+                window.location.href = "/setup";
+              }, 1500);
+            }
+          } else {
+            console.log("Account check page: No user account found in database");
+            setAccountExists(false);
+            setDebugInfo(
+              "No user account found in database - account creation required",
+            );
             setIsLoading(false);
             setCheckComplete(true);
-            return;
           }
-
-          const setupData = await setupResponse.json();
-          const hasCompletedSetup = setupData.has_setup;
-          console.log(
-            "Account check page: Has completed setup:",
-            hasCompletedSetup,
-          );
-
-          if (hasCompletedSetup) {
-            console.log(
-              "Account check page: Setup completed, redirecting to student dashboard",
-            );
-            setDebugInfo(
-              `Setup completed, redirecting to student dashboard...`,
-            );
-
-            // Show redirect loader directly without showing the "not found" screen
-            setRedirecting(true);
-            setIsLoading(false);
-
-            // Redirect to student dashboard
-            setTimeout(() => {
-              window.location.href = "/dashboard/student";
-            }, 1500);
-          } else {
-            console.log(
-              "Account check page: Setup not completed, redirecting to setup page",
-            );
-            setDebugInfo(`Setup not completed, redirecting to setup page...`);
-
-            // Show redirect loader directly without showing the "not found" screen
-            setRedirecting(true);
-            setIsLoading(false);
-
-            // Redirect to setup page
-            setTimeout(() => {
-              window.location.href = "/setup";
-            }, 1500);
-          }
-        } else {
-          console.log("Account check page: No user account found in database");
+        } catch (error) {
+          console.error("Account check page: Error:", error);
           setAccountExists(false);
-          setDebugInfo(
-            "No user account found in database - account creation required",
-          );
+          setDebugInfo("Error checking account status");
           setIsLoading(false);
           setCheckComplete(true);
         }
@@ -166,7 +193,7 @@ export default function AccountCheckPage() {
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [userId, userDataLoading]);
+  }, [isExchangingCode, userId, userDataLoading, trpc, queryClient]);
 
   const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -224,8 +251,8 @@ export default function AccountCheckPage() {
     }));
   };
 
-  // Show loading state
-  if (isLoading || userDataLoading) {
+  // Show loading state (including code exchange)
+  if (isLoading || userDataLoading || isExchangingCode) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white dark:bg-gray-900">
         <div className="text-center">

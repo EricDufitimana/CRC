@@ -8,7 +8,7 @@ import { gsap } from "gsap";
 import { useSession } from "@/hooks/getSession";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { User, LogOut, Menu, X, Loader2 } from "lucide-react";
-import { signOut } from "@/actions/signOut";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Sheet,
   SheetContent,
@@ -93,25 +93,21 @@ const Header = () => {
   // Mobile sheet state
   const [sheetOpen, setSheetOpen] = useState(false);
   
-  // Sign out loading state
-  const [isSigningOut, setIsSigningOut] = useState(false);
+  // Use tRPC for sign out
+  const { signOut, isSigningOut } = useAuth();
 
   // Handle sign out
   const handleSignOut = async () => {
     try {
-      setIsSigningOut(true);
-      await signOut();
-      // Close popover only after successful signout
+      // Close popover before signing out
       setUserMenuOpen(false);
       setSheetOpen(false);
-      window.location.href = '/';
+      signOut();
     } catch (error) {
       console.error('Sign out error:', error);
       // Close popover even on error
       setUserMenuOpen(false);
       setSheetOpen(false);
-    } finally {
-      setIsSigningOut(false);
     }
   };
 
