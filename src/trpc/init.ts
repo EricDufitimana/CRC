@@ -4,7 +4,7 @@ import superjson from 'superjson';
 import { prisma } from '@/lib/prisma';
 import { createClient } from '@/utils/supabase/server';
 export type AdminUser = {
-  id: BigInt;
+  id: bigint;
   user_id: string;
   honorific: string | null;
   first_name: string;
@@ -14,7 +14,7 @@ export type AdminUser = {
 }
 
 export type StudentUser = {
-  id: BigInt;
+  id: bigint;
   user_id: string | null;
   student_id: string;
   first_name: string;

@@ -35,7 +35,7 @@ export function SubmissionDialog({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle>
-            {submission.name}'s Submission
+            {submission.name}&apos;s Submission
           </DialogTitle>
         </DialogHeader>
         <div className="flex flex-col space-y-4">
