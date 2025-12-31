@@ -162,7 +162,7 @@ export function CrcClassEditContent() {
         
         const enrichedConflicts = studentsWithClasses.map(student => ({
           ...student,
-          current_class_name: classMap[student.crc_class_id] || 'Unknown Class'
+          current_class_name: student.crc_class_id ? (classMap[student.crc_class_id] || 'Unknown Class') : 'Unknown Class'
         }));
         
         setConflictStudents(enrichedConflicts);

@@ -6,13 +6,17 @@ import { Popover, PopoverContent, PopoverTrigger } from "../../../../zenith/src/
 import { Input } from "../../../../zenith/src/components/ui/input";
 import { ChevronsUpDown, Check } from "lucide-react";
 
+type CRCClass = { id: string; name: string; grade_group: string | null; num_students: number };
+type Workshop = { id: string; title: string; crc_classes: Array<{ id: string; name: string }>; assignments: Array<{ id: string; title: string }> };
+type Assignment = { id: string; title: string; workshop_id: string | null };
+
 interface AssignmentsFiltersProps {
-  classes: Array<{ id: string; name: string; grade_group: string | null; num_students: number }>;
-  groupedClasses: Array<{ id: string; name: string; isGroup: boolean; classes: typeof classes }>;
-  workshops: Array<{ id: string; title: string; crc_classes: Array<{ id: string; name: string }>; assignments: Array<{ id: string; title: string }> }>;
-  filteredWorkshops: typeof workshops;
-  assignments: Array<{ id: string; title: string; workshop_id: string | null }>;
-  filteredAssignments: typeof assignments;
+  classes: Array<CRCClass>;
+  groupedClasses: Array<{ id: string; name: string; isGroup: boolean; classes: Array<CRCClass> }>;
+  workshops: Array<Workshop>;
+  filteredWorkshops: Array<Workshop>;
+  assignments: Array<Assignment>;
+  filteredAssignments: Array<Assignment>;
   selectedClass: string | null;
   selectedWorkshop: string | null;
   assignmentId: string | null;

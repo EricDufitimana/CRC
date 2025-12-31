@@ -35,7 +35,7 @@ export const crcClassManagementRouter = createTRPCRouter({
     .input(
       z.object({
         name: z.string().min(1),
-        grade_group: z.string().nullable().optional(),
+        grade_group: z.enum(['Enrichment_Year', 'Senior_4', 'Senior_5', 'Senior_6']).nullable().optional(),
         student_ids: z.array(z.string()).optional(),
       })
     )
@@ -46,7 +46,7 @@ export const crcClassManagementRouter = createTRPCRouter({
       const created = await prisma.crc_class.create({
         data: {
           name: name.trim(),
-          grade_group: grade_group || null,
+          grade_group: grade_group ? (grade_group as 'Enrichment_Year' | 'Senior_4' | 'Senior_5' | 'Senior_6') : null,
           created_by_id: ctx.user.id as bigint,
         },
         include: {

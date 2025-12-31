@@ -13,11 +13,13 @@ interface CrcClassCreateFormProps {
   onClassCreated?: () => void;
 }
 
+type GradeGroup = 'Enrichment_Year' | 'Senior_4' | 'Senior_5' | 'Senior_6';
+
 export function CrcClassCreateForm({ onClassCreated }: CrcClassCreateFormProps) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
-  const [gradeGroup, setGradeGroup] = useState<string>("");
+  const [gradeGroup, setGradeGroup] = useState<GradeGroup | "">("");
 
   const createClassMutation = useMutation({
     ...trpc.crcClassManagement.createCrcClass.mutationOptions(),
@@ -41,12 +43,18 @@ export function CrcClassCreateForm({ onClassCreated }: CrcClassCreateFormProps) 
     },
   });
 
+  const handleGradeGroupChange = (value: string) => {
+    if (value === "" || value === "Enrichment_Year" || value === "Senior_4" || value === "Senior_5" || value === "Senior_6") {
+      setGradeGroup(value as GradeGroup | "");
+    }
+  };
+
   const handleCreate = () => {
     if (!name.trim()) return;
     
     createClassMutation.mutate({
       name: name.trim(),
-      grade_group: gradeGroup || null,
+      grade_group: (gradeGroup || null) as GradeGroup | null,
     });
   };
 
@@ -69,7 +77,7 @@ export function CrcClassCreateForm({ onClassCreated }: CrcClassCreateFormProps) 
         </div>
         <div className="flex-1">
           <label className="text-sm text-neutral-800 block mb-1">Grade Group</label>
-          <Select value={gradeGroup} onValueChange={setGradeGroup}>
+          <Select value={gradeGroup} onValueChange={handleGradeGroupChange}>
             <SelectTrigger className="h-10 text-neutral-800">
               <SelectValue placeholder="Select grade group" />
             </SelectTrigger>
