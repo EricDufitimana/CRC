@@ -1,6 +1,6 @@
-import { ContentManagementContent } from "@/components/dashboard/content-management/ContentManagementContent";
-import { ContentManagementLoading } from "@/components/dashboard/content-management/ContentManagementLoading";
-import { DashboardErrorBoundary } from "@/components/dashboard/DashboardErrorBoundary";
+import { ContentManagementContent } from "@/components/dashboard/admin/content-management/ContentManagementContent";
+import { ContentManagementLoading } from "@/components/dashboard/admin/content-management/ContentManagementLoading";
+import { DashboardErrorBoundary } from "@/components/dashboard/admin/DashboardErrorBoundary";
 import { HydrateClient, prefetch, trpc } from '@/trpc/server';
 import { getServerContext } from '@/trpc/init';
 

@@ -168,6 +168,13 @@ export const setupRouter = createTRPCRouter({
     .mutation(async ({ ctx }) => {
       const userId = ctx.user.user_id;
       
+      if (!userId) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'User ID is required'
+        });
+      }
+      
       try {
         // Update user metadata to mark setup as completed
         const { error } = await supabase.auth.admin.updateUserById(

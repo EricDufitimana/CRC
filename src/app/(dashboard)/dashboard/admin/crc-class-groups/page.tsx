@@ -1,6 +1,6 @@
-import { CrcClassManagementContent } from "@/components/dashboard/crc-class-management/CrcClassManagementContent";
-import { CrcClassManagementLoading } from "@/components/dashboard/crc-class-management/CrcClassManagementLoading";
-import { DashboardErrorBoundary } from "@/components/dashboard/DashboardErrorBoundary";
+import { CrcClassManagementContent } from "@/components/dashboard/admin/crc-class-management/CrcClassManagementContent";
+import { CrcClassManagementLoading } from "@/components/dashboard/admin/crc-class-management/CrcClassManagementLoading";
+import { DashboardErrorBoundary } from "@/components/dashboard/admin/DashboardErrorBoundary";
 import { HydrateClient, prefetch, trpc } from '@/trpc/server';
 import { getServerContext } from '@/trpc/init';
 

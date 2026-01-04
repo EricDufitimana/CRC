@@ -143,7 +143,7 @@ export const adminProcedure = protectedProcedure.use(({ctx, next}) => {
   return next({
     ctx: {
       user: ctx.user as AdminUser,
-      role: ctx.role as const,
+      role: 'admin' as const,
     },
   });
 })
@@ -156,7 +156,7 @@ export const studentProcedure = protectedProcedure.use(({ctx, next}) => {
   return next({
     ctx: {
       user: ctx.user as StudentUser,
-      role: ctx.role as const,
+      role: 'student' as const,
     },
   });
 })

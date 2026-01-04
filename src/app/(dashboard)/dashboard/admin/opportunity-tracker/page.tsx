@@ -1,6 +1,6 @@
-import { OpportunityTrackerContent } from "@/components/dashboard/opportunity-tracker/OpportunityTrackerContent";
-import { OpportunityTrackerLoading } from "@/components/dashboard/opportunity-tracker/OpportunityTrackerLoading";
-import { DashboardErrorBoundary } from "@/components/dashboard/DashboardErrorBoundary";
+import { OpportunityTrackerContent } from "@/components/dashboard/admin/opportunity-tracker/OpportunityTrackerContent";
+import { OpportunityTrackerLoading } from "@/components/dashboard/admin/opportunity-tracker/OpportunityTrackerLoading";
+import { DashboardErrorBoundary } from "@/components/dashboard/admin/DashboardErrorBoundary";
 import { HydrateClient, prefetch, trpc } from '@/trpc/server';
 import { getServerContext } from '@/trpc/init';
 

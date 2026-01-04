@@ -1,6 +1,6 @@
-import { EssayRequestsContent } from "@/components/dashboard/essay-requests/EssayRequestsContent";
-import { EssayRequestsLoading } from "@/components/dashboard/essay-requests/EssayRequestsLoading";
-import { DashboardErrorBoundary } from "@/components/dashboard/DashboardErrorBoundary";
+import { EssayRequestsContent } from "@/components/dashboard/admin/essay-requests/EssayRequestsContent";
+import { EssayRequestsLoading } from "@/components/dashboard/admin/essay-requests/EssayRequestsLoading";
+import { DashboardErrorBoundary } from "@/components/dashboard/admin/DashboardErrorBoundary";
 import { HydrateClient, prefetch, trpc } from '@/trpc/server';
 import { getServerContext } from '@/trpc/init';
 

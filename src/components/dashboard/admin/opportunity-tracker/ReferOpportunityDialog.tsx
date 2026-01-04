@@ -75,7 +75,7 @@ export function ReferOpportunityDialog({ open, onOpenChange, opportunity, curren
           </DialogTitle>
           {opportunity && (
             <DialogDescription className="text-gray-500 mt-1">
-              Select a team member to review "{opportunity.title}"
+              Select a team member to review &quot;{opportunity.title}&quot;
             </DialogDescription>
           )}
         </DialogHeader>

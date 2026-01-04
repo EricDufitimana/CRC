@@ -1,6 +1,6 @@
-import { EventsContent } from "@/components/dashboard/events-management/EventsContent";
-import { EventsLoading } from "@/components/dashboard/events-management/EventsLoading";
-import { DashboardErrorBoundary } from "@/components/dashboard/DashboardErrorBoundary";
+import { EventsContent } from "@/components/dashboard/admin/events-management/EventsContent";
+import { EventsLoading } from "@/components/dashboard/admin/events-management/EventsLoading";
+import { DashboardErrorBoundary } from "@/components/dashboard/admin/DashboardErrorBoundary";
 import { HydrateClient, prefetch, trpc } from '@/trpc/server';
 import { getServerContext } from '@/trpc/init';
 

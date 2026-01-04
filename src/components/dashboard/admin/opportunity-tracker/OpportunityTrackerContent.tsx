@@ -75,7 +75,7 @@ export function OpportunityTrackerContent() {
 
     if (activeTab === "requests") return opp.status === "pending" && !opp.referred;
     if (activeTab === "accepted") return opp.status === "accepted";
-    if (activeTab === "rejected") return opp.status === "rejected";
+    if (activeTab === "rejected") return opp.status === "denied";
     if (activeTab === "referrals") return false;
 
     return true;
@@ -99,7 +99,7 @@ export function OpportunityTrackerContent() {
       id: ref.id,
       title: ref.title,
       student_name: ref.studentName,
-      status: ref.status === 'completed' ? 'accepted' : 'pending', // Infer status or rely on ref.status
+      status: ref.status === 'accepted' ? 'accepted' : 'pending', // Infer status or rely on ref.status
       created_at: ref.submittedAt,
       deadline: ref.deadline,
       link: ref.link,
@@ -122,7 +122,7 @@ export function OpportunityTrackerContent() {
   const counts = {
     requests: opportunities.filter(o => o.status === "pending" && !o.referred).length,
     accepted: opportunities.filter(o => o.status === "accepted").length,
-    rejected: opportunities.filter(o => o.status === "rejected").length,
+    rejected: opportunities.filter(o => o.status === "denied").length,
     referrals: referrals.length,
   };
 

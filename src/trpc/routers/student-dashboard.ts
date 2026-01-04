@@ -292,7 +292,7 @@ export const studentDashboardRouter = createTRPCRouter({
         title: input.title,
         essay_link: input.essayLink,
         word_count: input.wordCount || 0,
-        description: input.description || null,
+        description: input.description || '',
         deadline: input.deadline ? new Date(input.deadline) : null,
       };
 
@@ -324,8 +324,8 @@ export const studentDashboardRouter = createTRPCRouter({
         student_id: ctx.user.id,
         admin_id: BigInt(input.adminId),
         title: input.title,
-        description: input.description || null ,
-        link: input.link || null,
+        description: input.description || '',
+        link: input.link || '',
         deadline: input.deadline ? new Date(input.deadline) : null,
       };
 

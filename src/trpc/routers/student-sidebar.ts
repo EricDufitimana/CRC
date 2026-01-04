@@ -111,8 +111,7 @@ export const studentSidebarRouter = createTRPCRouter({
       // Check if student was found
       if (!student || student.length === 0) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Student not found" });
-          error: 'Student not found' 
-        }
+      }
       
       // Return just the student ID
       const full_name = [student[0].first_name, student[0].last_name].filter(Boolean).join(' ');

@@ -74,7 +74,7 @@ export function ReferEssayDialog({ open, onOpenChange, essay, currentAdminId }: 
           </DialogTitle>
           {essay && (
             <DialogDescription className="text-gray-500 mt-1">
-              Select a team member to review "{essay.title}"
+              Select a team member to review &quot;{essay.title}&quot;
             </DialogDescription>
           )}
         </DialogHeader>

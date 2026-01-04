@@ -59,7 +59,7 @@ export function CrcClassCreateForm({ onClassCreated }: CrcClassCreateFormProps) 
       return;
     }
     
-    if (!gradeGroup || gradeGroup === "") {
+    if (!gradeGroup) {
       showToastError({
         headerText: 'Grade Group Required',
         paragraphText: 'Please select a grade group before creating the class.',
@@ -107,9 +107,9 @@ export function CrcClassCreateForm({ onClassCreated }: CrcClassCreateFormProps) 
         </div>
         <button
           onClick={handleCreate}
-          disabled={!name.trim() || !gradeGroup || gradeGroup === "" || createClassMutation.isPending}
+          disabled={!name.trim() || !gradeGroup || createClassMutation.isPending}
           className={`h-10 w-10 rounded-xl flex items-center justify-center transition-all duration-200 ${
-            !name.trim() || !gradeGroup || gradeGroup === ""
+            !name.trim() || !gradeGroup
               ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
               : createClassMutation.isPending
               ? 'bg-emerald-100 text-emerald-700 cursor-not-allowed'

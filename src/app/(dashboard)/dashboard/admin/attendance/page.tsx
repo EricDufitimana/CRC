@@ -1,6 +1,6 @@
-import { AttendanceManagementContent } from "@/components/dashboard/attendance-management/AttendanceManagementContent";
-import { AttendanceManagementLoading } from "@/components/dashboard/attendance-management/AttendanceManagementLoading";
-import { DashboardErrorBoundary } from "@/components/dashboard/DashboardErrorBoundary";
+import { AttendanceManagementContent } from "@/components/dashboard/admin/attendance-management/AttendanceManagementContent";
+import { AttendanceManagementLoading } from "@/components/dashboard/admin/attendance-management/AttendanceManagementLoading";
+import { DashboardErrorBoundary } from "@/components/dashboard/admin/DashboardErrorBoundary";
 import { HydrateClient, prefetch, trpc } from '@/trpc/server';
 import { getServerContext } from '@/trpc/init';
 

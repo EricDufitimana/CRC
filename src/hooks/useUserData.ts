@@ -1,7 +1,9 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTRPC } from '@/trpc/client';
+import { createClient } from '@/utils/supabase/client';
 
 interface UserData {
   userId: string | null;
@@ -17,10 +19,29 @@ interface UserData {
  */
 export function useUserData() {
   const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const supabase = createClient();
 
-  const { data, isLoading, error, refetch } = useQuery(
-    trpc.auth.getUser.queryOptions()
-  );
+  const getUserQueryOptions = trpc.auth.getUser.queryOptions();
+
+  const { data, isLoading, error, refetch } = useQuery(getUserQueryOptions);
+
+  useEffect(() => {
+    const { data: subscription } = supabase.auth.onAuthStateChange((event) => {
+      if (
+        event === 'SIGNED_IN' ||
+        event === 'TOKEN_REFRESHED' ||
+        event === 'SIGNED_OUT' ||
+        event === 'USER_UPDATED'
+      ) {
+        queryClient.invalidateQueries({ queryKey: getUserQueryOptions.queryKey });
+      }
+    });
+
+    return () => {
+      subscription?.subscription?.unsubscribe();
+    };
+  }, [getUserQueryOptions.queryKey, queryClient, supabase.auth]);
 
   const refreshUserData = () => {
     refetch();

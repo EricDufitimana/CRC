@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FileUpload } from "../../../../../../zenith/src/components/ui/file-upload";
+import { FileUpload } from "@/components/application/file-upload/file-upload-base";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ArrowLeft, Upload, FileText, Link as LinkIcon, Download, Eye, Loader2 } from "lucide-react";
 import { useTRPC } from "@/trpc/client";
@@ -128,7 +128,7 @@ export function StudentDocumentsContent() {
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 mb-2">
                             <FileText className="h-4 w-4 text-neutral-500" />
-                            <span className="text-sm font-medium text-neutral-900">{documents.academic_report_filename}</span>
+                            <span className="text-sm font-medium text-neutral-900">{documents.academic_report_url ? 'Academic Report' : 'No Report'}</span>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -208,14 +208,13 @@ export function StudentDocumentsContent() {
                           </Button>
                         </div>
                       )}
-                      <FileUpload
-                        multiple={false}
-                        accept=".pdf,.doc,.docx"
-                        value={academicReportFile}
-                        onChange={(files: File[] | undefined) => setAcademicReportFile(files || [])}
-                        placeholder="Drop your academic report here or click to upload"
-                        helperText="PDF, DOC, DOCX up to 5MB"
-                      />
+                      <FileUpload.Root>
+                        <FileUpload.DropZone
+                          accept=".pdf,.doc,.docx"
+                          hint="Drop your academic report here or click to upload"
+                          onDropFiles={(files) => setAcademicReportFile(Array.from(files))}
+                        />
+                      </FileUpload.Root>
                     </div>
                   )}
                 </div>

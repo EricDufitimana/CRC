@@ -1,6 +1,6 @@
-import { AnnouncementsContent } from "@/components/dashboard/announcements/AnnouncementsContent";
-import { AnnouncementsLoading } from "@/components/dashboard/announcements/AnnouncementsLoading";
-import { DashboardErrorBoundary } from "@/components/dashboard/DashboardErrorBoundary";
+import { AnnouncementsContent } from "@/components/dashboard/admin/announcements/AnnouncementsContent";
+import { AnnouncementsLoading } from "@/components/dashboard/admin/announcements/AnnouncementsLoading";
+import { DashboardErrorBoundary } from "@/components/dashboard/admin/DashboardErrorBoundary";
 import { HydrateClient, prefetch, trpc } from '@/trpc/server';
 import { getServerContext } from '@/trpc/init';
 

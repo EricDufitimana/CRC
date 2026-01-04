@@ -1,6 +1,6 @@
-import { AssignmentsManagementContent } from "@/components/dashboard/assignments-management/AssignmentsManagementContent";
-import { AssignmentsManagementLoading } from "@/components/dashboard/assignments-management/AssignmentsManagementLoading";
-import { DashboardErrorBoundary } from "@/components/dashboard/DashboardErrorBoundary";
+import { AssignmentsManagementContent } from "@/components/dashboard/admin/assignments-management/AssignmentsManagementContent";
+import { AssignmentsManagementLoading } from "@/components/dashboard/admin/assignments-management/AssignmentsManagementLoading";
+import { DashboardErrorBoundary } from "@/components/dashboard/admin/DashboardErrorBoundary";
 import { HydrateClient, prefetch, trpc } from '@/trpc/server';
 import { getServerContext } from '@/trpc/init';
 
