@@ -1,6 +1,6 @@
-import { StudentManagementContent } from "@/components/dashboard/student-management/StudentManagementContent";
-import { StudentManagementLoading } from "@/components/dashboard/student-management/StudentManagementLoading";
-import { DashboardErrorBoundary } from "@/components/dashboard/DashboardErrorBoundary";
+import { StudentManagementContent } from "@/components/dashboard/admin/student-management/StudentManagementContent";
+import { StudentManagementLoading } from "@/components/dashboard/admin/student-management/StudentManagementLoading";
+import { DashboardErrorBoundary } from "@/components/dashboard/admin/DashboardErrorBoundary";
 import { HydrateClient, prefetch, trpc } from '@/trpc/server';
 import { getServerContext } from '@/trpc/init';
 

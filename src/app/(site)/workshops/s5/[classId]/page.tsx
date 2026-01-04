@@ -1,17 +1,20 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import WorkshopsNotificationBanner from "@/components/Banner/WorkshopsNotificationBanner";
 import WorkshopCard from "@/components/workshops/WorkshopCard";
 import { Card, CardContent } from "@/components/ui/card";
 import Image from "next/image";
+import { useTRPC } from "@/trpc/client";
+import { useSuspenseQuery } from "@tanstack/react-query";
 
 interface Workshop {
   id: string;
   title: string;
   description: string;
   date: string;
-  presentation_url?: string;
+  presentation_url?: string | null;
+  google_slide_url?: string | null;
   assignments?: Array<{
     id: string;
     title: string;
@@ -35,51 +38,22 @@ export default function S5ClassWorkshopsPage() {
   const params = useParams();
   const classId = (params?.classId as string) || '';
   const [expandedCards, setExpandedCards] = useState<number[]>([]);
-  const [workshops, setWorkshops] = useState<Workshop[]>([]);
-  const [crcClass, setCrcClass] = useState<CrcClass | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Fetch CRC class details
-        const classResponse = await fetch(`/api/admin/crc-classes`);
-        if (!classResponse.ok) {
-          throw new Error('Failed to fetch CRC classes');
-        }
-        const classData = await classResponse.json();
-        // Ensure we compare IDs as strings to handle any type mismatches
-        const foundClass = classData.classes?.find((c: CrcClass) => String(c.id) === String(classId));
-        
-        if (!foundClass) {
-          console.error('CRC class not found for classId:', classId);
-          setLoading(false);
-          return;
-        }
-        
-        setCrcClass(foundClass);
-
-        // Fetch workshops for this specific CRC class using the ID
-        const workshopsResponse = await fetch(`/api/workshops/fetch-by-crc-class?crcClassId=${classId}`);
-        if (!workshopsResponse.ok) {
-          throw new Error('Failed to fetch workshops');
-        }
-        const workshopsData = await workshopsResponse.json();
-        
-        if (workshopsData.success) {
-          setWorkshops(workshopsData.data);
-        }
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (classId) {
-      fetchData();
-    }
-  }, [classId]);
+  const trpc = useTRPC();
+  
+  // Fetch CRC classes to find the current class
+  const { data: crcClassesData } = useSuspenseQuery(
+    trpc.workshopsManagement.getCrcClasses.queryOptions()
+  );
+  
+  // Find the current class
+  const crcClass = crcClassesData?.find((c: any) => String(c.id) === String(classId)) || null;
+  
+  // Fetch workshops for this specific CRC class using the ID
+  const { data: workshopsData, isLoading: loading } = useSuspenseQuery(
+    trpc.workshopsManagement.getWorkshopsByCategory.queryOptions({ category: `class:${classId}` })
+  );
+  
+  const workshops = workshopsData || [];
 
   const toggleCard = (index: number) => {
     setExpandedCards(prev => 

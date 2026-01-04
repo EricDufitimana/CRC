@@ -5,11 +5,13 @@ import { Card } from "@/components/ui/card";
 import { ArrowRight, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { EventCard, EventDetailsModal } from "@/components/Events";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import EventsNotificationBanner from "@/components/Banner/EventsNotificationBanner";
 import MultipleAnnouncementsBanner from "@/components/Banner/MultipleAnnouncementsBanner";
 import SectionTitle from "@/components/Common/SectionTitle";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useTRPC } from "@/trpc/client";
+import {useSuspenseQuery} from "@tanstack/react-query";
 
 // Type definition based on Supabase schema
 type Event = {
@@ -54,44 +56,15 @@ type Event = {
 
 // Hero section image grid data
 export default function PreviousEventsPage() {
-  const [events, setEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [expandedCards, setExpandedCards] = useState<number[]>([]);
   const isMobile = useIsMobile();
-  useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch('/api/events/previous?t=' + Date.now());
-        const data = await response.json();
-        
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to fetch events');
-        }
-        
-        setEvents(data.events || []);
-        console.log('Fetched events:', data.events);
-        
-        // Debug gallery images for each event
-        data.events?.forEach((event: Event, index: number) => {
-          console.log(`Event ${index + 1} - ${event.title}:`);
-          console.log('  Gallery length:', event.gallery?.length);
-          console.log('  Hero images:', event.gallery?.filter(img => img.isHero).length);
-          console.log('  Gallery images:', event.gallery?.map(img => ({
-            url: img.asset?.url,
-            isHero: img.isHero
-          })));
-        });
-      } catch (err) {
-        console.error('Error fetching events:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch events');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchEvents();
-  }, []);
+  const trpc = useTRPC();
+  
+  const { data: eventsData, error, isLoading: loading } = useSuspenseQuery(
+    trpc.events.getPreviousEvents.queryOptions()
+  );
+  
+  const events = eventsData?.events || [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-100">
@@ -183,7 +156,7 @@ export default function PreviousEventsPage() {
                   </div>
                 </div>
               ) : events && events.length > 0 ? (
-                events.map((event) => (
+                events.map((event: Event) => (
                   <EventCard
                     key={event.id}
                     event={{

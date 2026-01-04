@@ -1,17 +1,19 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import WorkshopsNotificationBanner from "@/components/Banner/WorkshopsNotificationBanner";
 import WorkshopCard from "@/components/workshops/WorkshopCard";
 import { Card, CardContent } from "@/components/ui/card";
 import Image from "next/image";
+import { useTRPC } from "@/trpc/client";
+import { useSuspenseQuery } from "@tanstack/react-query";
 
 interface Workshop {
   id: string;
   title: string;
   description: string;
   date: string;
-  presentation_url?: string;
-  google_slide_url?: string;
+  presentation_url: string | null;
+  google_slide_url: string | null;
   assignments?: Array<{
     id: string;
     title: string;
@@ -27,29 +29,13 @@ interface Workshop {
 
 export default function S4WorkshopsPage() {
   const [expandedCards, setExpandedCards] = useState<number[]>([]);
-  const [workshops, setWorkshops] = useState<Workshop[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchWorkshops = async () => {
-      try {
-        const response = await fetch('/api/workshops/by-group?group=senior_4');
-        const data = await response.json();
-        
-        if (data.success) {
-          setWorkshops(data.data);
-        } else {
-          console.error('Failed to fetch workshops:', data.error);
-        }
-      } catch (error) {
-        console.error('Error fetching workshops:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchWorkshops();
-  }, []);
+  const trpc = useTRPC();
+  
+  const { data: workshopsData, isLoading: loading } = useSuspenseQuery(
+    trpc.workshops.getWorkshopsByGroup.queryOptions({ group: 'senior_4' })
+  );
+  
+  const workshops = workshopsData?.data || [];
 
   const toggleCard = (index: number) => {
     setExpandedCards(prev => 

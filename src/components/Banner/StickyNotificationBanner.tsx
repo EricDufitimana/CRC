@@ -1,15 +1,18 @@
 
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import markdownToHtml from "@/utils/markdownToHtml";
+import { useTRPC } from "@/trpc/client";
 
 type Notification = {
-  id: number;
+  id: string;
   message: string;
 };
 
 export default function StickyNotificationBanner() {
+  const trpc = useTRPC();
   const [notification, setNotification] = useState<Notification | null>(null);
   const [parsedContent, setParsedContent] = useState<string>("");
   const [isDismissed, setIsDismissed] = useState(false);
@@ -31,23 +34,21 @@ export default function StickyNotificationBanner() {
 
 
   
+  // Fetch announcements using tRPC
+  const { data: announcements } = useQuery(
+    trpc.announcementsManagement.getAnnouncements.queryOptions({ page: "home" })
+  );
+
+
   useEffect(() => {
-    const fetchNotification = async () => {
-      try {
-        const res = await fetch("/api/announcements/fetch?page=home&single=true", { cache: "no-store" });
-        if (!res.ok) {
-          console.error("Failed to fetch notification", res);
-          return;
-        }
-        const json = await res.json();
-        console.log("Successfully fetched notification", json);
-        setNotification(json.notification ?? null);
-      } catch (e) {
-        // noop
-      }
-    };
-    fetchNotification();
-  }, []);
+    if (announcements && announcements.length > 0) {
+      console.log("Successfully fetched notifications", announcements);
+      // Get the first (most recent) notification
+      setNotification(announcements[0]);
+    } else {
+      setNotification(null);
+    }
+  }, [announcements]);
   // Add this new useEffect right after the notification fetch effect
   useEffect(() => {
     if (notification && contentRef.current) {

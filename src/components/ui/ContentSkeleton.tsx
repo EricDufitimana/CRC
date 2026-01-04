@@ -1,5 +1,14 @@
 import React from "react";
 
+export function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={`animate-pulse rounded bg-gray-200 dark:bg-gray-700 ${className}`}
+      {...props}
+    />
+  );
+}
+
 interface ContentSkeletonProps {
   lines?: number;
   className?: string;
@@ -12,11 +21,9 @@ const ContentSkeleton: React.FC<ContentSkeletonProps> = ({
   return (
     <div className={`space-y-2 ${className}`}>
       {Array.from({ length: lines }).map((_, index) => (
-        <div
+        <Skeleton
           key={index}
-          className={`h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse ${
-            index === lines - 1 ? "w-3/4" : "w-full"
-          }`}
+          className={index === lines - 1 ? "w-3/4 h-4" : "w-full h-4"}
         />
       ))}
     </div>
@@ -24,4 +31,3 @@ const ContentSkeleton: React.FC<ContentSkeletonProps> = ({
 };
 
 export default ContentSkeleton;
-

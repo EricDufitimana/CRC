@@ -5,11 +5,13 @@ import { Card } from "@/components/ui/card";
 import { ArrowRight, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { EventCard, EventDetailsModal } from "@/components/Events";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import EventsNotificationBanner from "@/components/Banner/EventsNotificationBanner";
 import MultipleAnnouncementsBanner from "@/components/Banner/MultipleAnnouncementsBanner";
 import SectionTitle from "@/components/Common/SectionTitle";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useTRPC } from "@/trpc/client";
+import { useSuspenseQuery } from "@tanstack/react-query";
 
 // Type definition based on Supabase schema
 type Event = {
@@ -54,72 +56,15 @@ type Event = {
 // Hero section image grid data
 
 export default function UpcomingEventsPage() {
-  const [events, setEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [expandedCards, setExpandedCards] = useState<number[]>([]);
   const isMobile = useIsMobile();
-
-  useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        setLoading(true);
-        console.log('[Gallery Debug] Starting to fetch events from API...');
-        const response = await fetch('/api/events/upcoming');
-        console.log('[Gallery Debug] API Response status:', response.status, response.statusText);
-        
-        const data = await response.json();
-        console.log('[Gallery Debug] Raw API response data:', JSON.stringify(data, null, 2));
-        
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to fetch events');
-        }
-        
-        setEvents(data.events || []);
-        console.log('[Gallery Debug] Total events fetched:', data.events?.length || 0);
-        
-        // Debug gallery images for each event
-        data.events?.forEach((event: Event, index: number) => {
-          console.log(`\n[Gallery Debug] ===== Event ${index + 1}: ${event.title} =====`);
-          console.log('[Gallery Debug] Event ID:', event.id);
-          console.log('[Gallery Debug] Gallery folder:', event.gallery_folder);
-          console.log('[Gallery Debug] Gallery images array:', event.gallery_images);
-          console.log('[Gallery Debug] Gallery images length:', event.gallery_images?.length || 0);
-          console.log('[Gallery Debug] Gallery array:', event.gallery);
-          console.log('[Gallery Debug] Gallery array length:', event.gallery?.length || 0);
-          
-          if (event.gallery) {
-            console.log('[Gallery Debug] Gallery details:');
-            event.gallery.forEach((img, imgIndex) => {
-              console.log(`  [Gallery Debug] Image ${imgIndex + 1}:`, {
-                _key: img._key,
-                _type: img._type,
-                asset_id: img.asset?._id,
-                asset_url: img.asset?.url,
-                isHero: img.isHero,
-                metadata: img.asset?.metadata
-              });
-            });
-            console.log('[Gallery Debug] Hero images count:', event.gallery.filter(img => img.isHero).length);
-          }
-          
-          if (event.gallery_images) {
-            console.log('[Gallery Debug] Gallery images URLs:');
-            event.gallery_images.forEach((url, urlIndex) => {
-              console.log(`  [Gallery Debug] URL ${urlIndex + 1}:`, url);
-            });
-          }
-        });
-      } catch (err) {
-        console.error('[Gallery Debug] Error fetching events:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch events');
-      } finally {
-        setLoading(false);
-        console.log('[Gallery Debug] Finished fetching events, loading set to false');
-      }
-    };
-
-    fetchEvents();
-  }, []);
+  const trpc = useTRPC();
+  
+  const { data: eventsData, error, isLoading: loading } = useSuspenseQuery(
+    trpc.events.getUpcomingEvents.queryOptions()
+  );
+  
+  const events = eventsData?.events || [];
 
 
 
@@ -216,7 +161,7 @@ export default function UpcomingEventsPage() {
                   </div>
                 </div>
               ) : events && events.length > 0 ? (
-                events.map((event) => {
+                events.map((event: Event) => {
                   // Process gallery for this event
                   console.log(`[Gallery Debug] Rendering event "${event.title}":`, {
                     has_gallery_images: !!event.gallery_images,

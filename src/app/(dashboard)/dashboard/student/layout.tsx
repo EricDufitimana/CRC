@@ -1,54 +1,39 @@
-"use client";
 import { ReactNode } from "react";
-import { Toaster } from "react-hot-toast";
-import StudentSidebar from "@/components/dashboard/StudentSidebar";
 import Head from "../../../(site)/head";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { StudentLayoutContent } from "@/components/dashboard/student/StudentLayoutContent";
+import { HydrateClient, prefetch, trpc } from '@/trpc/server';
+import { getServerContext } from '@/trpc/init';
 
-export default function AspenLayout({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
-  const getTitle = () => {
-    if (pathname?.includes("assignments")) return "Assignments - Student Dashboard"
-    else if (pathname?.includes("documents")) return "Documents - Student Dashboard"
-    else if (pathname?.includes("requests")) return "Requests - Student Dashboard"
-    else return "Student Dashboard - Career Resources Center"
+function getTitle(pathname: string | null) {
+  if (pathname?.includes("assignments")) return "Assignments - Student Dashboard"
+  else if (pathname?.includes("documents")) return "Documents - Student Dashboard"
+  else if (pathname?.includes("requests")) return "Requests - Student Dashboard"
+  else return "Student Dashboard - Career Resources Center"
+}
+
+export default async function StudentLayout({ children }: { children: ReactNode }) {
+  const context = await getServerContext();
+
+  // Prefetch common data used across student pages
+  if (context.user && context.role === 'student' && context.user.id) {
+    try {
+      // Prefetch fellows and workshops as they're used in multiple dialogs across pages
+      prefetch(trpc.studentDashboard.getFellows.queryOptions());
+      prefetch(trpc.studentDashboard.getAvailableWorkshops.queryOptions());
+      prefetch(trpc.studentSidebar.getAvatarsWithSignedUrls.queryOptions());
+      prefetch(trpc.studentSidebar.getStudentData.queryOptions());
+    } catch (error) {
+      // Silently fail prefetch - data will load on client side
+      console.warn('Layout prefetch failed, will load on client:', error);
+    }
   }
 
   return (
-    <>
-    {Head(getTitle())}
-      <div className="min-h-screen bg-neutral-100">
-      <div className="mx-auto max-w-[1400px] px-2 py-0 md:py-0 bg-neutral-100">
-        <div className="flex gap-4 h-[99vh] py-4 bg-neutral-100">
-          {/* Sidebar */}
-          <StudentSidebar />
-
-          {/* Main */}
-          <main className="flex-1 h-full overflow-hidden m-0.5">
-            {children}
-          </main>
-        </div>
-      </div>
-      
-      {/* Global Toast Container */}
-      <Toaster
-        position="top-right"
-        containerStyle={{
-          marginTop: "20px",
-          marginRight: "20px",
-        }}
-        toastOptions={{
-          duration: 3000,
-          style: {
-            background: 'transparent',
-            padding: 0,
-            margin: 0,
-            boxShadow: 'none',
-          },
-        }}
-      />
-      </div>
-    </>
+    <HydrateClient>
+      {Head(getTitle(null))}
+      <StudentLayoutContent>
+        {children}
+      </StudentLayoutContent>
+    </HydrateClient>
   );
 }

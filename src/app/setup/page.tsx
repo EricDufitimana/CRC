@@ -3,11 +3,10 @@
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { z } from "zod";
-import { Card, CardContent, CardHeader, CardTitle } from "../../../zenith/src/components/ui/card";
-import { Button } from "../../../zenith/src/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "../../../zenith/src/components/ui/avatar";
-import { Skeleton } from "../../../zenith/src/components/ui/skeleton";
-import { Input } from "../../../zenith/src/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
 import { FileUpload as FileUploadBase, getFileIconType, getReadableFileSize } from "@/components/application/file-upload/file-upload-base";
 import { BackgroundGradientAnimation } from "@/components/ui/background-gradient-animation";
 import { useUserData } from "@/hooks/useUserData";
@@ -15,12 +14,33 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, User, FileText, Upload, Image as ImageIcon, Camera, ArrowLeft, Link, Loader2 } from "lucide-react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { FileEditIcon, Link06Icon } from "@hugeicons/core-free-icons";
-import { getAvatars, AvatarData as BaseAvatarData } from "@/actions/avatars/getAvatars";
-import { getAvatarsWithSignedUrls, AvatarData } from "@/actions/avatars/getAvatarsWithSignedUrls";
 import { useAvatarFetch } from "@/hooks/useAvatarFetch";
 import { AnimatedText } from "@/components/animation/AnimatedText";
 import imageCompression from "browser-image-compression";
 import React from "react";
+import { useTRPC } from "@/trpc/client";
+import { useQueryClient, useSuspenseQuery, useMutation } from "@tanstack/react-query";
+
+// Interface for student data from Supabase
+interface StudentData {
+  id: number;
+  student_id: string;
+  first_name: string;
+  last_name: string;
+  email?: string;
+  profile_picture?: string;
+  date_of_registration?: string;
+  user_id?: string;
+  grade?: string;
+  major_full?: string;
+  major_short?: string;
+  gpa?: string;
+  gender?: string;
+  crc_class_id?: number;
+  profile_background?: string;
+  academic_report_path?: string;
+  resume_link?: string;
+}
 
 // URL validation schema
 const urlSchema = z.string().url("Please enter a valid URL");
@@ -131,9 +151,6 @@ function FileUpload({
 }
 
 export default function StudentSetupPage() {
-  const [studentData, setStudentData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [activeTab, setActiveTab] = useState<'upload' | 'existing'>('existing');
   const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null);
@@ -156,6 +173,45 @@ export default function StudentSetupPage() {
   const [resumeUrlError, setResumeUrlError] = useState<string | null>(null);
   const { userId, studentId, isLoading: userDataLoading } = useUserData();
   const router = useRouter();
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+
+  // Get student data using tRPC
+  const { data: studentData, isLoading: isLoadingStudent, error: studentError } = useSuspenseQuery(
+    trpc.setup.getStudentData.queryOptions({ userId: userId || '' })
+  ) as { data: StudentData; isLoading: boolean; error: any };
+
+  // Mutations for setup process
+  const updateProfileMutation = useMutation({
+    ...trpc.setup.updateProfile.mutationOptions(),
+    onSuccess: (result) => {
+      console.log('✅ Setup: Profile updated successfully:', result);
+      
+      // Mark setup as completed
+      markSetupCompletedMutation.mutate();
+    },
+    onError: (error) => {
+      console.error('❌ Setup: Profile update failed:', error);
+      setSetupError(`Profile update failed: ${error.message}`);
+      setIsUploading(false);
+    }
+  });
+
+  const markSetupCompletedMutation = useMutation({
+    ...trpc.setup.markSetupCompleted.mutationOptions(),
+    onSuccess: () => {
+      console.log('✅ Setup: Marked as completed');
+      // Navigate to dashboard
+      setTimeout(() => {
+        router.push('/dashboard/student');
+      }, 1000);
+    },
+    onError: (error) => {
+      console.error('❌ Setup: Failed to mark setup completed:', error);
+      setSetupError(`Setup completion failed: ${error.message}`);
+      setIsUploading(false);
+    }
+  });
 
   // Image compression function
   async function compressImage(file: File): Promise<File> {
@@ -176,32 +232,6 @@ export default function StudentSetupPage() {
       return file; // Return original file if compression fails
     }
   }
-
-  // Fetch student profile data when userId is available
-  useEffect(() => {
-    const fetchStudentProfile = async () => {
-      if (!userId) return;
-      
-      try {
-        setIsLoading(true);
-        setError(null);
-        
-        const resp = await fetch(`/api/studentId?userId=${userId}`);
-        if (!resp.ok) throw new Error("Failed to fetch student data");
-        
-        const data = await resp.json();
-        console.log('🔍 studentData:', data);
-        setStudentData(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
-        console.error("Error fetching student data:", err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchStudentProfile();
-  }, [userId]);
 
   const handleContinue = async () => {
     console.log('🚀 Setup: handleContinue called', { currentStep, isUploading });
@@ -232,32 +262,18 @@ export default function StudentSetupPage() {
       console.log('📝 Setup: Moving to next step', { from: currentStep, to: currentStep + 1 });
       setCurrentStep(prev => prev + 1);
     } else {
-      // Complete setup and upload documents
+      // Complete setup and upload documents using tRPC
       console.log('🎯 Setup: Starting final setup process...');
       try {
         setIsUploading(true);
         
-        // Log all current state values
-        console.log('📊 Setup: Current state values:', {
-          studentId,
-          userId,
-          selectedAvatar,
-          selectedAvatarPath,
-          activeTab,
-          uploadedAvatarFile: uploadedAvatarFile.length,
-          academicReportFile: academicReportFile.length,
-          resumeLink
-        });
-        
-        // Update profile with all selected data using unified API
-        const formData = new FormData();
-        formData.append('student_id', studentId?.toString() || '');
-        formData.append('user_id', userId || '');
+        // Prepare data for tRPC mutation
+        const updateData: any = {};
         
         // Add avatar path if selected from existing avatars
         if (selectedAvatarPath && activeTab === 'existing') {
           console.log('🖼️ Setup: Adding existing avatar path:', selectedAvatarPath);
-          formData.append('avatar_path', selectedAvatarPath);
+          updateData.avatar_path = selectedAvatarPath;
         }
         
         // Add uploaded avatar file if provided
@@ -267,90 +283,64 @@ export default function StudentSetupPage() {
             fileSize: uploadedAvatarFile[0].size,
             fileType: uploadedAvatarFile[0].type
           });
-          formData.append('avatar', uploadedAvatarFile[0]);
-        }
-        
-        // Add academic report if provided
-        if (academicReportFile.length > 0) {
-          console.log('📄 Setup: Adding academic report file:', {
-            fileName: academicReportFile[0].name,
-            fileSize: academicReportFile[0].size,
-            fileType: academicReportFile[0].type
-          });
-          formData.append('academic_report', academicReportFile[0]);
-        }
-        
-        // Add resume link if provided
-        if (resumeLink.trim()) {
-          console.log('🔗 Setup: Adding resume link:', resumeLink.trim());
-          formData.append('resume_link', resumeLink.trim());
-        }
-        
-
-        // Log FormData contents
-        console.log('📋 Setup: FormData contents (Profile Update with AI Processing):');
-        console.log('  student_id:', formData.get('student_id'));
-        console.log('  user_id:', formData.get('user_id'));
-        console.log('  avatar_path:', formData.get('avatar_path'));
-        console.log('  avatar:', formData.get('avatar') ? 'File present' : 'No file');
-        console.log('  academic_report:', formData.get('academic_report') ? 'File present' : 'No file');
-        console.log('  resume_link:', formData.get('resume_link'));
-        console.log('📋 Setup: Update-profile API will handle AI processing of documents');
-
-        console.log('🌐 Setup: Sending request to /api/students/update-profile...');
-        const profileResponse = await fetch('/api/students/update-profile', {
-          method: 'POST',
-          body: formData,
-        });
-
-        console.log('📡 Setup: Profile response status:', profileResponse.status);
-        
-        if (!profileResponse.ok) {
-          const errorData = await profileResponse.json();
-          console.error('❌ Setup: Failed to update profile:', errorData);
-          setSetupError(`Profile update failed: ${errorData.error || 'Unknown error'}`);
-          return; // Stop execution and don't redirect
+          // Convert file to base64 for tRPC
+          const file = uploadedAvatarFile[0];
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64String = reader.result as string;
+            updateData.avatar = base64String;
+            
+            // Continue with the rest of the data
+            processSetupData(updateData);
+          };
+          reader.readAsDataURL(file);
         } else {
-          const successData = await profileResponse.json();
-          console.log('✅ Setup: Profile updated successfully:', successData);
+          // Continue without avatar file
+          processSetupData(updateData);
         }
-
-        // Mark user as having completed setup
-        console.log('👤 Setup: Marking user as having completed setup...');
-        const response = await fetch('/api/mark-setup-completed', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ userId }),
-        });
-
-        console.log('📡 Setup: Mark setup completed response status:', response.status);
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          console.error('❌ Setup: Failed to mark user as having completed setup:', errorData);
-          setSetupError(`Setup completion failed: ${errorData.error || 'Unknown error'}`);
-          return; // Stop execution and don't redirect
-        } else {
-          console.log('✅ Setup: User marked as having completed setup');
-        }
-
-        // Only navigate to dashboard if everything succeeded
-        console.log('🏠 Setup: All operations successful, navigating to dashboard...');
-        
-        // Keep uploading state true until redirect
-        setTimeout(() => {
-          router.push('/dashboard/student');
-        }, 1000);
       } catch (error) {
         console.error('💥 Setup: Error completing setup:', error);
         setSetupError(`Setup failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        setIsUploading(false); // Reset uploading state on error
-        // Don't redirect on error
-      } finally {
-        // Don't set isUploading to false here - let it stay true until redirect
+        setIsUploading(false);
       }
+    }
+  };
+
+  const processSetupData = async (updateData: any) => {
+    // Add academic report if provided
+    if (academicReportFile.length > 0) {
+      console.log('📄 Setup: Adding academic report file:', {
+        fileName: academicReportFile[0].name,
+        fileSize: academicReportFile[0].size,
+        fileType: academicReportFile[0].type
+      });
+      
+      // Convert file to base64 for tRPC
+      const file = academicReportFile[0];
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        updateData.academic_report = base64String;
+        
+        // Add resume link if provided and continue
+        if (resumeLink.trim()) {
+          console.log('🔗 Setup: Adding resume link:', resumeLink.trim());
+          updateData.resume_link = resumeLink.trim();
+        }
+        
+        // Call tRPC mutation
+        updateProfileMutation.mutate(updateData);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      // Add resume link if provided and continue
+      if (resumeLink.trim()) {
+        console.log('🔗 Setup: Adding resume link:', resumeLink.trim());
+        updateData.resume_link = resumeLink.trim();
+      }
+      
+      // Call tRPC mutation
+      updateProfileMutation.mutate(updateData);
     }
   };
 
@@ -437,7 +427,7 @@ export default function StudentSetupPage() {
   const avatarsToShow = fetchedAvatars.length > 0 ? fetchedAvatars : sampleAvatars;
 
 
-  if (userDataLoading || isLoading) {
+  if (userDataLoading || isLoadingStudent) {
     return (
       <div 
         className="min-h-screen flex items-center justify-center overflow-hidden"
@@ -461,7 +451,7 @@ export default function StudentSetupPage() {
     );
   }
 
-  if (error) {
+  if (studentError) {
     return (
       <div 
         className="flex items-center justify-center h-full min-h-screen overflow-hidden"
@@ -473,7 +463,7 @@ export default function StudentSetupPage() {
         }}
       >
         <div className="text-center space-y-4">
-          <p className="text-red-500">Error loading profile: {error}</p>
+          <p className="text-red-500">Error loading profile: {studentError.message}</p>
           <Button onClick={() => window.location.reload()} className="bg-dark hover:bg-dark/90  text-white">
             Try Again
           </Button>

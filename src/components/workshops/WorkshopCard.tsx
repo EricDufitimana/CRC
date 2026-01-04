@@ -10,16 +10,16 @@ interface Assignment {
   id: string;
   title: string;
   description: string;
-  submission_idate: string;
+  submission_idate: string | null;
 }
 
 interface Workshop {
   id: string;
   title: string;
   description: string;
-  date: string;
-  presentation_url?: string;
-  google_slide_url?: string;
+  date: string | null;
+  presentation_url: string | null;
+  google_slide_url: string | null;
   assignments?: Assignment[];
   crc_classes?: Array<{ name: string }>;
 }
@@ -50,7 +50,7 @@ export default function WorkshopCard({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Badge className="bg-green-200 text-green-800 hover:bg-green-200 hover:text-green-800">
-              {formatDate(workshop.date)}
+              {workshop.date ? formatDate(workshop.date) : 'No date'}
             </Badge>
             <h2 className="font-semibold">{workshop.title}</h2>
           </div>
@@ -86,7 +86,7 @@ export default function WorkshopCard({
                       <p className="text-gray-600 text-sm mb-2">{assignment.description}</p>
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-gray-500">
-                          Due: {formatDate(assignment.submission_idate)}
+                          Due: {assignment.submission_idate ? formatDate(assignment.submission_idate) : 'No due date'}
                         </span>
                         <Button size="sm" variant="outline" className="text-xs">
                           Submit

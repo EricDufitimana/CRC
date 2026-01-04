@@ -1,15 +1,17 @@
-import { DashboardContent } from "@/components/dashboard/DashboardContent";
-import { DashboardErrorBoundary } from "@/components/dashboard/DashboardErrorBoundary";
+import { DashboardContent } from "@/components/dashboard/admin/DashboardContent";
+import { DashboardErrorBoundary } from "@/components/dashboard/admin/DashboardErrorBoundary";
+import { AdminSidebar } from "@/components/dashboard/admin/AdminSidebar";
+import { ToastProvider } from "@/components/dashboard/admin/ToastProvider";
 import { HydrateClient, prefetch, trpc } from '@/trpc/server';
 import { getServerContext } from '@/trpc/init';
 
 export default async function DashboardHome() {
   const context = await getServerContext();
-  
+
   // Only prefetch if we have a valid authenticated admin user
   if (context.user && context.role === 'admin' && context.user.id) {
     const adminId = context.user.id.toString();
-    
+
     // Only prefetch if adminId is a valid non-empty string
     if (adminId && adminId !== '0' && adminId !== '') {
       try {

@@ -1,0 +1,184 @@
+"use client";
+
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/zenith/components/ui/card";
+import { Badge } from "@/zenith/components/ui/badge";
+import { Button } from "@/zenith/components/ui/button";
+import { Calendar, Clock, FileText, Send, ExternalLink, Check, ArrowUpRight, ArrowDownLeft } from "lucide-react";
+import { format } from "date-fns";
+import { Skeleton } from "@/zenith/components/ui/skeleton";
+
+interface EssayRequest {
+  id: string;
+  title: string;
+  student_name: string;
+  grade: string | null;
+  word_count: string;
+  deadline: string | null;
+  created_at: string | null;
+  status: string;
+  essay_link: string;
+  referred?: boolean;
+  // Referral specific fields
+  isReferral?: boolean;
+  type?: 'sent' | 'received';
+  referredBy?: { name: string };
+  referredTo?: { name: string };
+}
+
+interface EssayRequestsGridProps {
+  requests: EssayRequest[];
+  isFetching: boolean;
+  onView: (request: EssayRequest) => void;
+  onRefer: (request: EssayRequest) => void;
+  onMarkDone: (request: EssayRequest) => void;
+  activeTab: string;
+}
+
+export function EssayRequestsGrid({
+  requests,
+  isFetching,
+  onView,
+  onRefer,
+  onMarkDone,
+  activeTab,
+}: EssayRequestsGridProps) {
+  if (isFetching && requests.length === 0) {
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Card key={i} className="rounded-2xl border-gray-100 shadow-none">
+            <CardHeader className="p-5">
+              <Skeleton className="h-6 w-3/4 mb-2" />
+              <Skeleton className="h-4 w-1/2" />
+            </CardHeader>
+            <CardContent className="p-5 pt-0 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+              </div>
+            </CardContent>
+            <CardFooter className="p-5 bg-gray-50/50 flex gap-2">
+              <Skeleton className="h-9 w-24 rounded-xl" />
+              <Skeleton className="h-9 w-24 rounded-xl" />
+            </CardFooter>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  if (requests.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-dashed border-gray-200">
+        <FileText className="h-12 w-12 text-gray-300 mb-4" />
+        <h3 className="text-lg font-semibold text-gray-900 mb-1">No requests here</h3>
+        <p className="text-gray-500 text-sm">All caught up! Check other tabs for more tasks.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {requests.map((request) => (
+        <Card key={request.id} className="group flex flex-col bg-white border border-gray-200 shadow-none rounded-2xl overflow-hidden hover:border-gray-300 transition-colors">
+          <CardHeader className="p-5 pb-4">
+            <div className="flex justify-between items-start gap-4">
+              <div>
+                <CardTitle className="text-md font-bold text-gray-900 line-clamp-1">{request.title}</CardTitle>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-sm font-medium text-gray-600">{request.student_name}</span>
+                  {request.grade && (
+                    <Badge variant="outline" className="bg-gray-50 text-gray-600 border-gray-200 text-[10px] py-0 font-medium">
+                      {request.grade.replace(/_/g, ' ')}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+
+              {/* Status Badge */}
+              <Badge className={`${request.status === 'completed' ? 'bg-green-100 text-green-700  text-sm border-green-200 hover:bg-green-100 hover:text-green-700 hover:border-green-100' :
+                  request.status === 'in_review' ? 'bg-yellow-100 text-yellow-700 border-yellow-200 hover:bg-yellow-100 hover:text-yellow-700 hover:border-yellow-100' :
+                    'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-100 hover:text-gray-600 hover:border-gray-100'
+                } shadow-none font-bold`}>
+                {request.status.replace(/_/g, ' ').toUpperCase()}
+              </Badge>
+            </div>
+
+            {/* Referral Info Banner */}
+            {request.isReferral && (
+              <div className={`mt-3 text-xs px-3 py-1.5 rounded-lg flex items-center gap-2 w-fit font-medium ${request.type === 'sent'
+                  ? 'bg-orange-50 text-orange-700 border border-orange-100'
+                  : 'bg-blue-50 text-blue-700 border border-blue-100'
+                }`}>
+                {request.type === 'sent' ? (
+                  <>
+                    <ArrowUpRight className="h-3.5 w-3.5" />
+                    Sent to: {request.referredTo?.name || 'Unknown'}
+                  </>
+                ) : (
+                  <>
+                    <ArrowDownLeft className="h-3.5 w-3.5" />
+                    Received from: {request.referredBy?.name || 'Unknown'}
+                  </>
+                )}
+              </div>
+            )}
+          </CardHeader>
+          <CardContent className="p-5 pt-0 flex-1">
+            <div className="grid grid-cols-2 gap-y-3 gap-x-4">
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <Calendar className="h-3.5 w-3.5 text-gray-400" />
+                <span>Submitted: {request.created_at ? format(new Date(request.created_at), 'MMM d, yyyy') : 'N/A'}</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <Clock className="h-3.5 w-3.5 text-gray-400" />
+                <span>Deadline: {request.deadline ? format(new Date(request.deadline), 'MMM d, yyyy') : 'N/A'}</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <FileText className="h-3.5 w-3.5 text-gray-400" />
+                <span>{request.word_count} words</span>
+              </div>
+            </div>
+          </CardContent>
+          <CardFooter className="p-4 bg-gray-50/30 border-t border-gray-100 flex items-center gap-2">
+            <Button
+              onClick={() => onView(request)}
+              className="flex-1 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 rounded-xl h-9 shadow-none transition-colors text-sm font-medium"
+              variant="outline"
+            >
+              <ExternalLink className="h-3.5 w-3.5 mr-2" />
+              View Essay
+            </Button>
+
+            {/* Only show action buttons for non-referrals or received referrals (if actionable) */}
+            {(!request.isReferral || request.type === 'received') && request.status !== 'completed' && (
+              <>
+                {!request.isReferral && (
+                  <Button
+                    onClick={() => onRefer(request)}
+                    className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 rounded-xl h-9 shadow-none transition-colors"
+                    variant="outline"
+                    size="icon"
+                    title="Refer to another admin"
+                  >
+                    <Send className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+
+                {(activeTab === 'pending' || (request.isReferral && request.type === 'received')) && (
+                  <Button
+                    onClick={() => onMarkDone(request)}
+                    className="flex-1 bg-green-500 hover:bg-green-600 text-white rounded-xl h-9 shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition-all font-medium text-sm border-none active:scale-95"
+                  >
+                    <Check className="h-3.5 w-3.5 mr-2" />
+                    Mark Done
+                  </Button>
+                )}
+              </>
+            )}
+          </CardFooter>
+        </Card>
+      ))}
+    </div>
+  );
+}
