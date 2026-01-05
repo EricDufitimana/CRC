@@ -3,6 +3,10 @@
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { z } from "zod";
+
+// Force dynamic rendering to prevent static generation
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
