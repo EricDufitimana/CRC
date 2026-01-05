@@ -5,6 +5,27 @@ import { createClient } from '@supabase/supabase-js';
 import { TRPCError } from '@trpc/server';
 import { randomUUID } from 'crypto';
 
+// Interface for student data from Supabase
+interface StudentData {
+  id: number;
+  student_id: string;
+  first_name: string;
+  last_name: string;
+  email?: string;
+  profile_picture?: string;
+  date_of_registration?: string;
+  user_id?: string;
+  grade?: string;
+  major_full?: string;
+  major_short?: string;
+  gpa?: string;
+  gender?: string;
+  crc_class_id?: number;
+  profile_background?: string;
+  academic_report_path?: string;
+  resume_link?: string;
+}
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -16,7 +37,7 @@ export const setupRouter = createTRPCRouter({
     .input(z.object({
       userId: z.string(),
     }))
-    .query(async ({ input }) => {
+    .query(async ({ input }): Promise<StudentData> => {
       try {
         const { data: student, error } = await supabase
           .from('students')
@@ -31,7 +52,7 @@ export const setupRouter = createTRPCRouter({
           });
         }
 
-        return student;
+        return student as StudentData;
       } catch (error) {
         console.error('Error fetching student data:', error);
         throw new TRPCError({
