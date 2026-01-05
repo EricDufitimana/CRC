@@ -1,5 +1,5 @@
 "use client";
-import { signIn } from "next-auth/react";
+import { createClient } from "@supabase/supabase-js";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -11,6 +11,7 @@ import Loader from "@/components/Common/Loader";
 
 const Signin = () => {
   const router = useRouter();
+  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 
   const [loginData, setLoginData] = useState({
     email: "",
@@ -21,41 +22,45 @@ const Signin = () => {
   const [isPassword, setIsPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const loginUser = (e: any) => {
+  const loginUser = async (e: any) => {
     e.preventDefault();
 
     setLoading(true);
-    signIn("credentials", { ...loginData, redirect: false })
-      .then((callback) => {
-        if (callback?.error) {
-          toast({
+    
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: loginData.email,
+        password: loginData.password,
+      });
+
+      if (error) {
+        toast({
           title: "Error",
-          description: callback?.error || "An error occurred",
+          description: error.message || "An error occurred",
           variant: "destructive",
         });
-          console.log(callback?.error);
-          setLoading(false);
-          return;
-        }
+        console.log(error);
+        setLoading(false);
+        return;
+      }
 
-        if (callback?.ok && !callback?.error) {
-          toast({
+      if (data.user) {
+        toast({
           title: "Success",
           description: "Login successful",
         });
-          setLoading(false);
-          router.push("/");
-        }
-      })
-      .catch((err) => {
         setLoading(false);
-        console.log(err.message);
-        toast({
-          title: "Error",
-          description: err.message || "An error occurred",
-          variant: "destructive",
-        });
+        router.push("/");
+      }
+    } catch (err: any) {
+      setLoading(false);
+      console.log(err.message);
+      toast({
+        title: "Error",
+        description: err.message || "An error occurred",
+        variant: "destructive",
       });
+    }
   };
 
   return (
@@ -101,7 +106,7 @@ const Signin = () => {
               />
 
               {isPassword ? (
-                <form onSubmit={(e) => e.preventDefault()}>
+                <form onSubmit={loginUser}>
                   <div className="mb-[22px]">
                     <input
                       type="email"

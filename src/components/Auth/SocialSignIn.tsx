@@ -1,11 +1,39 @@
 import React from "react";
-import { signIn } from "next-auth/react";
+import { createClient } from "@supabase/supabase-js";
 
 const SocialSignIn = () => {
+  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+  
+  const handleGoogleSignIn = async () => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`
+      }
+    });
+    
+    if (error) {
+      console.error('Error signing in with Google:', error);
+    }
+  };
+
+  const handleGitHubSignIn = async () => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'github',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`
+      }
+    });
+    
+    if (error) {
+      console.error('Error signing in with GitHub:', error);
+    }
+  };
+
   return (
     <>
       <button
-        onClick={() => signIn("google")}
+        onClick={handleGoogleSignIn}
         className="flex w-full items-center justify-center gap-2.5 rounded-lg border border-gray-4 p-3.5 text-dark duration-200 ease-in hover:border-gray-5 hover:bg-gray dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
       >
         <svg
@@ -48,7 +76,7 @@ const SocialSignIn = () => {
       </button>
 
       <button
-        onClick={() => signIn("github")}
+        onClick={handleGitHubSignIn}
         className="mt-4 flex w-full items-center justify-center gap-2.5 rounded-lg border border-gray-4 p-3.5 text-dark duration-200 ease-in hover:border-gray-5 hover:bg-gray dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
       >
         <svg
