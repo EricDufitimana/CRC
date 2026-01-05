@@ -10,6 +10,7 @@ function getTitle(pathname: string | null) {
   else if (pathname?.includes("requests")) return "Requests - Student Dashboard"
   else return "Student Dashboard - Career Resources Center"
 }
+export const dynamic = 'force-dynamic';
 
 export default async function StudentLayout({ children }: { children: ReactNode }) {
   const context = await getServerContext();
