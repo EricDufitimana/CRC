@@ -22,6 +22,9 @@ function getTitle(pathname: string | null) {
   else return "Admin Dashboard - Career Resources Center"
 }
 
+export const dynamic = 'force-dynamic';
+
+
 async function getAdminProfile() {
   const context = await getServerContext();
 
