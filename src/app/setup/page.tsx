@@ -23,7 +23,7 @@ import { AnimatedText } from "@/components/animation/AnimatedText";
 import imageCompression from "browser-image-compression";
 import React from "react";
 import { useTRPC } from "@/trpc/client";
-import { useQueryClient, useSuspenseQuery, useMutation } from "@tanstack/react-query";
+import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 
 // Interface for student data from Supabase
 interface StudentData {
@@ -181,9 +181,8 @@ export default function StudentSetupPage() {
   const queryClient = useQueryClient();
 
   // Get student data using tRPC
-  const { data: studentData, isLoading: isLoadingStudent, error: studentError } = useSuspenseQuery(
-    trpc.setup.getStudentData.queryOptions({ userId: userId || '' })
-  ) as { data: StudentData; isLoading: boolean; error: any };
+  const getStudentDataOptions = trpc.setup.getStudentData.queryOptions({ userId: userId || '' });
+  const { data: studentData, isLoading: isLoadingStudent, error: studentError } = useQuery(getStudentDataOptions);
 
   // Mutations for setup process
   const updateProfileMutation = useMutation({
@@ -431,7 +430,7 @@ export default function StudentSetupPage() {
   const avatarsToShow = fetchedAvatars.length > 0 ? fetchedAvatars : sampleAvatars;
 
 
-  if (userDataLoading || isLoadingStudent) {
+  if (userDataLoading || isLoadingStudent || !studentData) {
     return (
       <div 
         className="min-h-screen flex items-center justify-center overflow-hidden"
