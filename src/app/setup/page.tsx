@@ -25,7 +25,7 @@ import React from "react";
 import { useTRPC } from "@/trpc/client";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 
-// Interface for student data from Supabase (matching tRPC router)
+// Interface for student data from Supabase
 interface StudentData {
   id: number;
   student_id: string;

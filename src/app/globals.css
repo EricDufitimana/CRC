@@ -1,8 +1,8 @@
+/* Import the main styles */
+@import "../styles/index.css";
+@import "../styles/prism-vsc-dark-plus.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 @config "../../tailwind.config.ts";
-
-/* Import the main styles */
-@import "../styles/index.css";
-@import "../styles/prism-vsc-dark-plus.css";
