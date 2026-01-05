@@ -311,7 +311,7 @@ export function AttendanceManagementContent() {
       <Card className="border shadow-none border-gray-200">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Attendance History</CardTitle>
+            <CardTitle className="text-lg font-bold">Attendance History</CardTitle>
             <div className="flex items-center gap-3">
               {hasActiveFilters && (
                 <Button
@@ -338,10 +338,10 @@ export function AttendanceManagementContent() {
                   placeholder="Search by name or class..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 w-64"
+                  className="pl-10 w-64 rounded-xl"
                 />
               </div>
-              <Button variant="outline" size="sm" onClick={exportToCSV}>
+              <Button variant="outline" size="sm" className="rounded-xl" onClick={exportToCSV}>
                 <Download className="h-4 w-4 mr-2" />
                 Export CSV
               </Button>

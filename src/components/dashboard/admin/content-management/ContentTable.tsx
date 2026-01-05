@@ -3,8 +3,9 @@
 import { Button } from "@/zenith/components/ui/button";
 import { Badge } from "@/zenith/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/zenith/components/ui/table";
-import { Edit, PowerOff, FileText } from "lucide-react";
+import { Edit, PowerOff, FileText, Trash2 } from "lucide-react";
 import { Resource } from "./types";
+import { EmptyState } from "@/components/ui/empty-state";
 
 interface ContentTableProps {
   resources: Resource[];
@@ -12,6 +13,7 @@ interface ContentTableProps {
   onEdit: (resource: Resource) => void;
   onDeactivate: (resourceId: string) => void;
   onReactivate: (resourceId: string) => void;
+  onDelete: (resourceId: string) => void;
   currentPage: number;
   itemsPerPage: number;
   totalResources: number;
@@ -24,6 +26,7 @@ export function ContentTable({
   onEdit,
   onDeactivate,
   onReactivate,
+  onDelete,
   currentPage,
   itemsPerPage,
   totalResources,
@@ -83,34 +86,15 @@ export function ContentTable({
 
   if (resources.length === 0) {
     return (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Title</TableHead>
-            <TableHead>Description</TableHead>
-            <TableHead>Deadline</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          <TableRow>
-            <TableCell colSpan={5} className="text-center py-12">
-              <div className="flex flex-col items-center space-y-3">
-                <div className="h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center">
-                  <FileText className="h-8 w-8 text-gray-400" />
-                </div>
-                <div className="text-center">
-                  <h3 className="text-lg font-medium text-gray-900 mb-1">No resources found</h3>
-                  <p className="text-gray-500 text-sm">
-                    Get started by adding your first resource to this category.
-                  </p>
-                </div>
-              </div>
-            </TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
+      <div className="py-8">
+        <EmptyState
+          image="/images/empty-state/empty-resources.svg"
+          headerText="No resources found"
+          subtext="Get started by adding your first resource to this category."
+          imageClassName="mr-4 w-48 h-48 "
+          imageSize="custom"
+        />
+      </div>
     );
   }
 
@@ -172,24 +156,46 @@ export function ContentTable({
                     <Edit className="h-3 w-3" />
                   </Button>
                   {resource.status === 'active' ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onDeactivate(resource.id.toString())}
-                      className="text-red-600 hover:text-red-700"
-                      title="Deactivate resource"
-                    >
-                      <PowerOff className="h-3 w-3" />
-                    </Button>
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onDeactivate(resource.id.toString())}
+                        className="text-red-600 hover:text-red-700"
+                        title="Deactivate resource"
+                      >
+                        <PowerOff className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onDelete(resource.id.toString())}
+                        className="text-red-600 hover:text-red-700"
+                        title="Delete resource permanently"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </>
                   ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onReactivate(resource.id.toString())}
-                      className="text-green-600 hover:text-green-700"
-                    >
-                      Activate
-                    </Button>
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onReactivate(resource.id.toString())}
+                        className="text-green-600 hover:text-green-700"
+                      >
+                        Activate
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onDelete(resource.id.toString())}
+                        className="text-red-600 hover:text-red-700"
+                        title="Delete resource permanently"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </>
                   )}
                 </div>
               </TableCell>

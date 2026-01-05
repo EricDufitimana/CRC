@@ -3,6 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/zenith/components/ui/button";
 import { Badge } from "@/zenith/components/ui/badge";
 import { Edit, Trash2, Calendar, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 
 type SupabaseWorkshop = {
   id: string;
@@ -74,8 +75,14 @@ export function WorkshopsTable({
 
   if (workshops.length === 0) {
     return (
-      <div className="text-center py-12 border rounded-xl border-dashed bg-gray-50/50">
-        <p className="text-gray-500">No workshops found for this category.</p>
+      <div className="py-8">
+        <EmptyState
+          image="/images/empty-state/empty-workshops.svg"
+          headerText="No workshops found"
+          subtext="Get started by adding your first workshop to this category."
+          imageClassName="-ml-8 w-48 h-48"
+          imageSize="custom"
+        />
       </div>
     );
   }

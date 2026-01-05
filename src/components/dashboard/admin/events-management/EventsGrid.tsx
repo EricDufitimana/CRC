@@ -7,6 +7,7 @@ import { Edit, Trash2, Calendar, MapPin, Image as ImageIcon, MoreHorizontal } fr
 import Image from "next/image";
 import { format } from "date-fns";
 import { Skeleton } from "@/zenith/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -102,20 +103,11 @@ export function EventsGrid({
 
   if (events.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 bg-white rounded-2xl border border-dashed border-gray-200">
-        <div className="relative w-40 h-40 mb-6 ml-8 opacity-50 grayscale">
-          <Image
-            src="/images/empty-state/empty-events.svg"
-            alt="No events"
-            fill
-            className="object-contain"
-          />
-        </div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-1">No events found</h3>
-        <p className="text-gray-500 text-sm text-center max-w-xs">
-          Pass events are managed automatically. Add new events to keep things up to date.
-        </p>
-      </div>
+      <EmptyState
+        image="/images/empty-state/empty-events.svg"
+        headerText="No events found"
+        subtext="Pass events are managed automatically. Add new events to keep things up to date."
+      />
     );
   }
 

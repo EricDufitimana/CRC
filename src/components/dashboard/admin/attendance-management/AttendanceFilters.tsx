@@ -62,7 +62,7 @@ export function AttendanceFilters({
       <div className="flex-1">
         <Label htmlFor="class-filter">Select Class</Label>
         <Select value={selectedClass} onValueChange={onClassChange} disabled={classesLoading}>
-          <SelectTrigger>
+          <SelectTrigger className="rounded-xl">
             <SelectValue placeholder={classesLoading ? "Loading classes..." : "All classes"} />
           </SelectTrigger>
           <SelectContent>
@@ -95,7 +95,7 @@ export function AttendanceFilters({
       <div className="flex-1">
         <Label htmlFor="status-filter">Select Status</Label>
         <Select value={selectedStatus} onValueChange={onStatusChange}>
-          <SelectTrigger>
+          <SelectTrigger className="rounded-xl">
             <SelectValue placeholder="All statuses" />
           </SelectTrigger>
           <SelectContent>
@@ -111,7 +111,7 @@ export function AttendanceFilters({
       <div className="flex-1">
         <Label htmlFor="workshop-filter">Select Workshop</Label>
         <Select value={selectedWorkshopFilter} onValueChange={onWorkshopFilterChange}>
-          <SelectTrigger>
+          <SelectTrigger className="rounded-xl">
             <SelectValue placeholder="All workshops" />
           </SelectTrigger>
           <SelectContent>
@@ -132,6 +132,7 @@ export function AttendanceFilters({
           type="date"
           value={selectedDate}
           onChange={(e) => onDateChange(e.target.value)}
+          className="rounded-xl"
         />
       </div>
     </div>

@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/zenith/components/ui/select";
 import { Plus, Loader2, Image as ImageIcon } from "lucide-react";
 import Image from "next/image";
-import { FileUpload } from "@/zenith/components/ui/file-upload";
+import { FileUpload as FileUploadBase, getFileIconType, getReadableFileSize } from "@/components/application/file-upload/file-upload-base";
 import MDEditor from '@uiw/react-md-editor';
 import { z } from "zod";
 import imageCompression from "browser-image-compression";
@@ -37,6 +37,79 @@ const eventSchema = z.object({
   event_organizer_role: z.string().optional(),
   event_organizer_image: z.string().url("Must be a valid URL").optional().or(z.literal("")),
 });
+
+// FileUpload wrapper component to match setup page API
+interface FileUploadProps {
+  multiple?: boolean;
+  accept?: string;
+  maxFiles?: number;
+  value: File[];
+  onChange: (files: File[]) => void;
+  disabled?: boolean;
+  placeholder?: string;
+  helperText?: React.ReactNode;
+  className?: string;
+}
+
+function FileUpload({
+  multiple = false,
+  accept = "image/*",
+  maxFiles = 10,
+  value = [],
+  onChange,
+  disabled = false,
+  placeholder = "Drop files here or click to upload",
+  helperText,
+  className,
+}: FileUploadProps) {
+  const [files, setFiles] = useState<Array<{ id: string; file: File; progress: number; failed: boolean }>>(
+    value.map((file, index) => ({
+      id: `${file.name}-${index}`,
+      file,
+      progress: 100,
+      failed: false,
+    }))
+  );
+
+  const handleDropFiles = (files: FileList) => {
+    const fileArray = Array.from(files);
+    const updatedFiles = multiple ? [...value, ...fileArray].slice(0, maxFiles) : fileArray.slice(0, 1);
+    onChange(updatedFiles);
+  };
+
+  const handleRemoveFile = (fileId: string) => {
+    const updatedFiles = files.filter((f) => f.id !== fileId).map((f) => f.file);
+    onChange(updatedFiles);
+  };
+
+  return (
+    <div className={className}>
+      <FileUploadBase.DropZone
+        accept={accept}
+        allowsMultiple={multiple}
+        isDisabled={disabled}
+        onDropFiles={handleDropFiles}
+      />
+      {files.length > 0 && (
+        <FileUploadBase.Root className="mt-4">
+          <FileUploadBase.List>
+            {files.map((fileItem) => (
+              <FileUploadBase.ListItem
+                key={fileItem.id}
+                name={fileItem.file.name}
+                size={fileItem.file.size}
+                progress={fileItem.progress}
+                onDelete={() => handleRemoveFile(fileItem.id)}
+                className="!p-2.5 !gap-2 [&_p]:!text-sm [&_hr]:!h-2.5 [&>svg]:!size-8 [&>div>div>div>div>svg]:!size-3"
+              />
+            ))}
+          </FileUploadBase.List>
+        </FileUploadBase.Root>
+      )}
+      {helperText && <p className="text-sm text-gray-500 mt-2">{helperText}</p>}
+    </div>
+  );
+}
 
 interface AddEventDialogProps {
   open: boolean;
@@ -311,18 +384,13 @@ export function AddEventDialog({ open, onOpenChange }: AddEventDialogProps) {
                   multiple={formData.type === "previous_events"}
                   maxFiles={formData.type === "upcoming_events" ? 1 : 10}
                   value={selectedImages}
-                  onChange={async (files) => {
+                  onChange={async (files: File[]) => {
                     if (!files) return;
-                    const compressed = await Promise.all(files.map(f => compressImage(f)));
+                    const compressed = await Promise.all(files.map((f: File) => compressImage(f)));
                     const filtered = compressed.filter(Boolean) as File[];
                     setSelectedImages(filtered);
-                    setImagePreviewUrls(filtered.map(f => URL.createObjectURL(f)));
+                    setImagePreviewUrls(filtered.map((f: File) => URL.createObjectURL(f)));
                     if (filtered.length > 0) setSelectedHeroImage(0);
-                  }}
-                  onRemove={(idx) => {
-                    const newImages = selectedImages.filter((_, i) => i !== idx);
-                    setSelectedImages(newImages);
-                    setImagePreviewUrls(newImages.map(f => URL.createObjectURL(f)));
                   }}
                 />
 

@@ -83,7 +83,7 @@ export function CrcClassCreateForm({ onClassCreated }: CrcClassCreateFormProps) 
             value={name} 
             onChange={(e) => setName(e.target.value)} 
             placeholder="e.g. S4 MPC + S4 MEG" 
-            className="h-10"
+            className="h-10 rounded-xl"
             onKeyPress={(e) => {
               if (e.key === 'Enter') {
                 handleCreate();
@@ -94,10 +94,10 @@ export function CrcClassCreateForm({ onClassCreated }: CrcClassCreateFormProps) 
         <div className="flex-1">
           <label className="text-sm text-neutral-800 block mb-1">Grade Group</label>
           <Select value={gradeGroup} onValueChange={handleGradeGroupChange}>
-            <SelectTrigger className="h-10 text-neutral-800">
+            <SelectTrigger className="h-10 text-neutral-800 rounded-xl">
               <SelectValue placeholder="Select grade group" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="rounded-xl">
               <SelectItem value="Enrichment_Year">Enrichment Year</SelectItem>
               <SelectItem value="Senior_4">Senior 4</SelectItem>
               <SelectItem value="Senior_5">Senior 5</SelectItem>

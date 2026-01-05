@@ -99,15 +99,11 @@ const Header = () => {
   // Handle sign out
   const handleSignOut = async () => {
     try {
-      // Close popover before signing out
-      setUserMenuOpen(false);
-      setSheetOpen(false);
+      // Don't close popover - keep it open during sign out
       signOut();
     } catch (error) {
       console.error('Sign out error:', error);
-      // Close popover even on error
-      setUserMenuOpen(false);
-      setSheetOpen(false);
+      // Don't close popover even on error
     }
   };
 

@@ -64,12 +64,13 @@ export function AdminBottomNav({ adminName, adminEmail }: AdminBottomNavProps) {
     { label: "Content", href: "/dashboard/admin/content-management", icon: Layers, isActive: isContent },
   ];
 
-  const renderItem = (item: NavItem) => {
+  const renderItem = (item: NavItem, index: number) => {
     const active = item.isActive(pathname);
     const Icon = item.icon;
 
     return (
       <button
+        key={item.href}
         type="button"
         onClick={() => router.push(item.href)}
         className={
@@ -92,7 +93,7 @@ export function AdminBottomNav({ adminName, adminEmail }: AdminBottomNavProps) {
       <div className="border-t border-gray-200/70 bg-white/80 backdrop-blur-xl">
         <div className="mx-auto max-w-2xl px-3 pt-2 pb-[calc(env(safe-area-inset-bottom)+8px)]">
           <div className="grid grid-cols-4 gap-2 md:hidden">
-            {primaryItemsPhone.map(renderItem)}
+            {primaryItemsPhone.map((item, index) => renderItem(item, index))}
 
             <Sheet>
               <SheetTrigger asChild>
@@ -191,7 +192,7 @@ export function AdminBottomNav({ adminName, adminEmail }: AdminBottomNavProps) {
           </div>
 
           <div className="hidden md:grid grid-cols-5 gap-2">
-            {primaryItemsTablet.map(renderItem)}
+            {primaryItemsTablet.map((item, index) => renderItem(item, index))}
 
             <Sheet>
               <SheetTrigger asChild>

@@ -116,6 +116,11 @@ export function WorkshopsContent() {
 
       <Dialog open={isAssignmentOpen} onOpenChange={setIsAssignmentOpen}>
         <DialogContent className="max-w-2xl text-black">
+          <DialogHeader>
+            <DialogTitle>
+              {assignmentMode === "add" ? "Create Assignment" : assignmentMode === "edit" ? "Edit Assignment" : "Assignment Details"}
+            </DialogTitle>
+          </DialogHeader>
           <AssignmentDialog
             workshop={selectedWorkshop}
             mode={assignmentMode}

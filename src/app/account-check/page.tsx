@@ -2,26 +2,11 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import {
-  Shield,
-  ArrowLeft,
-  Loader2,
-  Send,
-  Mail,
-  User,
-  MessageSquare,
-} from "lucide-react";
+import { Shield, ArrowLeft, Send, Mail, User, MessageSquare } from "lucide-react";
 import Image from "next/image";
-import { useUserData } from "../../hooks/useUserData";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, InputWithRing } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { showToastSuccess, showToastError } from "@/components/toasts";
 import { useTRPC } from "@/trpc/client";
@@ -30,170 +15,96 @@ import { createClient } from "@/utils/supabase/client";
 
 export default function AccountCheckPage() {
   const [isLoading, setIsLoading] = useState(true);
-  const [verificationComplete, setVerificationComplete] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   const [debugInfo, setDebugInfo] = useState("");
   const [accountExists, setAccountExists] = useState(false);
-  const [hasSetup, setHasSetup] = useState<boolean | null>(null);
-  const [checkComplete, setCheckComplete] = useState(false); // New state
+  const [checkComplete, setCheckComplete] = useState(false);
   const [isContactDialogOpen, setIsContactDialogOpen] = useState(false);
-  const [isExchangingCode, setIsExchangingCode] = useState(true);
-  const [contactForm, setContactForm] = useState({
-    name: "",
-    email: "",
-    message: "",
-  });
+  const [contactForm, setContactForm] = useState({ name: "", email: "", message: "" });
   const [isSubmittingContact, setIsSubmittingContact] = useState(false);
-  const { userId, isLoading: userDataLoading } = useUserData();
-  const [hasCompletedSetup, setHasCompletedSetup] = useState(false);
+
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const supabase = createClient();
 
-  // First: Exchange the OAuth code for a session
   useEffect(() => {
-    const exchangeCodeForSession = async () => {
+    const checkAccount = async () => {
       try {
-        const code = new URLSearchParams(window.location.search).get('code');
+        console.log('🔍 [Account Check] Starting account verification...');
         
-        if (code) {
-          console.log('🔄 [Account Check] Exchanging OAuth code for session');
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
-          
-          if (error) {
-            console.error('❌ [Account Check] Error exchanging code:', error);
-            setDebugInfo(`Error exchanging OAuth code: ${error.message}`);
-            setIsLoading(false);
-            setCheckComplete(true);
-          } else {
-            console.log('✅ [Account Check] Session established');
-          }
-        } else {
-          console.log('⚠️ [Account Check] No OAuth code found in URL');
+        // Session is already established by the callback route
+        // Just wait a bit to ensure cookies are fully propagated
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError || !user) {
+          console.error('❌ [Account Check] No authenticated user:', userError);
+          setDebugInfo('No authenticated user - please log in first');
+          setIsLoading(false);
+          setCheckComplete(true);
+          return;
         }
-      } catch (error) {
-        console.error('❌ [Account Check] Error in code exchange:', error);
-        setDebugInfo(`Error in code exchange: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        setIsLoading(false);
-        setCheckComplete(true);
-      } finally {
-        setIsExchangingCode(false);
-      }
-    };
 
-    exchangeCodeForSession();
-  }, [supabase]);
+        const userId = user.id;
+        console.log('👤 [Account Check] User ID:', userId);
 
-  // Second: Only after code is exchanged, check account status
-  useEffect(() => {
-    // Don't proceed if still exchanging code
-    if (isExchangingCode) {
-      return;
-    }
-
-    console.log("Account check page: useEffect triggered");
-    console.log("userId:", userId);
-    console.log("userDataLoading:", userDataLoading);
-
-    // Simulate verification process
-    const timer = setTimeout(async () => {
-      console.log("Account check page: Timer completed, checking account...");
-
-      // Check if user account exists in students table
-      if (userId) {
-        console.log(
-          "Account check page: Checking if user exists in students table...",
+        // Check if user exists in students table using tRPC
+        const studentData = await queryClient.fetchQuery(
+          trpc.auth.checkUserExists.queryOptions({ userId, table: "students" })
         );
 
-        try {
-          // Check if user exists in students table using tRPC
-          const studentData = await queryClient.fetchQuery(
-            trpc.auth.checkUserExists.queryOptions({
-              userId,
-              table: "students",
-            })
+        const studentExists = studentData.exists;
+        console.log('📊 [Account Check] Student exists:', studentExists);
+
+        if (studentExists) {
+          setAccountExists(true);
+
+          // Check setup status using tRPC
+          const setupData = await queryClient.fetchQuery(
+            trpc.auth.checkSetupStatus.queryOptions({ userId })
           );
 
-          const studentExists = studentData.exists;
-          console.log("Account check page: Student exists:", studentExists);
+          const hasCompletedSetup = setupData.has_setup;
+          console.log('✅ [Account Check] Setup completed:', hasCompletedSetup);
 
-          if (studentExists) {
-            console.log(
-              "Account check page: User account exists, checking setup status...",
-            );
-            setAccountExists(true);
-
-            // Check if user has completed setup using tRPC
-            const setupData = await queryClient.fetchQuery(
-              trpc.auth.checkSetupStatus.queryOptions({
-                userId,
-              })
-            );
-
-            const hasCompletedSetup = setupData.has_setup;
-            console.log(
-              "Account check page: Has completed setup:",
-              hasCompletedSetup,
-            );
-
-            if (hasCompletedSetup) {
-              console.log(
-                "Account check page: Setup completed, redirecting to student dashboard",
-              );
-              setDebugInfo(
-                `Setup completed, redirecting to student dashboard...`,
-              );
-
-              // Show redirect loader directly without showing the "not found" screen
-              setRedirecting(true);
-              setIsLoading(false);
-
-              // Redirect to student dashboard
-              setTimeout(() => {
-                window.location.href = "/dashboard/student";
-              }, 1500);
-            } else {
-              console.log(
-                "Account check page: Setup not completed, redirecting to setup page",
-              );
-              setDebugInfo(`Setup not completed, redirecting to setup page...`);
-
-              // Show redirect loader directly without showing the "not found" screen
-              setRedirecting(true);
-              setIsLoading(false);
-
-              // Redirect to setup page
-              setTimeout(() => {
-                window.location.href = "/setup";
-              }, 1500);
-            }
-          } else {
-            console.log("Account check page: No user account found in database");
-            setAccountExists(false);
-            setDebugInfo(
-              "No user account found in database - account creation required",
-            );
+          if (hasCompletedSetup) {
+            console.log('➡️ [Account Check] Redirecting to student dashboard');
+            setDebugInfo('Redirecting to your dashboard...');
+            setRedirecting(true);
             setIsLoading(false);
-            setCheckComplete(true);
+
+            setTimeout(() => {
+              window.location.href = "/dashboard/student";
+            }, 800);
+          } else {
+            console.log('➡️ [Account Check] Redirecting to setup page');
+            setDebugInfo('Redirecting to setup...');
+            setRedirecting(true);
+            setIsLoading(false);
+
+            setTimeout(() => {
+              window.location.href = "/setup";
+            }, 800);
           }
-        } catch (error) {
-          console.error("Account check page: Error:", error);
+        } else {
+          console.log('❌ [Account Check] No account found');
           setAccountExists(false);
-          setDebugInfo("Error checking account status");
+          setDebugInfo('Account creation required');
           setIsLoading(false);
           setCheckComplete(true);
         }
-      } else {
-        console.log("Account check page: No userId available");
+      } catch (error) {
+        console.error('❌ [Account Check] Error:', error);
         setAccountExists(false);
-        setDebugInfo("No userId available - please log in first");
+        setDebugInfo(`Error: ${error instanceof Error ? error.message : 'Unknown'}`);
         setIsLoading(false);
         setCheckComplete(true);
       }
-    }, 2000);
+    };
 
-    return () => clearTimeout(timer);
-  }, [isExchangingCode, userId, userDataLoading, trpc, queryClient]);
+    checkAccount();
+  }, [supabase, trpc, queryClient]);
 
   const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -218,14 +129,12 @@ export default function AccountCheckPage() {
 
       console.log("✅ Help support request sent successfully:", data);
 
-      // Show success toast
       showToastSuccess({
         headerText: "Help Message Sent Successfully!",
         paragraphText: "We'll get back to you soon!",
         direction: "left",
       });
 
-      // Reset form and close dialog on success
       setContactForm({ name: "", email: "", message: "" });
       setTimeout(() => {
         setIsContactDialogOpen(false);
@@ -233,7 +142,6 @@ export default function AccountCheckPage() {
     } catch (error) {
       console.error("❌ Error sending help support request:", error);
 
-      // Show error toast
       showToastError({
         headerText: "Failed to Send Request",
         paragraphText: "Failed to send message. Please try again.",
@@ -251,8 +159,8 @@ export default function AccountCheckPage() {
     }));
   };
 
-  // Show loading state (including code exchange)
-  if (isLoading || userDataLoading || isExchangingCode) {
+  // Show loading state
+  if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white dark:bg-gray-900">
         <div className="text-center">
@@ -278,21 +186,18 @@ export default function AccountCheckPage() {
             Redirecting...
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            {hasCompletedSetup
-              ? "Taking you to your dashboard"
-              : "Taking you to the setup page"}
+            {debugInfo}
           </p>
         </div>
       </div>
     );
   }
 
-  // Only show "Account Not Found" if check is complete and account doesn't exist
+  // Show "Account Not Found" if check is complete and account doesn't exist
   if (checkComplete && !accountExists) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white p-4 dark:bg-gray-900">
         <div className="w-full max-w-4xl text-center">
-          {/* Large Illustration */}
           <div className="mb-12">
             <div className="w-108 relative mx-auto mb-8 h-96">
               <Image
@@ -304,7 +209,6 @@ export default function AccountCheckPage() {
             </div>
           </div>
 
-          {/* Minimal Message */}
           <div className="mb-4">
             <h1 className="mb-4 font-cal-sans text-4xl font-bold text-gray-900 dark:text-white">
               Account Not Found
@@ -315,7 +219,6 @@ export default function AccountCheckPage() {
             </p>
           </div>
 
-          {/* Minimal Action Buttons */}
           <div className="mb-12 flex flex-col items-center justify-center gap-6 sm:flex-row">
             <Link
               href="/register"
@@ -334,110 +237,107 @@ export default function AccountCheckPage() {
             </button>
           </div>
         </div>
+
+        {/* Contact Support Dialog */}
+        <Dialog open={isContactDialogOpen} onOpenChange={setIsContactDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5" />
+                Contact Support
+              </DialogTitle>
+            </DialogHeader>
+
+            <form onSubmit={handleContactSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Name</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
+                  <InputWithRing
+                    id="name"
+                    type="text"
+                    placeholder="Your full name"
+                    value={contactForm.name}
+                    onChange={(e) =>
+                      handleContactFormChange("name", e.target.value)
+                    }
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
+                  <InputWithRing
+                    id="email"
+                    type="email"
+                    placeholder="your.email@example.com"
+                    value={contactForm.email}
+                    onChange={(e) =>
+                      handleContactFormChange("email", e.target.value)
+                    }
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="message">Message</Label>
+                <textarea
+                  id="message"
+                  placeholder="Describe your issue or question..."
+                  value={contactForm.message}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                    handleContactFormChange("message", e.target.value)
+                  }
+                  className="min-h-[100px] w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  required
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsContactDialogOpen(false)}
+                  className="flex-1"
+                  disabled={isSubmittingContact}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={
+                    isSubmittingContact ||
+                    !contactForm.name ||
+                    !contactForm.email ||
+                    !contactForm.message
+                  }
+                  className="flex-1 bg-dark hover:bg-dark/90"
+                >
+                  {isSubmittingContact ? (
+                    <div className="flex items-center gap-2">
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                      Sending...
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Send className="h-4 w-4" />
+                      Send Message
+                    </div>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
 
-  // Return null if none of the above conditions are met (shouldn't happen)
-  return (
-    <>
-      {/* Contact Support Dialog */}
-      <Dialog open={isContactDialogOpen} onOpenChange={setIsContactDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5" />
-              Contact Support
-            </DialogTitle>
-          </DialogHeader>
-
-          <form onSubmit={handleContactSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="Your full name"
-                  value={contactForm.name}
-                  onChange={(e) =>
-                    handleContactFormChange("name", e.target.value)
-                  }
-                  className="pl-10 transition-all duration-200 ease-in-out focus:ring-2 focus:ring-gray-500/40 hover:ring-2 hover:ring-gray-500/10 focus:border-gray-500/60"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="your.email@example.com"
-                  value={contactForm.email}
-                  onChange={(e) =>
-                    handleContactFormChange("email", e.target.value)
-                  }
-                  className="pl-10 transition-all duration-200 ease-in-out focus:ring-2 focus:ring-gray-500/40 hover:ring-2 hover:ring-gray-500/10 focus:border-gray-500/60"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="message">Message</Label>
-              <textarea
-                id="message"
-                placeholder="Describe your issue or question..."
-                value={contactForm.message}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                  handleContactFormChange("message", e.target.value)
-                }
-                className="min-h-[100px] w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200 ease-in-out focus:ring-2 focus:ring-gray-500/40 hover:ring-2 hover:ring-gray-500/10 focus:border-gray-500/60"
-                required
-              />
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsContactDialogOpen(false)}
-                className="flex-1"
-                disabled={isSubmittingContact}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={
-                  isSubmittingContact ||
-                  !contactForm.name ||
-                  !contactForm.email ||
-                  !contactForm.message
-                }
-                className="flex-1 bg-dark hover:bg-dark/90 "
-              >
-                {isSubmittingContact ? (
-                  <div className="flex items-center gap-2">
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                    Sending...
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Send className="h-4 w-4" />
-                    Send Message
-                  </div>
-                )}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </>
-  );
+  return null;
 }

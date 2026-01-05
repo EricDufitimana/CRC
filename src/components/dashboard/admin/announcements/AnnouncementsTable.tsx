@@ -13,6 +13,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/zenith/components/ui/dropdown-menu";
+import { DeleteAnnouncementDialog } from "./DeleteAnnouncementDialog";
+import { EmptyState } from "@/components/ui/empty-state";
 
 interface Announcement {
   id: string;
@@ -58,6 +60,8 @@ export function AnnouncementsTable({
   onDelete,
   onStatusChange,
 }: AnnouncementsTableProps) {
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [announcementToDelete, setAnnouncementToDelete] = useState<any | null>(null);
   if (isFetching && announcements.length === 0) {
     return (
       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
@@ -89,11 +93,11 @@ export function AnnouncementsTable({
 
   if (announcements.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-dashed border-gray-200">
-        <Megaphone className="h-12 w-12 text-gray-300 mb-4" />
-        <h3 className="text-lg font-semibold text-gray-900 mb-1">No announcements found</h3>
-        <p className="text-gray-500 text-sm">Create your first announcement to reach students.</p>
-      </div>
+      <EmptyState
+        image="/images/empty-state/empty-announcements.svg"
+        headerText="No announcements found"
+        subtext="Create your first announcement to reach students."
+      />
     );
   }
 
@@ -172,7 +176,10 @@ export function AnnouncementsTable({
                       Edit Details
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      onClick={() => onDelete(announcement)}
+                      onClick={() => {
+                        setAnnouncementToDelete(announcement);
+                        setDeleteDialogOpen(true);
+                      }}
                       className="cursor-pointer gap-2 py-2 text-red-600 focus:text-red-700 focus:bg-red-50"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -185,26 +192,14 @@ export function AnnouncementsTable({
           ))}
         </TableBody>
       </Table>
+      
+      <DeleteAnnouncementDialog
+        announcement={announcementToDelete}
+        onClose={() => {
+          setDeleteDialogOpen(false);
+          setAnnouncementToDelete(null);
+        }}
+      />
     </div>
-  );
-}
-
-function Megaphone(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="m3 11 18-5v12L3 14v-3z" />
-      <path d="M11.6 16.8 a3 3 0 1 1 -5.8-1.6" />
-    </svg>
   );
 }

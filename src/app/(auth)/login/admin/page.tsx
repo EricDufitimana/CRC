@@ -56,7 +56,7 @@ export default function AdminSignInForm() {
       // Get OAuth URL from tRPC
       await oauthMutation.mutateAsync({
         provider: "google",
-          redirectTo: `${window.location.origin}/admin-verification`,
+        redirectTo: "/admin-verification",
         role: "admin",
       });
     } catch (error) {

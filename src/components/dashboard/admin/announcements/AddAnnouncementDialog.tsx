@@ -117,17 +117,15 @@ export function AddAnnouncementDialog({ open, onOpenChange }: AddAnnouncementDia
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl rounded-3xl p-0 overflow-hidden border-none shadow-2xl">
-        <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-6">
-          <DialogHeader>
-            <DialogTitle className="text-white text-2xl font-bold font-cal-sans">Create Announcement</DialogTitle>
-            <DialogDescription className="text-green-50/80">
+          <div className="p-6 ">
+            <h2 className="text-dark text-lg font-bold font-cal-sans">Create Announcement</h2>
+            <p className="text-gray-500 mt-1 text-sm">
               Share important updates with students across different platform sections.
-            </DialogDescription>
-          </DialogHeader>
-        </div>
+            </p>
+          </div>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="p-8 space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="px-8 pb-8 space-y-6">
             <FormField
               control={form.control}
               name="message"
@@ -207,7 +205,7 @@ export function AddAnnouncementDialog({ open, onOpenChange }: AddAnnouncementDia
               <Button
                 type="submit"
                 disabled={mutation.isPending}
-                className="bg-primary hover:bg-primary/90 text-white px-8 rounded-xl font-semibold shadow-lg shadow-green-100 focus:ring-0"
+                className="bg-orange-500 hover:bg-orange-600 text-white px-8 rounded-xl font-semibold shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition duration-200 focus:ring-0"
               >
                 {mutation.isPending ? (
                   <>

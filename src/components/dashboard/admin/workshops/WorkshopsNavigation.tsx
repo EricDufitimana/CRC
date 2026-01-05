@@ -85,7 +85,7 @@ export function WorkshopsNavigation({
   };
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 w-full bg-white p-2 rounded-xl border border-gray-100 shadow-sm">
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 w-full bg-white p-2 rounded-xl border">
       <div className="flex flex-wrap items-center gap-2">
         {categories.map((category) => {
           const IconComponent = category.icon;

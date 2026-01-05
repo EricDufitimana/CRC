@@ -38,10 +38,10 @@ export function AttendanceManagementHeader({
   return (
     <div className="flex items-center justify-between">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 font-cal-sans mb-1">
+        <h1 className="text-2xl font-bold text-gray-900 font-cal-sans mb-1">
           Attendance Dashboard
         </h1>
-        <p className="text-gray-600 text-md">
+        <p className="text-gray-600 text-sm">
           Track student attendance and manage records
         </p>
       </div>

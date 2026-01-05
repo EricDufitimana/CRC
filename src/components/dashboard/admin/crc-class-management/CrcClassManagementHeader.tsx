@@ -23,7 +23,7 @@ export function CrcClassManagementHeader({ searchQuery, onSearchChange }: CrcCla
           placeholder="Search classes..." 
           value={searchQuery} 
           onChange={(e) => onSearchChange(e.target.value)} 
-          className="w-72" 
+          className="w-72 rounded-xl" 
         />
       </div>
     </div>

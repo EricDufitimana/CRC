@@ -42,6 +42,7 @@ export function ContentManagementContent() {
   const [resourceToEdit, setResourceToEdit] = useState<Resource | null>(null);
   const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
   const [resourceIdToDelete, setResourceIdToDelete] = useState<string | null>(null);
+  const [deleteType, setDeleteType] = useState<'deactivate' | 'delete'>('deactivate');
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -90,6 +91,20 @@ export function ContentManagementContent() {
     },
   });
 
+  const deleteResourceMutation = useMutation({
+    ...trpc.resources.delete.mutationOptions(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [['contentManagement', 'getResourcesByCategory']],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [['resources', 'getByCategory']],
+      });
+      setDeleteConfirmationOpen(false);
+      setResourceIdToDelete(null);
+    },
+  });
+
   // Update URL when category changes
   const updateCategoryInUrl = (category: string) => {
     const params = new URLSearchParams(searchParams?.toString() || '');
@@ -120,26 +135,49 @@ export function ContentManagementContent() {
     return category ? category.label : cat;
   }
 
+  const handleDeactivateClick = (resourceId: string) => {
+    setResourceIdToDelete(resourceId);
+    setDeleteType('deactivate');
+    setDeleteConfirmationOpen(true);
+  };
+
   const handleDeleteClick = (resourceId: string) => {
     setResourceIdToDelete(resourceId);
+    setDeleteType('delete');
     setDeleteConfirmationOpen(true);
   };
 
   const handleDeleteConfirm = () => {
     if (resourceIdToDelete) {
-      const promise = deactivateResourceMutation.mutateAsync({
-        id: resourceIdToDelete,
-      });
+      if (deleteType === 'deactivate') {
+        const promise = deactivateResourceMutation.mutateAsync({
+          id: resourceIdToDelete,
+        });
 
-      showToastPromise({
-        promise,
-        loadingText: 'Deactivating resource...',
-        successText: 'The resource has been removed from the website',
-        successHeaderText: 'Resource Deactivated Successfully',
-        errorText: 'We couldn\'t deactivate the resource. Please try again or contact support.',
-        errorHeaderText: 'Failed To Deactivate Resource',
-        direction: 'right'
-      });
+        showToastPromise({
+          promise,
+          loadingText: 'Deactivating resource...',
+          successText: 'The resource has been removed from the website',
+          successHeaderText: 'Resource Deactivated Successfully',
+          errorText: 'We couldn\'t deactivate resource. Please try again or contact support.',
+          errorHeaderText: 'Failed To Deactivate Resource',
+          direction: 'right'
+        });
+      } else {
+        const promise = deleteResourceMutation.mutateAsync({
+          id: resourceIdToDelete,
+        });
+
+        showToastPromise({
+          promise,
+          loadingText: 'Deleting resource...',
+          successText: 'The resource has been permanently deleted',
+          successHeaderText: 'Resource Deleted Successfully',
+          errorText: 'We couldn\'t delete resource. Please try again or contact support.',
+          errorHeaderText: 'Failed To Delete Resource',
+          direction: 'right'
+        });
+      }
     }
   };
 
@@ -200,8 +238,9 @@ export function ContentManagementContent() {
                   resources={currentResources}
                   loading={isFetching}
                   onEdit={handleEditClick}
-                  onDeactivate={handleDeleteClick}
+                  onDeactivate={handleDeactivateClick}
                   onReactivate={handleReactivateResource}
+                  onDelete={handleDeleteClick}
                   currentPage={currentPage}
                   itemsPerPage={itemsPerPage}
                   totalResources={resources.length}
@@ -240,6 +279,7 @@ export function ContentManagementContent() {
         onOpenChange={setDeleteConfirmationOpen}
         onConfirm={handleDeleteConfirm}
         onCancel={handleDeleteCancel}
+        deleteType={deleteType}
       />
     </div>
   );

@@ -5,9 +5,9 @@ import { HydrateClient, prefetch, trpc } from '@/trpc/server';
 import { getServerContext } from '@/trpc/init';
 
 function getTitle(pathname: string | null) {
-  if (pathname?.includes("assignments")) return "Assignments - Student Dashboard"
-  else if (pathname?.includes("documents")) return "Documents - Student Dashboard"
-  else if (pathname?.includes("requests")) return "Requests - Student Dashboard"
+  if (pathname?.includes("assignments")) return "Assignments | Student Dashboard"
+  else if (pathname?.includes("documents")) return "Documents | Student Dashboard"
+  else if (pathname?.includes("requests")) return "Requests | Student Dashboard"
   else return "Student Dashboard - Career Resources Center"
 }
 export const dynamic = 'force-dynamic';

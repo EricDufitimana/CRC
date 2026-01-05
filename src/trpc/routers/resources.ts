@@ -277,4 +277,23 @@ export const resourcesRouter = createTRPCRouter({
 
       return { success: true };
     }),
+
+  // Delete a resource permanently (admin only)
+  delete: adminProcedure
+    .input(
+      z.object({
+        id: z.string(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const { id } = input;
+      
+      await prisma.resources.delete({
+        where: {
+          id: BigInt(id),
+        },
+      });
+
+      return { success: true };
+    }),
 });

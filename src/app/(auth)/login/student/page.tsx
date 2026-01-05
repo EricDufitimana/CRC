@@ -42,7 +42,7 @@ export default function StudentSignInForm() {
       // Get OAuth URL from tRPC
       await oauthMutation.mutateAsync({
         provider: "google",
-          redirectTo: `${window.location.origin}/account-check`,
+        redirectTo: "/account-check",
         role: "student",
       });
     } catch (error) {

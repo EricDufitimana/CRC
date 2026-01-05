@@ -10,7 +10,7 @@ export const authRouter = createTRPCRouter({
   getOAuthUrl: baseProcedure
     .input(
       z.object({
-        provider: z.enum(['google']),
+        provider: z.enum(['google', 'github']),
         redirectTo: z.string(),
         role: z.enum(['admin', 'student']).optional(),
       }),
@@ -25,11 +25,27 @@ export const authRouter = createTRPCRouter({
 
       const supabase = await createClient();
       
+      // Get the base URL - try multiple sources for reliability
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
+                     process.env.NEXT_PUBLIC_SITE_URL || 
+                     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+      
+      // Redirect to auth callback route, which will then redirect to the final destination
+      const callbackUrl = `${baseUrl}/api/auth/callback?next=${encodeURIComponent(input.redirectTo)}`;
+      
+      console.log('🔐 [tRPC Auth] getOAuthUrl: Base URL:', baseUrl);
+      console.log('🔐 [tRPC Auth] getOAuthUrl: Callback URL:', callbackUrl);
+      console.log('🔐 [tRPC Auth] getOAuthUrl: Environment vars:', {
+        NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+        NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
+        VERCEL_URL: process.env.VERCEL_URL,
+      });
       console.log('🔐 [tRPC Auth] getOAuthUrl: Initiating Supabase OAuth...');
+      
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: input.provider,
         options: {
-          redirectTo: input.redirectTo,
+          redirectTo: callbackUrl,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
@@ -46,11 +62,42 @@ export const authRouter = createTRPCRouter({
       }
 
       console.log('✅ [tRPC Auth] getOAuthUrl: OAuth URL generated successfully');
+      console.log('🔐 [tRPC Auth] getOAuthUrl: Generated OAuth URL:', data.url);
       console.log('🔐 [tRPC Auth] getOAuthUrl: Redirect URL:', input.redirectTo);
       return { url: data.url };
     }),
 
-  // Sign in with email and password
+  // Exchange OAuth code for session (called from callback route)
+  exchangeCodeForSession: baseProcedure
+    .input(
+      z.object({
+        code: z.string(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      console.log('🔄 [tRPC Auth] exchangeCodeForSession: Starting code exchange');
+      console.log('🔄 [tRPC Auth] exchangeCodeForSession: Code present:', !!input.code);
+
+      const supabase = await createClient();
+      
+      const { data, error } = await supabase.auth.exchangeCodeForSession(input.code);
+
+      if (error) {
+        console.error('❌ [tRPC Auth] exchangeCodeForSession: Error:', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error.message || 'Failed to exchange code for session',
+        });
+      }
+
+      console.log('✅ [tRPC Auth] exchangeCodeForSession: Session established');
+      console.log('👤 [tRPC Auth] exchangeCodeForSession: User ID:', data.user?.id);
+
+      return {
+        success: true,
+        userId: data.user?.id || null,
+      };
+    }),
   signInWithPassword: baseProcedure
     .input(
       z.object({
@@ -216,10 +263,10 @@ export const authRouter = createTRPCRouter({
       
       if (!targetUserId) {
         console.error('❌ [tRPC Auth] checkSuperAdmin: SUPER_ADMIN_USER_ID environment variable not set');
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
+        return {
+          success: false,
           message: 'Server configuration error: SUPER_ADMIN_USER_ID not configured',
-        });
+        };
       }
       
       console.log('🔍 [tRPC Auth] checkSuperAdmin: Target super admin ID:', targetUserId);
@@ -242,22 +289,26 @@ export const authRouter = createTRPCRouter({
         console.log('🔍 [tRPC Auth] checkSuperAdmin: Input ID:', input.userId);
         console.log('🔍 [tRPC Auth] checkSuperAdmin: Expected ID:', targetUserId);
         
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'User ID does not match required admin ID',
-        });
+        return {
+          success: false,
+          message: 'User is not super admin',
+        };
       }
     }),
 
-  // Check if user exists in students table
+  // Check if user exists in students or admins table
   checkUserExists: baseProcedure
     .input(
       z.object({
         userId: z.string(),
-        table: z.enum(['students']),
+        table: z.enum(['students', 'admins']),
       }),
     )
     .query(async ({ input }) => {
+      console.log('🔍 [tRPC Auth] checkUserExists: Checking user existence');
+      console.log('🔍 [tRPC Auth] checkUserExists: Table:', input.table);
+      console.log('🔍 [tRPC Auth] checkUserExists: User ID:', input.userId);
+      
       if (input.table === 'students') {
         const student = await prisma.students.findFirst({
           where: {
@@ -268,7 +319,22 @@ export const authRouter = createTRPCRouter({
           },
         });
 
+        console.log('📊 [tRPC Auth] checkUserExists: Student exists:', !!student);
         return { exists: !!student };
+      }
+      
+      if (input.table === 'admins') {
+        const admin = await prisma.admin.findFirst({
+          where: {
+            user_id: input.userId,
+          },
+          select: {
+            id: true,
+          },
+        });
+
+        console.log('📊 [tRPC Auth] checkUserExists: Admin exists:', !!admin);
+        return { exists: !!admin };
       }
 
       throw new TRPCError({

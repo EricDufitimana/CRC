@@ -11,7 +11,7 @@ import {
 } from "@/zenith/components/ui/table";
 import { Badge } from "@/zenith/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/zenith/components/ui/avatar";
-import { Users } from "lucide-react";
+import { CheckCircle, XCircle, Clock, AlertCircle, Users, ChevronDown } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,10 +19,11 @@ import {
   DropdownMenuTrigger,
 } from "@/zenith/components/ui/dropdown-menu";
 import { Button } from "@/zenith/components/ui/button";
-import { CheckCircle, XCircle, Clock, AlertCircle, MoreVertical } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
 import { showToastSuccess, showToastError } from "@/components/toasts";
+import { EmptyState } from "@/components/ui/empty-state";
+import {}from 'lucide-react';
 
 interface AttendanceRecord {
   id: string;
@@ -62,13 +63,11 @@ function getStatusBadge(status: string, recordId: string, onUpdate?: (recordId: 
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-6 px-2">
-            <Badge className={`${config.className} border flex items-center gap-1`}>
-              <IconComponent className="h-3 w-3" />
-              {config.label}
-            </Badge>
-            <MoreVertical className="h-3 w-3 ml-1" />
-          </Button>
+          <Badge className={`${config.className} border flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity`}>
+            <IconComponent className="h-3 w-3" />
+            {config.label}
+            <ChevronDown className="h-3 w-3 ml-1" />
+          </Badge>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           {Object.entries(statusConfig).map(([key, value]) => (
@@ -149,49 +148,26 @@ export function AttendanceTable({ records, loading }: AttendanceTableProps) {
 
   if (records.length === 0) {
     return (
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Workshop</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Date</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow>
-              <TableCell colSpan={4} className="text-center py-12">
-                <div className="flex flex-col items-center space-y-3">
-                  <div className="h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center">
-                    <Users className="h-8 w-8 text-gray-400" />
-                  </div>
-                  <div className="text-center">
-                    <h3 className="text-lg font-medium text-gray-900 mb-1">No attendance records found</h3>
-                    <p className="text-gray-500 text-sm">
-                      No attendance has been recorded yet. Start by recording attendance for a workshop.
-                    </p>
-                  </div>
-                </div>
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </div>
+      <EmptyState
+        image="/images/empty-state/empty-attendance.svg"
+        headerText="No attendance records found"
+        subtext="No attendance has been recorded yet. Start by recording attendance for a workshop."
+        imageClassName="w-48 h-48 -ml-6"
+      />
     );
   }
 
   return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
+    <div className="rounded-xl border w-full">
+      <Table className="w-full">
+        <TableHead>
           <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Workshop</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Date</TableHead>
+            <TableHead className="w-[25%]">Name</TableHead>
+            <TableHead className="w-[30%]">Workshop</TableHead>
+            <TableHead className="w-[20%]">Status</TableHead>
+            <TableHead className="w-[25%]">Date</TableHead>
           </TableRow>
-        </TableHeader>
+        </TableHead>
         <TableBody>
           {records.map((record) => (
             <TableRow key={record.id}>

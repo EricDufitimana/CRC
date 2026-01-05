@@ -7,7 +7,6 @@ import StickyNotificationBanner from "@/components/Banner/StickyNotificationBann
 import { headers } from "next/headers";
 import Head from "./head";
 
-import { ThemeProvider } from "next-themes";
 import "../../styles/index.css"
 import "../../styles/prism-vsc-dark-plus.css";
 import RootLayoutClient from "./RootLayoutClient";

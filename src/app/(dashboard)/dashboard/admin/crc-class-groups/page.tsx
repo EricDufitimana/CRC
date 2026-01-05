@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { DashboardErrorBoundary } from "@/components/dashboard/admin/DashboardErrorBoundary";
+import {CrcClassManagementLoading} from "@/components/dashboard/admin/crc-class-management/CrcClassManagementLoading";
 
 // Dynamically import CrcClassManagementContent to disable SSR
 const CrcClassManagementContent = dynamic(
@@ -10,13 +11,13 @@ const CrcClassManagementContent = dynamic(
   })), 
   {
     ssr: false,
-    loading: () => <div>Loading class management...</div>
+    loading: () => <CrcClassManagementLoading/>
   }
 );
 
 export default function CrcClassGroupsPage() {
   return (
-    <DashboardErrorBoundary loadingFallback={<div>Loading class management...</div>}>
+    <DashboardErrorBoundary loadingFallback={<CrcClassManagementLoading />}>
       <CrcClassManagementContent />
     </DashboardErrorBoundary>
   );

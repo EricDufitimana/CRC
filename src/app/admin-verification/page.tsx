@@ -12,16 +12,14 @@ import {
   MessageSquare,
 } from "lucide-react";
 import Image from "next/image";
-import { useUserData } from "../../hooks/useUserData";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, InputWithRing } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { showToastSuccess, showToastError } from "@/components/toasts";
 import { useTRPC } from "@/trpc/client";
@@ -30,148 +28,101 @@ import { createClient } from "@/utils/supabase/client";
 
 export default function AdminVerificationPage() {
   const [isLoading, setIsLoading] = useState(true);
-  const [verificationComplete, setVerificationComplete] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   const [debugInfo, setDebugInfo] = useState("");
   const [checkComplete, setCheckComplete] = useState(false);
   const [shouldShowAdminVerification, setShouldShowAdminVerification] =
     useState(false);
   const [isContactDialogOpen, setIsContactDialogOpen] = useState(false);
-  const [isExchangingCode, setIsExchangingCode] = useState(true);
   const [contactForm, setContactForm] = useState({
     name: "",
     email: "",
     message: "",
   });
   const [isSubmittingContact, setIsSubmittingContact] = useState(false);
-  const { userId, adminId, isLoading: userDataLoading } = useUserData();
+
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const supabase = createClient();
 
-  // First: Exchange the OAuth code for a session
   useEffect(() => {
-    const exchangeCodeForSession = async () => {
+    const checkAdminStatus = async () => {
       try {
-        const code = new URLSearchParams(window.location.search).get('code');
+        console.log('🔍 [Admin Verification] Starting admin verification...');
         
-        if (code) {
-          console.log('🔄 [Admin Verification] Exchanging OAuth code for session');
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
-          
-          if (error) {
-            console.error('❌ [Admin Verification] Error exchanging code:', error);
-            setDebugInfo(`Error exchanging OAuth code: ${error.message}`);
-            setIsLoading(false);
-            setCheckComplete(true);
-            setShouldShowAdminVerification(true);
-          } else {
-            console.log('✅ [Admin Verification] Session established');
-          }
+        // Session is already established by the callback route
+        // Just wait a bit to ensure cookies are fully propagated
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError || !user) {
+          console.error('❌ [Admin Verification] No authenticated user:', userError);
+          setDebugInfo('No authenticated user - please log in first');
+          setIsLoading(false);
+          setCheckComplete(true);
+          setShouldShowAdminVerification(true);
+          return;
+        }
+
+        const userId = user.id;
+        console.log('👤 [Admin Verification] User ID:', userId);
+
+        // First check if user is super admin
+        const superAdminResult = await queryClient.fetchQuery(
+          trpc.auth.checkSuperAdmin.queryOptions({ userId })
+        );
+
+        if (superAdminResult.success) {
+          console.log('✅ [Admin Verification] Super admin detected, redirecting...');
+          setDebugInfo(`Authorized super admin user detected (ID: ${userId}), redirecting...`);
+          setRedirecting(true);
+          setIsLoading(false);
+
+          setTimeout(() => {
+            window.location.href = "/dashboard/admin";
+          }, 800);
+          return;
+        }
+
+        // Check if user exists in admins table
+        const adminData = await queryClient.fetchQuery(
+          trpc.auth.checkUserExists.queryOptions({
+            userId,
+            table: "admins",
+          })
+        );
+
+        const adminExists = adminData.exists;
+        console.log('📊 [Admin Verification] Admin exists:', adminExists);
+
+        if (adminExists) {
+          console.log('✅ [Admin Verification] Admin user detected, redirecting...');
+          setDebugInfo(`Admin user detected (ID: ${userId}), redirecting...`);
+          setRedirecting(true);
+          setIsLoading(false);
+
+          setTimeout(() => {
+            window.location.href = "/dashboard/admin";
+          }, 800);
         } else {
-          console.log('⚠️ [Admin Verification] No OAuth code found in URL');
+          console.log('❌ [Admin Verification] No admin account found in database');
+          setShouldShowAdminVerification(true);
+          setDebugInfo('No admin account found in database - access denied');
+          setIsLoading(false);
+          setCheckComplete(true);
         }
       } catch (error) {
-        console.error('❌ [Admin Verification] Error in code exchange:', error);
-        setDebugInfo(`Error in code exchange: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        console.error('❌ [Admin Verification] Error checking admin status:', error);
+        setShouldShowAdminVerification(true);
+        setDebugInfo(`Error checking admin status: ${error instanceof Error ? error.message : 'Unknown error'}`);
         setIsLoading(false);
         setCheckComplete(true);
-        setShouldShowAdminVerification(true);
-      } finally {
-        setIsExchangingCode(false);
       }
     };
 
-    exchangeCodeForSession();
-  }, [supabase]);
-
-  const checkSpecificAdmin = async () => {
-    try {
-      if (!userId) {
-        console.log("No userId available");
-        return false;
-      }
-
-      // Use tRPC to check if user is super admin
-      const result = await queryClient.fetchQuery(
-        trpc.auth.checkSuperAdmin.queryOptions({ userId })
-      );
-
-      if (result.success) {
-        console.log("Specific admin user detected, redirecting...");
-        setDebugInfo(
-          `Authorized admin user detected (ID: ${userId}), redirecting...`,
-        );
-        setRedirecting(true);
-        setIsLoading(false);
-
-        // Redirect to admin dashboard after a short delay
-        setTimeout(() => {
-          window.location.href = "/dashboard/admin";
-        }, 1500);
-
-        return true;
-      } else {
-        console.log("User is not the specific admin:", result.message);
-        return false;
-      }
-    } catch (error) {
-      console.error("Error checking specific admin:", error);
-      return false;
-    }
-  };
-
-  // Second: Only after code is exchanged, check user data and verify
-  useEffect(() => {
-    // Don't proceed if still exchanging code
-    if (isExchangingCode) {
-      return;
-    }
-
-    console.log("Admin verification page: useEffect triggered");
-    console.log("userId:", userId);
-    console.log("adminId:", adminId);
-    console.log("userDataLoading:", userDataLoading);
-
-    // Simulate verification process
-    const timer = setTimeout(async () => {
-      console.log(
-        "Admin verification page: Timer completed, checking authorization...",
-      );
-
-      // First check if user is the specific admin
-      const isSpecificAdmin = await checkSpecificAdmin();
-
-      if (isSpecificAdmin) {
-        return; // Already handled in checkSpecificAdmin
-      }
-
-      // Check if user should be redirected (existing logic)
-      if (adminId) {
-        console.log(
-          "Admin verification page: User is admin, should redirect to admin dashboard",
-        );
-        setDebugInfo(`Admin user detected (ID: ${adminId}), redirecting...`);
-
-        // Show redirect loader for admin users directly
-        setRedirecting(true);
-        setIsLoading(false);
-
-        // Redirect to admin dashboard after a short delay
-        setTimeout(() => {
-          window.location.href = "/dashboard/admin";
-        }, 1500);
-      } else {
-        console.log("Admin verification page: No userId or adminId available");
-        setDebugInfo("No userId or adminId available - please log in first");
-        setIsLoading(false);
-        setCheckComplete(true);
-        setShouldShowAdminVerification(true);
-      }
-    }, 2000);
-
-    return () => clearTimeout(timer);
-  }, [isExchangingCode, userId, adminId, userDataLoading, trpc, queryClient]);
+    checkAdminStatus();
+  }, [supabase, trpc, queryClient]);
 
   const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -229,8 +180,8 @@ export default function AdminVerificationPage() {
     }));
   };
 
-  // Show loading state (including code exchange)
-  if (isLoading || userDataLoading || isExchangingCode) {
+  // Show loading state
+  if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white dark:bg-gray-900">
         <div className="text-center">
@@ -332,7 +283,7 @@ export default function AdminVerificationPage() {
                 <Label htmlFor="name">Name</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
-                  <Input
+                  <InputWithRing
                     id="name"
                     type="text"
                     placeholder="Your full name"
@@ -340,7 +291,7 @@ export default function AdminVerificationPage() {
                     onChange={(e) =>
                       handleContactFormChange("name", e.target.value)
                     }
-                    className="pl-10 transition-all duration-200 ease-in-out focus:ring-2 focus:ring-gray-500/40 hover:ring-2 hover:ring-gray-500/10 focus:border-gray-500/60"
+                    className="pl-10"
                     required
                   />
                 </div>
@@ -350,7 +301,7 @@ export default function AdminVerificationPage() {
                 <Label htmlFor="email">Email</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
-                  <Input
+                  <InputWithRing
                     id="email"
                     type="email"
                     placeholder="your.email@example.com"
@@ -358,7 +309,7 @@ export default function AdminVerificationPage() {
                     onChange={(e) =>
                       handleContactFormChange("email", e.target.value)
                     }
-                    className="pl-10 transition-all duration-200 ease-in-out focus:ring-2 focus:ring-gray-500/40 hover:ring-2 hover:ring-gray-500/10 focus:border-gray-500/60"
+                    className="pl-10"
                     required
                   />
                 </div>
