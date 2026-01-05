@@ -35,6 +35,12 @@ type Context = {
   role: 'admin' | 'student' | null;
 }
 export const createTRPCContext = async (): Promise<Context> => {
+  // Skip auth during build time
+  if (typeof window === 'undefined' && process.env.NEXT_PHASE === 'phase-production-build') {
+    console.log('🔧 [Context] Skipping auth during build time');
+    return { user: null, role: null };
+  }
+
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();

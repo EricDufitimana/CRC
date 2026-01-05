@@ -1,28 +1,23 @@
-import { CrcClassManagementContent } from "@/components/dashboard/admin/crc-class-management/CrcClassManagementContent";
-import { CrcClassManagementLoading } from "@/components/dashboard/admin/crc-class-management/CrcClassManagementLoading";
+"use client";
+
+import dynamic from 'next/dynamic';
 import { DashboardErrorBoundary } from "@/components/dashboard/admin/DashboardErrorBoundary";
-import { HydrateClient, prefetch, trpc } from '@/trpc/server';
-import { getServerContext } from '@/trpc/init';
 
-export default async function CrcClassGroupsPage() {
-  const context = await getServerContext();
-  
-  // Only prefetch if we have a valid authenticated admin user
-  if (context.user && context.role === 'admin' && context.user.id) {
-    try {
-      // Prefetch CRC class management queries
-      prefetch(trpc.crcClassManagement.getCrcClasses.queryOptions(undefined));
-    } catch (error) {
-      // Silently fail prefetch - data will load on client side
-      console.warn('Prefetch failed, will load on client:', error);
-    }
+// Dynamically import CrcClassManagementContent to disable SSR
+const CrcClassManagementContent = dynamic(
+  () => import("@/components/dashboard/admin/crc-class-management/CrcClassManagementContent").then(mod => ({ 
+    default: mod.CrcClassManagementContent 
+  })), 
+  {
+    ssr: false,
+    loading: () => <div>Loading class management...</div>
   }
+);
 
+export default function CrcClassGroupsPage() {
   return (
-    <HydrateClient>
-      <DashboardErrorBoundary loadingFallback={<CrcClassManagementLoading />}>
-        <CrcClassManagementContent />
-      </DashboardErrorBoundary>
-    </HydrateClient>
+    <DashboardErrorBoundary loadingFallback={<div>Loading class management...</div>}>
+      <CrcClassManagementContent />
+    </DashboardErrorBoundary>
   );
 }

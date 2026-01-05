@@ -1,30 +1,23 @@
-import { AttendanceManagementContent } from "@/components/dashboard/admin/attendance-management/AttendanceManagementContent";
-import { AttendanceManagementLoading } from "@/components/dashboard/admin/attendance-management/AttendanceManagementLoading";
+"use client";
+
+import dynamic from 'next/dynamic';
 import { DashboardErrorBoundary } from "@/components/dashboard/admin/DashboardErrorBoundary";
-import { HydrateClient, prefetch, trpc } from '@/trpc/server';
-import { getServerContext } from '@/trpc/init';
 
-export default async function AttendancePage() {
-  const context = await getServerContext();
-  
-  // Only prefetch if we have a valid authenticated admin user
-  if (context.user && context.role === 'admin' && context.user.id) {
-    try {
-      // Prefetch attendance records
-      prefetch(trpc.attendanceManagement.getAttendanceRecords.queryOptions(undefined));
-      // Prefetch CRC classes
-      prefetch(trpc.crcClassManagement.getCrcClasses.queryOptions(undefined));
-      } catch (error) {
-      // Silently fail prefetch - data will load on client side
-      console.warn('Prefetch failed, will load on client:', error);
-    }
+// Dynamically import AttendanceManagementContent to disable SSR
+const AttendanceManagementContent = dynamic(
+  () => import("@/components/dashboard/admin/attendance-management/AttendanceManagementContent").then(mod => ({ 
+    default: mod.AttendanceManagementContent 
+  })), 
+  {
+    ssr: false,
+    loading: () => <div>Loading attendance management...</div>
   }
+);
 
-    return (
-    <HydrateClient>
-      <DashboardErrorBoundary loadingFallback={<AttendanceManagementLoading />}>
-        <AttendanceManagementContent />
-      </DashboardErrorBoundary>
-    </HydrateClient>
+export default function AttendancePage() {
+  return (
+    <DashboardErrorBoundary loadingFallback={<div>Loading attendance management...</div>}>
+      <AttendanceManagementContent />
+    </DashboardErrorBoundary>
   );
 }

@@ -5,6 +5,9 @@ import { ToastProvider } from "@/components/dashboard/admin/ToastProvider";
 import { HydrateClient, prefetch, trpc } from '@/trpc/server';
 import { getServerContext } from '@/trpc/init';
 
+// Force dynamic rendering to prevent build-time data fetching
+export const dynamic = 'force-dynamic';
+
 export default async function DashboardHome() {
   const context = await getServerContext();
 
