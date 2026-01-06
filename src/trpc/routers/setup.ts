@@ -68,6 +68,7 @@ export const setupRouter = createTRPCRouter({
       avatar_path: z.string().optional(),
       avatar: z.string().optional(), // base64 string
       academic_report: z.string().optional(), // base64 string
+      academic_report_name: z.string().optional(), // original filename
       resume_link: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
@@ -75,6 +76,23 @@ export const setupRouter = createTRPCRouter({
       const userId = ctx.user.user_id;
       
       try {
+        // Fetch student data to get name information
+        const student = await prisma.students.findUnique({
+          where: { id: studentId },
+          select: {
+            first_name: true,
+            last_name: true,
+            student_id: true,
+          },
+        });
+
+        if (!student) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Student not found'
+          });
+        }
+
         let finalAvatarPath: string | null = null;
 
         // Handle avatar upload
@@ -121,12 +139,17 @@ export const setupRouter = createTRPCRouter({
           const base64Data = input.academic_report.split(',')[1];
           const buffer = Buffer.from(base64Data, 'base64');
           
-          const key = randomUUID();
           const currentDate = new Date().toISOString().split('T')[0];
-          const path = `student-${studentId}/${currentDate}/academic-report-${key}.pdf`;
+          
+          // Create student name path: FirstName_LastName_StudentID
+          const studentNamePath = `${student.first_name}_${student.last_name}_${student.student_id}`;
+          
+          // Use original filename or fallback to report.pdf
+          const fileName = input.academic_report_name || 'report.pdf';
+          const path = `${studentNamePath}/${currentDate}/${fileName}`;
           
           const { error: uploadError } = await supabase.storage
-            .from('documents')
+            .from('reports')
             .upload(path, buffer, {
               cacheControl: '3600',
               upsert: false,

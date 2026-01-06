@@ -41,15 +41,6 @@ export function StudentAssignmentsContent() {
 
   const totalPages = Math.ceil(filteredAssignments.length / pageSize);
 
-  if (noClass) {
-    return (
-      <>
-        <NoClassState onOpenContact={() => setIsContactDialogOpen(true)} />
-        <ContactSupportDialog open={isContactDialogOpen} onOpenChange={setIsContactDialogOpen} />
-      </>
-    );
-  }
-
   return (
     <div className="space-y-6 h-full flex flex-col overflow-hidden ">
       {/* Header */}
@@ -83,34 +74,38 @@ export function StudentAssignmentsContent() {
             </div>
           </CardHeader>
           <CardContent className="flex-1 min-h-0 p-0">
-            <ScrollArea className="h-full px-6 py-3">
-              {assignments.length === 0 ? (
-                <div className="h-[40vh] w-full flex flex-col items-center justify-center py-8 h-short:pt-24 text-center">
-                  <img src="/images/dashboard/empty-assignments.png" alt="No assignments" className="w-[260px] h-[260px] opacity-95" />
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {paginatedAssignments.map((a) => (
-                    <AssignmentCard
-                      key={a.id}
-                      assignment={a}
-                      isOpen={openFormFor === a.id}
-                      onOpenForm={setOpenFormFor}
-                      refetch={refetch}
-                    />
-                  ))}
-                </div>
-              )}
-              {totalPages > 1 && (
-                <div className="mt-4 flex items-center justify-between">
-                  <Button variant="ghost" size="sm" disabled={page === 1} onClick={() => setPage(p => Math.max(1, p - 1))}>Previous</Button>
-                  <div className="text-xs text-neutral-500">
-                    Page {page} of {totalPages}
+            {noClass ? (
+              <NoClassState onOpenContact={() => setIsContactDialogOpen(true)} />
+            ) : (
+              <ScrollArea className="h-full px-6 py-3">
+                {assignments.length === 0 ? (
+                  <div className="h-[40vh] w-full flex flex-col items-center justify-center py-8 h-short:pt-24 text-center">
+                    <img src="/images/dashboard/empty-assignments.png" alt="No assignments" className="w-[260px] h-[260px] opacity-95" />
                   </div>
-                  <Button variant="ghost" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Next</Button>
-                </div>
-              )}
-            </ScrollArea>
+                ) : (
+                  <div className="space-y-4">
+                    {paginatedAssignments.map((a) => (
+                      <AssignmentCard
+                        key={a.id}
+                        assignment={a}
+                        isOpen={openFormFor === a.id}
+                        onOpenForm={setOpenFormFor}
+                        refetch={refetch}
+                      />
+                    ))}
+                  </div>
+                )}
+                {totalPages > 1 && (
+                  <div className="mt-4 flex items-center justify-between">
+                    <Button variant="ghost" size="sm" disabled={page === 1} onClick={() => setPage(p => Math.max(1, p - 1))}>Previous</Button>
+                    <div className="text-xs text-neutral-500">
+                      Page {page} of {totalPages}
+                    </div>
+                    <Button variant="ghost" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Next</Button>
+                  </div>
+                )}
+              </ScrollArea>
+            )}
           </CardContent>
         </Card>
       </div>

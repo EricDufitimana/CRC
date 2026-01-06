@@ -354,23 +354,15 @@ export const authRouter = createTRPCRouter({
       console.log('🔍 [tRPC Auth] checkSetupStatus: Starting setup status check');
       console.log('🔍 [tRPC Auth] checkSetupStatus: User ID:', input.userId);
       
-      // Use service role client to bypass RLS
-      const supabase = createServiceRoleClient();
-      
       console.log('🔍 [tRPC Auth] checkSetupStatus: Querying profiles table...');
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('has_setup')
-        .eq('user_id', input.userId)
-        .single();
-
-      if (profileError) {
-        console.error('❌ [tRPC Auth] checkSetupStatus: Error fetching profile:', profileError);
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to fetch user profile',
-        });
-      }
+      const profile = await prisma.profiles.findUnique({
+        where: {
+          user_id: input.userId,
+        },
+        select: {
+          has_setup: true,
+        },
+      });
 
       if (!profile) {
         console.log('⚠️ [tRPC Auth] checkSetupStatus: Profile not found for user:', input.userId);

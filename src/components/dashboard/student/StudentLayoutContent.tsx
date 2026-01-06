@@ -19,13 +19,13 @@ export function StudentLayoutContent({ children }: StudentLayoutContentProps) {
       <StudentBottomNav />
       <StudentBottomNavTablet />
 
-      <div className="mx-auto max-w-[1400px] px-2 py-3 md:py-4 bg-neutral-100">
-        <div className="flex gap-4 min-h-[calc(100vh-1.5rem)] pb-[calc(env(safe-area-inset-bottom)+88px)] lg:pb-0 bg-neutral-100">
+      <div className="mx-auto max-w-[1400px] px-2 py-0 md:py-0 bg-neutral-100">
+        <div className="flex gap-4 h-[99vh] py-4 bg-neutral-100">
           {/* Sidebar */}
           <StudentSidebarWrapper />
 
           {/* Main */}
-          <main className="flex-1 min-h-0 overflow-hidden m-0.5">
+          <main className="flex-1 h-full overflow-hidden m-0.5">
             {children}
           </main>
         </div>

@@ -37,6 +37,39 @@ export function SubmitAssignmentDialog({ open, onOpenChange }: { open: boolean; 
   const [fileError, setFileError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
+  // Eye refs for following effect
+  const anchorRef = useRef<HTMLDivElement | null>(null);
+  const eyesRef = useRef<(HTMLImageElement | null)[]>([]);
+
+  // Eye following effect
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!anchorRef.current || eyesRef.current.length === 0) return;
+
+      const rekt = anchorRef.current.getBoundingClientRect();
+      const anchorX = rekt.left + rekt.width / 2;
+      const anchorY = rekt.top + rekt.height / 2;
+
+      const angleDeg = angle(e.clientX, e.clientY, anchorX, anchorY);
+
+      eyesRef.current.forEach((eye) => {
+        if (eye) {
+          eye.style.transform = `rotate(${90 + angleDeg}deg)`;
+        }
+      });
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    return () => document.removeEventListener("mousemove", handleMouseMove);
+  }, []);
+
+  const angle = (cx: number, cy: number, ex: number, ey: number) => {
+    const dy = ey - cy;
+    const dx = ex - cx;
+    const rad = Math.atan2(dy, dx);
+    return (rad * 180) / Math.PI;
+  };
+
   const { data: workshops } = useSuspenseQuery(trpc.studentDashboard.getAvailableWorkshops.queryOptions());
 
   const getUploadUrlMutation = useMutation(trpc.studentDashboard.getAssignmentUploadUrl.mutationOptions());
@@ -153,15 +186,40 @@ export function SubmitAssignmentDialog({ open, onOpenChange }: { open: boolean; 
 
   const isSubmitting = submitGoogleMutation.isPending || submitFileMutation.isPending || getUploadUrlMutation.isPending || uploading;
 
-  // Eye ref logic (omitted for brevity but can be added if needed)
-  const anchorRef = useRef<HTMLDivElement | null>(null);
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl  [&>button]:!top-8 [&>button]:!hidden    bg-white rounded-2xl shadow-2xl border-0">
         <div className="relative">
+          {/* This is your reference point for the eyes */}
           <div ref={anchorRef} className="absolute top-0 right-0 w-4 h-4"></div>
-          {/* Decorative images omitted to keep code clean, user can add back logic if needed or I can copy from page.tsx */}
+          
+          <Image 
+            src="/images/popup/popup-illustration-005.png" 
+            alt="Popup Illustration" 
+            width={2000}
+            height={2000}
+            className="absolute -top-20 -right-[50px] w-32 pointer-events-none z-0"
+          />
+          
+          {/* Left eye */}
+          <Image 
+            ref={(el) => { eyesRef.current[0] = el; }}
+            src="/images/popup/eye.png" 
+            alt="Popup Eye" 
+            width={30} 
+            height={30} 
+            className="absolute z-10 top-[-51px] right-[-2px]"
+          />
+          
+          {/* Right eye */}
+          <Image 
+            ref={(el) => { eyesRef.current[1] = el; }}
+            src="/images/popup/eye.png" 
+            alt="Popup Eye" 
+            width={30} 
+            height={30} 
+            className="absolute z-10 top-[-44px] right-[-28px]"
+          />
         </div>
 
         <DialogHeader className="pb-6">

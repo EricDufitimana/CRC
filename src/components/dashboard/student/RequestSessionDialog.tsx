@@ -74,28 +74,33 @@ export function RequestSessionDialog({ open, onOpenChange }: { open: boolean; on
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-visible bg-white rounded-2xl shadow-2xl border-0 [&>button]:!hidden">
         <div className="relative overflow-visible">
           <div ref={anchorRef} className="absolute top-0 right-0 w-4 h-4"></div>
-          <Image
-            src="/images/popup/popup-illustration-009.png"
-            alt="Popup Illustration"
+          
+          <Image 
+            src="/images/popup/popup-illustration-008.png" 
+            alt="Popup Illustration" 
             width={2000}
             height={2000}
-            className="absolute top-[140px] right-[-132px] w-32 pointer-events-none z-0"
+            className="absolute -top-[110px] right-[220px] w-32 pointer-events-none z-0"
           />
-          <Image
+          
+          {/* Left eye */}
+          <Image 
             ref={(el) => { eyesRef.current[0] = el; }}
-            src="/images/popup/eye.png"
-            alt="Popup Eye"
-            width={30}
+            src="/images/popup/eye.png" 
+            alt="Popup Eye" 
+            width={30} 
             height={30}
-            className="absolute z-10 top-[180px] right-[-72px]"
+            className="absolute z-10 top-[-62px] right-[285px]"
           />
-          <Image
+          
+          {/* Right eye */}
+          <Image 
             ref={(el) => { eyesRef.current[1] = el; }}
-            src="/images/popup/eye.png"
-            alt="Popup Eye"
-            width={30}
+            src="/images/popup/eye.png" 
+            alt="Popup Eye" 
+            width={30} 
             height={30}
-            className="absolute z-10 top-[193px] right-[-100px]"
+            className="absolute z-10 top-[-62px] right-[255px]"
           />
         </div>
 

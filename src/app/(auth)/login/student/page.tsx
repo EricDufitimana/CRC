@@ -130,7 +130,7 @@ export default function StudentSignInForm() {
               Don&apos;t have an account?{" "}
               <Link
                 href="/register"
-                className="text-green-500 hover:text-green-600 dark:text-gray-300 dark:hover:text-gray-100 font-medium"
+                className="text-green-500 hover:underline dark:text-gray-300 dark:hover:text-gray-100 font-normal"
               >
                 Sign up here
               </Link>

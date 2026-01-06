@@ -202,7 +202,7 @@ export default function AdminSignInForm() {
               Need help?{" "}
               <button
                 onClick={() => setIsContactDialogOpen(true)}
-                className="text-orange-400 hover:underline dark:text-gray-300 dark:hover:text-gray-100 font-medium"
+                className="text-orange-400 hover:underline dark:text-gray-300 dark:hover:text-gray-100 font-normal"
               >
                 Contact support
               </button>

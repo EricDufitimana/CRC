@@ -1,10 +1,38 @@
-import { adminProcedure, createTRPCRouter } from "../init";
+import { baseProcedure, adminProcedure, createTRPCRouter } from "../init";
 import { prisma } from "@/lib/prisma";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export const studentManagementRouter = createTRPCRouter({
+  // Get unassigned students (for registration)
+  getUnassignedStudents: baseProcedure
+    .query(async () => {
+      const students = await prisma.students.findMany({
+        where: {
+          user_id: null, // Only get students without user accounts
+        },
+        select: {
+          id: true,
+          student_id: true,
+          first_name: true,
+          last_name: true,
+          email: true,
+        },
+        orderBy: {
+          last_name: 'asc',
+        },
+      });
+
+      return students.map(student => ({
+        id: student.id.toString(),
+        student_id: student.student_id,
+        first_name: student.first_name,
+        last_name: student.last_name,
+        email: student.email,
+      }));
+    }),
+
   // Get all students
   getStudents: adminProcedure
     .query(async () => {

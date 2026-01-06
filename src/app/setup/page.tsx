@@ -18,7 +18,6 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, User, FileText, Upload, Image as ImageIcon, Camera, ArrowLeft, Link, Loader2 } from "lucide-react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { FileEditIcon, Link06Icon } from "@hugeicons/core-free-icons";
-import { useAvatarFetch } from "@/hooks/useAvatarFetch";
 import { AnimatedText } from "@/components/animation/AnimatedText";
 import imageCompression from "browser-image-compression";
 import React from "react";
@@ -159,14 +158,6 @@ export default function StudentSetupPage() {
   const [activeTab, setActiveTab] = useState<'upload' | 'existing'>('existing');
   const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null);
   const [selectedAvatarPath, setSelectedAvatarPath] = useState<string | null>(null);
-  
-  // Use the useAvatarFetch hook
-  const { 
-    avatars: fetchedAvatars, 
-    isLoading: isLoadingAvatars, 
-    error: avatarError,
-    fetchAvatars 
-  } = useAvatarFetch();
   const [academicReportFile, setAcademicReportFile] = useState<File[]>([]);
   const [resumeLink, setResumeLink] = useState<string>('');
   const [isUploading, setIsUploading] = useState(false);
@@ -183,6 +174,11 @@ export default function StudentSetupPage() {
   // Get student data using tRPC
   const getStudentDataOptions = trpc.setup.getStudentData.queryOptions({ userId: userId || '' });
   const { data: studentData, isLoading: isLoadingStudent, error: studentError } = useQuery(getStudentDataOptions);
+
+  // Get avatars using prefetched tRPC data
+  const getAvatarsOptions = trpc.studentSidebar.getAvatarsWithSignedUrls.queryOptions();
+  const { data: avatarData, isLoading: isLoadingAvatars, error: avatarError } = useQuery(getAvatarsOptions);
+  const fetchedAvatars = avatarData?.avatars || [];
 
   // Mutations for setup process
   const updateProfileMutation = useMutation({
@@ -324,6 +320,7 @@ export default function StudentSetupPage() {
       reader.onloadend = () => {
         const base64String = reader.result as string;
         updateData.academic_report = base64String;
+        updateData.academic_report_name = file.name; // Add original filename
         
         // Add resume link if provided and continue
         if (resumeLink.trim()) {
@@ -353,11 +350,6 @@ export default function StudentSetupPage() {
     }
   };
 
-
-  // Fetch avatars when component mounts
-  useEffect(() => {
-    fetchAvatars();
-  }, [fetchAvatars]);
 
   // Sequential animation timing for step 0
   useEffect(() => {
@@ -488,8 +480,8 @@ export default function StudentSetupPage() {
         }}
       >
         {/* Decorative Illustrations - Above background, below content */}
-        <div className="absolute inset-0 pointer-events-none z-10">
-          {/* Top Left - Setup Stars */}
+        {/* <div className="absolute inset-0 pointer-events-none z-10">
+          {/* Top Left - Setup Stars
           <div className="absolute top-0 left-4 opacity-70">
             <Image 
               src="/images/setup/setup-stars.svg" 
@@ -501,7 +493,7 @@ export default function StudentSetupPage() {
           </div>
           
           {/* Top Right - Setup Wave */}
-          <div className="absolute bottom-0 -left-32 opacity-70">
+          {/* <div className="absolute bottom-0 -left-32 opacity-70">
             <Image 
               src="/images/setup/setup-wave.svg" 
               alt="Decorative wave" 
@@ -510,8 +502,8 @@ export default function StudentSetupPage() {
               className="object-contain"
             />
           </div>
-          
-          {/* Bottom Left - Setup Blob */}
+           */}
+          {/* Bottom Left - Setup Blob
           <div className="absolute bottom-0 -right-16">
             <Image 
               src="/images/setup/setup-blob.svg" 
@@ -523,7 +515,7 @@ export default function StudentSetupPage() {
           </div>
           
           {/* Bottom Right - Setup Illustration */}
-          <div className="absolute top-0 right-0">
+          {/* <div className="absolute top-0 right-0">
             <Image 
               src="/images/setup/setup-illustration.svg" 
               alt="Setup illustration" 
@@ -531,8 +523,8 @@ export default function StudentSetupPage() {
               height={112}
               className="object-contain"
             />
-          </div>
-        </div>
+          </div> */}
+        
 
         {/* Main Content - Above illustrations */}
         <div className="relative z-20 w-full">
@@ -640,7 +632,7 @@ export default function StudentSetupPage() {
                           : selectedAvatar || '/images/avatars/avatar-001.png'
                       } 
                     />
-                    <AvatarFallback className="text-3xl font-bold bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500 text-white">
+                    <AvatarFallback className="text-3xl font-bold bg-slate-400 text-slate-700">
                       {studentData?.first_name?.charAt(0) || 'U'}
                     </AvatarFallback>
                   </Avatar>

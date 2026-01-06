@@ -26,9 +26,12 @@ import {
 import { cn } from "@/lib/utils";
 import { showToastError } from "@/components/toasts";
 import * as motion from "motion/react-client";
+import { useTRPC } from "@/trpc/client";
+import { useQuery } from "@tanstack/react-query";
 
 export default function SignUpForm() {
   const router = useRouter();
+  const trpc = useTRPC();
   const[email, setEmail] = useState("");
   const[password, setPassword] = useState("");
   const[firstName, setFirstName] = useState("");
@@ -36,45 +39,13 @@ export default function SignUpForm() {
 
   const[studentCode, setStudentCode] = useState("");
   const[selectedStudentId, setSelectedStudentId] = useState("");
-  const[unassignedStudents, setUnassignedStudents] = useState([]);
-  const[isLoadingStudents, setIsLoadingStudents] = useState(true);
   const[studentSearchQuery, setStudentSearchQuery] = useState("");
   const[isGoogleSignUpLoading, setIsGoogleSignUpLoading] = useState(false);
   const[open, setOpen] = useState(false);
 
-  // Fetch unassigned students on component mount
-  useEffect(() => {
-    const fetchUnassignedStudents = async () => {
-      console.log('🚀 Register: Starting to fetch unassigned students...');
-      setIsLoadingStudents(true);
-      
-      try {
-        console.log('📡 Register: Making API request to /api/students/unassigned...');
-        const response = await fetch('/api/students/unassigned');
-        
-        console.log('📊 Register: Response status:', response.status);
-        console.log('📊 Register: Response ok:', response.ok);
-        
-        if (response.ok) {
-          const data = await response.json();
-          console.log('✅ Register: Successfully fetched students:', data);
-          console.log('✅ Register: Number of students:', data.length);
-          setUnassignedStudents(data);
-        } else {
-          const errorData = await response.json();
-          console.error('❌ Register: Failed to fetch unassigned students:', errorData);
-          console.error('❌ Register: Response status:', response.status);
-        }
-      } catch (error) {
-        console.error('💥 Register: Error fetching unassigned students:', error);
-      } finally {
-        console.log('🏁 Register: Setting loading to false');
-        setIsLoadingStudents(false);
-      }
-    };
-
-    fetchUnassignedStudents();
-  }, []);
+  // Fetch unassigned students using tRPC query
+  const getUnassignedStudentsOptions = trpc.studentManagement.getUnassignedStudents.queryOptions();
+  const { data: unassignedStudents = [], isLoading: isLoadingStudents } = useQuery(getUnassignedStudentsOptions);
 
   // Update student code when a student is selected
   useEffect(() => {
@@ -82,7 +53,7 @@ export default function SignUpForm() {
     console.log('🔄 Register: Available students:', unassignedStudents);
     
     if (selectedStudentId) {
-      const selectedStudent = unassignedStudents.find(student => student.id === parseInt(selectedStudentId));
+      const selectedStudent = unassignedStudents.find(student => student.id === selectedStudentId);
       console.log('🎯 Register: Found selected student:', selectedStudent);
       
       if (selectedStudent) {
@@ -266,7 +237,7 @@ export default function SignUpForm() {
                         disabled={isLoadingStudents}
                       >
                         {selectedStudentId
-                          ? unassignedStudents.find((student) => student.id === parseInt(selectedStudentId))?.first_name + " " + unassignedStudents.find((student) => student.id === parseInt(selectedStudentId))?.last_name
+                          ? unassignedStudents.find((student) => student.id === selectedStudentId)?.first_name + " " + unassignedStudents.find((student) => student.id === selectedStudentId)?.last_name
                           : isLoadingStudents ? "Loading students..." : "Select a student..."}
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
