@@ -1,6 +1,7 @@
 import { HydrateClient, prefetch, trpc } from '@/trpc/server';
 import { getServerContext } from '@/trpc/init';
 import Footer from "@/components/Footer";
+import { Suspense } from "react";
 import Header from "@/components/Header";
 import ScrollToTop from "@/components/ScrollToTop";
 import StickyNotificationBanner from "@/components/Banner/StickyNotificationBanner";
@@ -24,6 +25,9 @@ export default async function RootLayout({
     prefetch(trpc.events.getPreviousEvents.queryOptions());
     prefetch(trpc.events.getUpcomingEvents.queryOptions());
     prefetch(trpc.workshops.getAllWorkshops.queryOptions());
+    // Prefetch CRC classes for S5 and S6 to populate workshop navigation menu
+    prefetch(trpc.crcClassManagement.getCrcClassesByGradeGroup.queryOptions({ gradeGroup: 's5' }));
+    prefetch(trpc.crcClassManagement.getCrcClassesByGradeGroup.queryOptions({ gradeGroup: 's6' }));
   } catch (error) {
     // Silently fail prefetch - data will load on client side
     console.warn('Prefetch failed, will load on client:', error);
@@ -50,7 +54,13 @@ export default async function RootLayout({
         {Head(getTitle())}
         {pathname === "/" && <StickyNotificationBanner />}
         <div style={{ paddingTop: "var(--banner-height, 0px)", transition: "padding-top 200ms ease" }}>
-          <Header/>
+          <Suspense fallback={
+            <div className="flex items-center justify-center p-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
+            </div>
+          }>
+            <Header />
+          </Suspense>
           {children}
           <Footer />
         </div>

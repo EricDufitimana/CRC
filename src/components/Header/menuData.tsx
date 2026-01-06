@@ -1,3 +1,5 @@
+"use client";
+
 import { Menu } from "@/types/menu";
 
 // Base menu data without dynamic classes
@@ -111,41 +113,48 @@ const baseMenuData: Menu[] = [
   },
 
 ];
+
+import { useTRPC } from "@/trpc/client";
+import { useMemo } from "react";
+import { Loader2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+
+// Loading spinner component
+const LoadingSpinner = () => (
+  <div className="flex items-center justify-center p-2">
+    <Loader2 className="h-4 w-4 animate-spin" />
+  </div>
+);
+
 // Function to fetch CRC classes and populate menu data
-export async function getMenuDataWithClasses(): Promise<Menu[]> {
-  // Clone the base menu data
-  const menuData = JSON.parse(JSON.stringify(baseMenuData));
+export function useMenuDataWithClasses(): { menuData: Menu[], isMenuLoading: boolean, LoadingSpinner: React.ComponentType } {
+  const trpc = useTRPC();
+  
+  // Use useQuery like the admin dashboard
+  const { data: s5Data, isFetching: s5Fetching } = useQuery(
+    trpc.crcClassManagement.getCrcClassesByGradeGroup.queryOptions({ gradeGroup: 's5' })
+  );
+  
+  const { data: s6Data, isFetching: s6Fetching } = useQuery(
+    trpc.crcClassManagement.getCrcClassesByGradeGroup.queryOptions({ gradeGroup: 's6' })
+  );
 
-  try {
-    // Fetch CRC classes for S5 and S6
-    const [s5Response, s6Response] = await Promise.all([
-      fetch(`${typeof window !== 'undefined' ? window.location.origin : ''}/api/crc-classes/by-grade-group?gradeGroup=s5`).catch(() => null),
-      fetch(`${typeof window !== 'undefined' ? window.location.origin : ''}/api/crc-classes/by-grade-group?gradeGroup=s6`).catch(() => null)
-    ]);
+  const isMenuLoading = s5Fetching || s6Fetching;
 
-    let s5Classes: any[] = [];
-    let s6Classes: any[] = [];
+  // Memoize menu data to prevent unnecessary re-renders
+  const menuData = useMemo(() => {
+    const s5Classes = s5Data || [];
+    const s6Classes = s6Data || [];
 
-    if (s5Response?.ok) {
-      const s5Data = await s5Response.json();
-      if (s5Data.success) {
-        s5Classes = s5Data.data;
-      }
-    }
-
-    if (s6Response?.ok) {
-      const s6Data = await s6Response.json();
-      if (s6Data.success) {
-        s6Classes = s6Data.data;
-      }
-    }
+    // Clone base menu data
+    const updatedMenuData = JSON.parse(JSON.stringify(baseMenuData));
 
     // Find S5 and S6 menu items and populate their nestedSubmenu
-    const workshopsMenu = menuData.find((item: Menu) => item.id === 5);
+    const workshopsMenu = updatedMenuData.find((item: Menu) => item.id === 5);
     if (workshopsMenu?.submenu) {
       const s5Menu = workshopsMenu.submenu.find((item: Menu) => item.id === 20);
       if (s5Menu && s5Classes.length > 0) {
-        s5Menu.nestedSubmenu = s5Classes.map((crcClass, index) => ({
+        s5Menu.nestedSubmenu = s5Classes.map((crcClass: any, index: number) => ({
           id: 1000 + index, // Use high IDs to avoid conflicts
           title: crcClass.name,
           path: `/workshops/s5/${crcClass.id}`,
@@ -155,7 +164,7 @@ export async function getMenuDataWithClasses(): Promise<Menu[]> {
 
       const s6Menu = workshopsMenu.submenu.find((item: Menu) => item.id === 21);
       if (s6Menu && s6Classes.length > 0) {
-        s6Menu.nestedSubmenu = s6Classes.map((crcClass, index) => ({
+        s6Menu.nestedSubmenu = s6Classes.map((crcClass: any, index: number) => ({
           id: 2000 + index, // Use high IDs to avoid conflicts
           title: crcClass.name,
           path: `/workshops/s6/${crcClass.id}`,
@@ -163,43 +172,11 @@ export async function getMenuDataWithClasses(): Promise<Menu[]> {
         }));
       }
     }
-  } catch (error) {
-    console.error('Error fetching CRC classes for menu:', error);
-  }
 
-  return menuData;
-}
+    return updatedMenuData;
+  }, [s5Data, s6Data]);
 
-// Client-side hook version that uses state
-export function useMenuDataWithClasses(s5Classes: any[] = [], s6Classes: any[] = []): Menu[] {
-  // Clone the base menu data
-  const menuData = JSON.parse(JSON.stringify(baseMenuData));
-
-  // Find S5 and S6 menu items and update their nestedSubmenu
-  const workshopsMenu = menuData.find((item: Menu) => item.id === 5);
-  if (workshopsMenu?.submenu) {
-    const s5Menu = workshopsMenu.submenu.find((item: Menu) => item.id === 20);
-    if (s5Menu && s5Classes.length > 0) {
-      s5Menu.nestedSubmenu = s5Classes.map((crcClass, index) => ({
-        id: 1000 + index, // Use high IDs to avoid conflicts
-        title: crcClass.name,
-        path: `/workshops/s5/${crcClass.id}`,
-        newTab: false,
-      }));
-    }
-
-    const s6Menu = workshopsMenu.submenu.find((item: Menu) => item.id === 21);
-    if (s6Menu && s6Classes.length > 0) {
-      s6Menu.nestedSubmenu = s6Classes.map((crcClass, index) => ({
-        id: 2000 + index, // Use high IDs to avoid conflicts
-        title: crcClass.name,
-        path: `/workshops/s6/${crcClass.id}`,
-        newTab: false,
-      }));
-    }
-  }
-
-  return menuData;
+  return { menuData, isMenuLoading, LoadingSpinner };
 }
 
 export default baseMenuData;

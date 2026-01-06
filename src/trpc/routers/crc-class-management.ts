@@ -1,4 +1,4 @@
-import { adminProcedure, createTRPCRouter } from "../init";
+import { adminProcedure, createTRPCRouter, baseProcedure, t } from "../init";
 import { prisma } from "@/lib/prisma";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
@@ -29,6 +29,52 @@ export const crcClassManagementRouter = createTRPCRouter({
       num_students: c._count.students,
     }));
   }),
+
+  // Get CRC classes by grade group (public endpoint for menu)
+  getCrcClassesByGradeGroup: t.procedure
+    .input(
+      z.object({
+        gradeGroup: z.enum(['s5', 's6', 'ey', 's4']).optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      const { gradeGroup } = input;
+
+      // Convert gradeGroup from frontend format to database format
+      const dbGradeGroup = gradeGroup === 's5' ? 'Senior_5' : 
+                          gradeGroup === 's6' ? 'Senior_6' :
+                          gradeGroup === 'ey' ? 'Enrichment_Year' :
+                          gradeGroup === 's4' ? 'Senior_4' : null;
+
+      const formatEnumValue = (value: string | null) => {
+        if (!value) return null;
+        return value.replace(/_/g, ' ');
+      };
+
+      const crcClasses = await prisma.crc_class.findMany({
+        where: dbGradeGroup ? { grade_group: dbGradeGroup } : undefined,
+        select: {
+          id: true,
+          name: true,
+          grade_group: true,
+          _count: {
+            select: {
+              students: true
+            }
+          }
+        },
+        orderBy: {
+          name: 'asc'
+        }
+      });
+
+      return crcClasses.map(crcClass => ({
+        id: crcClass.id.toString(),
+        name: crcClass.name,
+        grade_group: formatEnumValue(crcClass.grade_group),
+        num_students: crcClass._count.students
+      }));
+    }),
 
   // Create a new CRC class
   createCrcClass: adminProcedure

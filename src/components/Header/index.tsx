@@ -18,12 +18,15 @@ import {
   SheetClose
 } from "@/components/ui/sheet";
 
-import baseMenuData, { useMenuDataWithClasses, getMenuDataWithClasses } from "./menuData";
+import baseMenuData, { useMenuDataWithClasses } from "./menuData";
 
 const Header = () => {
   const pathUrl = usePathname();
   const isMobile = useIsMobile();
   
+  // Use the hook to get menu data with CRC classes
+  const { menuData, isMenuLoading, LoadingSpinner } = useMenuDataWithClasses();
+
   // Helper function to check if a menu item should be active
   const isMenuItemActive = (menuItem: any) => {
     // Direct path match
@@ -196,26 +199,6 @@ const Header = () => {
 
   const { theme, setTheme } = useTheme();
   const [loading, setLoading ] = useState(false);
-
-  // Menu data state
-  const [menuData, setMenuData] = useState<typeof baseMenuData>(baseMenuData);
-  const [menuLoading, setMenuLoading] = useState(true);
-
-  // Fetch menu data with CRC classes
-  useEffect(() => {
-    const loadMenuData = async () => {
-      try {
-        const data = await getMenuDataWithClasses();
-        setMenuData(data);
-      } catch (error) {
-        console.error('Error loading menu data:', error);
-      } finally {
-        setMenuLoading(false);
-      }
-    };
-
-    loadMenuData();
-  }, []);
 
   // GSAP refs
   const headerRef = useRef<HTMLDivElement>(null);
@@ -402,7 +385,7 @@ const Header = () => {
                                     </div>
                                     {/* Nested submenu */}
                                     <div className="invisible absolute left-full top-0 ml-2 w-[200px] opacity-0 transition-all duration-300 ease-linear group-hover/nested:visible group-hover/nested:opacity-100 rounded-2xl bg-white border border-stroke dark:border-dark-3/20 p-2 shadow-lg dark:bg-dark-2">
-                                      {menuLoading && (submenuItem.id === 20 || submenuItem.id === 21) ? (
+                                      {isMenuLoading && (submenuItem.id === 20 || submenuItem.id === 21) ? (
                                         <div className="flex items-center justify-center py-4">
                                           <Loader2 className="mr-2 h-4 w-4 animate-spin text-gray-500" />
                                           <span className="ml-2 text-sm text-body-color dark:text-dark-6">Loading...</span>
@@ -557,7 +540,7 @@ const Header = () => {
                                             </button>
                                             {openNestedIndex === i && (
                                               <div className="ml-4 mt-2 space-y-1">
-                                                {menuLoading && (submenuItem.id === 20 || submenuItem.id === 21) ? (
+                                                {isMenuLoading && (submenuItem.id === 20 || submenuItem.id === 21) ? (
                                                   <div className="flex items-center justify-center py-4">
                                                     
                                                     <Loader2 className="mr-2 h-4 w-4 animate-spin text-gray-500" />
