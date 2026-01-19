@@ -64,7 +64,7 @@ const workshops = [
 
 const Footer = () => {
   return (
-    <footer className="relative overflow-hidden pt-20 lg:pt-[100px]">
+    <footer className="relative overflow-hidden pt-20 lg:pt-[100px] bg-dark">
       <div className="absolute inset-0 -z-10">
         <svg
           className="h-full w-full"
