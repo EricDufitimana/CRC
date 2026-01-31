@@ -9,31 +9,97 @@ export async function GET(request: Request) {
   const next = requestUrl.searchParams.get('next') || '/account-check';
 
   console.log('🔐 [Auth Callback] Processing OAuth callback');
+  console.log('🔐 [Auth Callback] Request URL:', request.url);
+  console.log('🔐 [Auth Callback] Request origin:', requestUrl.origin);
   console.log('🔐 [Auth Callback] Code present:', !!code);
   console.log('🔐 [Auth Callback] Next URL:', next);
+  console.log('🔐 [Auth Callback] Environment vars:', {
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    NODE_ENV: process.env.NODE_ENV,
+    VERCEL_URL: process.env.VERCEL_URL,
+  });
 
   if (code) {
     try {
       const supabase = await createClient();
       
       console.log('🔄 [Auth Callback] Exchanging code for session...');
+      console.log('🔄 [Auth Callback] Code length:', code.length);
+      console.log('🔄 [Auth Callback] Code preview:', code.substring(0, 20) + '...');
       
       // This is where the PKCE verifier is available (in cookies)
-      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
       if (error) {
         console.error('❌ [Auth Callback] Error exchanging code:', error);
+        console.error('❌ [Auth Callback] Error details:', {
+          message: error.message,
+          status: error.status,
+          code: error.code,
+        });
         return NextResponse.redirect(
           new URL(`/auth/error?message=${encodeURIComponent(error.message)}`, requestUrl.origin)
         );
       }
 
       console.log('✅ [Auth Callback] Session established successfully');
+      console.log('👤 [Auth Callback] User ID:', data.user?.id);
+      console.log('👤 [Auth Callback] User email:', data.user?.email);
+      console.log('👤 [Auth Callback] Session expires at:', data.session?.expires_at);
 
+      // Check if user exists in admin or student tables
+      if (data.user?.id) {
+        console.log('🔍 [Auth Callback] Checking user role...');
+        const adminClient = createServiceRoleClient();
+        
+        // Check admin table
+        const { data: adminCheck, error: adminError } = await adminClient
+          .from('admin')
+          .select('*')
+          .eq('user_id', data.user.id)
+          .single();
+          
+        if (!adminError && adminCheck) {
+          console.log('✅ [Auth Callback] User is admin:', adminCheck);
+          console.log('🔐 [Auth Callback] Admin details:', {
+            id: adminCheck.id,
+            first_name: adminCheck.first_name,
+            last_name: adminCheck.last_name,
+            email: adminCheck.email,
+          });
+        } else {
+          console.log('❌ [Auth Callback] Admin check failed:', adminError);
+        }
+        
+        // Check student table
+        const { data: studentCheck, error: studentError } = await adminClient
+          .from('students')
+          .select('*')
+          .eq('user_id', data.user.id)
+          .single();
+          
+        if (!studentError && studentCheck) {
+          console.log('✅ [Auth Callback] User is student:', studentCheck);
+          console.log('🔐 [Auth Callback] Student details:', {
+            id: studentCheck.id,
+            student_id: studentCheck.student_id,
+            first_name: studentCheck.first_name,
+            last_name: studentCheck.last_name,
+            email: studentCheck.email,
+          });
+        } else {
+          console.log('❌ [Auth Callback] Student check failed:', studentError);
+        }
+      }
+
+      console.log('🔄 [Auth Callback] Redirecting to:', next);
+      console.log('🔄 [Auth Callback] Full redirect URL:', new URL(next, requestUrl.origin).toString());
+      
       // Redirect to the next page (account-check, admin dashboard, etc.)
       return NextResponse.redirect(new URL(next, requestUrl.origin));
     } catch (error) {
       console.error('❌ [Auth Callback] Unexpected error:', error);
+      console.error('❌ [Auth Callback] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
       return NextResponse.redirect(
         new URL('/auth/error?message=Authentication failed', requestUrl.origin)
       );
@@ -41,6 +107,7 @@ export async function GET(request: Request) {
   }
 
   console.log('⚠️ [Auth Callback] No code provided, redirecting to login');
+  console.log('⚠️ [Auth Callback] Redirect URL:', new URL('/login', requestUrl.origin).toString());
   return NextResponse.redirect(new URL('/login', requestUrl.origin));
 }
 

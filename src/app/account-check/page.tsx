@@ -31,15 +31,22 @@ export default function AccountCheckPage() {
     const checkAccount = async () => {
       try {
         console.log('🔍 [Account Check] Starting account verification...');
+        console.log('🔍 [Account Check] Current URL:', window.location.href);
+        console.log('🔍 [Account Check] User agent:', navigator.userAgent);
         
         // Session is already established by the callback route
         // Just wait a bit to ensure cookies are fully propagated
+        console.log('🔍 [Account Check] Waiting for session propagation...');
         await new Promise(resolve => setTimeout(resolve, 800));
         
         const { data: { user }, error: userError } = await supabase.auth.getUser();
         
         if (userError || !user) {
           console.error('❌ [Account Check] No authenticated user:', userError);
+          console.error('❌ [Account Check] User error details:', {
+            message: userError?.message,
+            status: userError?.status,
+          });
           setDebugInfo('No authenticated user - please log in first');
           setIsLoading(false);
           setCheckComplete(true);
@@ -47,9 +54,14 @@ export default function AccountCheckPage() {
         }
 
         const userId = user.id;
+        console.log('👤 [Account Check] User authenticated successfully');
         console.log('👤 [Account Check] User ID:', userId);
+        console.log('👤 [Account Check] User email:', user.email);
+        console.log('👤 [Account Check] User metadata:', user.user_metadata);
+        console.log('👤 [Account Check] User app metadata:', user.app_metadata);
 
         // Check if user exists in students table using tRPC
+        console.log('🔍 [Account Check] Checking student table...');
         const studentData = await queryClient.fetchQuery(
           trpc.auth.checkUserExists.queryOptions({ userId, table: "students" })
         );
@@ -57,10 +69,21 @@ export default function AccountCheckPage() {
         const studentExists = studentData.exists;
         console.log('📊 [Account Check] Student exists:', studentExists);
 
+        // Check if user exists in admin table using tRPC
+        console.log('🔍 [Account Check] Checking admin table...');
+        const adminData = await queryClient.fetchQuery(
+          trpc.auth.checkUserExists.queryOptions({ userId, table: "admins" })
+        );
+
+        const adminExists = adminData.exists;
+        console.log('📊 [Account Check] Admin exists:', adminExists);
+
         if (studentExists) {
+          console.log('✅ [Account Check] User is a student');
           setAccountExists(true);
 
           // Check setup status using tRPC
+          console.log('🔍 [Account Check] Checking setup status...');
           const setupData = await queryClient.fetchQuery(
             trpc.auth.checkSetupStatus.queryOptions({ userId })
           );
@@ -75,6 +98,7 @@ export default function AccountCheckPage() {
             setIsLoading(false);
 
             setTimeout(() => {
+              console.log('🔄 [Account Check] Executing redirect to /dashboard/student');
               window.location.href = "/dashboard/student";
             }, 800);
           } else {
@@ -84,18 +108,56 @@ export default function AccountCheckPage() {
             setIsLoading(false);
 
             setTimeout(() => {
+              console.log('🔄 [Account Check] Executing redirect to /setup');
               window.location.href = "/setup";
             }, 800);
           }
+        } else if (adminExists) {
+          console.log('✅ [Account Check] User is an admin');
+          setAccountExists(true);
+          
+          // Check if super admin
+          console.log('🔍 [Account Check] Checking super admin status...');
+          const superAdminData = await queryClient.fetchQuery(
+            trpc.auth.checkSuperAdmin.queryOptions({ userId })
+          );
+
+          if (superAdminData.success) {
+            console.log('👑 [Account Check] User is super admin');
+            setDebugInfo('Redirecting to admin dashboard...');
+            setRedirecting(true);
+            setIsLoading(false);
+
+            setTimeout(() => {
+              console.log('🔄 [Account Check] Executing redirect to', superAdminData.redirectTo);
+              window.location.href = superAdminData.redirectTo;
+            }, 800);
+          } else {
+            console.log('🔧 [Account Check] User is regular admin');
+            setDebugInfo('Redirecting to admin dashboard...');
+            setRedirecting(true);
+            setIsLoading(false);
+
+            setTimeout(() => {
+              console.log('🔄 [Account Check] Executing redirect to /dashboard/admin');
+              window.location.href = "/dashboard/admin";
+            }, 800);
+          }
         } else {
-          console.log('❌ [Account Check] No account found');
+          console.log('❌ [Account Check] No account found in either students or admins table');
+          console.log('❌ [Account Check] User ID not found:', userId);
           setAccountExists(false);
-          setDebugInfo('Account creation required');
+          setDebugInfo('Account creation required - User not found in system');
           setIsLoading(false);
           setCheckComplete(true);
         }
       } catch (error) {
-        console.error('❌ [Account Check] Error:', error);
+        console.error('❌ [Account Check] Error during account check:', error);
+        console.error('❌ [Account Check] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+        console.error('❌ [Account Check] Error details:', {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          name: error instanceof Error ? error.name : 'Unknown',
+        });
         setAccountExists(false);
         setDebugInfo(`Error: ${error instanceof Error ? error.message : 'Unknown'}`);
         setIsLoading(false);

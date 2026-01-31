@@ -26,9 +26,7 @@ export const authRouter = createTRPCRouter({
       const supabase = await createClient();
       
       // Get the base URL - try multiple sources for reliability
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
-                     process.env.NEXT_PUBLIC_SITE_URL || 
-                     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
       
       // Redirect to auth callback route, which will then redirect to the final destination
       const callbackUrl = `${baseUrl}/api/auth/callback?next=${encodeURIComponent(input.redirectTo)}`;
@@ -38,8 +36,9 @@ export const authRouter = createTRPCRouter({
       console.log('🔐 [tRPC Auth] getOAuthUrl: Environment vars:', {
         NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
         NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
-        VERCEL_URL: process.env.VERCEL_URL,
+        NODE_ENV: process.env.NODE_ENV,
       });
+      console.log('🔐 [tRPC Auth] getOAuthUrl: Current hostname (if available):', typeof window !== 'undefined' ? window.location.hostname : 'server-side');
       console.log('🔐 [tRPC Auth] getOAuthUrl: Initiating Supabase OAuth...');
       
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -55,6 +54,11 @@ export const authRouter = createTRPCRouter({
 
       if (error) {
         console.error('❌ [tRPC Auth] getOAuthUrl: OAuth error:', error);
+        console.error('❌ [tRPC Auth] getOAuthUrl: Error details:', {
+          message: error.message,
+          status: error.status,
+          code: error.code,
+        });
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: error.message || 'Failed to initiate OAuth',
@@ -64,6 +68,7 @@ export const authRouter = createTRPCRouter({
       console.log('✅ [tRPC Auth] getOAuthUrl: OAuth URL generated successfully');
       console.log('🔐 [tRPC Auth] getOAuthUrl: Generated OAuth URL:', data.url);
       console.log('🔐 [tRPC Auth] getOAuthUrl: Redirect URL:', input.redirectTo);
+      console.log('🔐 [tRPC Auth] getOAuthUrl: Full OAuth flow initiated for role:', input.role || 'not specified');
       return { url: data.url };
     }),
 
