@@ -25,7 +25,18 @@ function angle(cx: number, cy: number, ex: number, ey: number) {
 export function RequestSessionDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const trpc = useTRPC();
   const [step, setStep] = useState<'select-admin' | 'select-time' | 'booking'>('select-admin');
-  const [selectedAdmin, setSelectedAdmin] = useState<{ id: string, name: string, specialization: string } | null>(null);
+  const [selectedAdmin, setSelectedAdmin] = useState<{ 
+    id: string, 
+    name: string, 
+    specialization: string,
+    profile_picture?: string | null,
+    cal_link?: string | null,
+    cal_sessions_namespace?: {
+      quick_review: string,
+      standard_session: string,
+      comprehensive_review: string
+    } | null
+  } | null>(null);
   const [selectedTime, setSelectedTime] = useState<string>("");
 
   const { data: fellows } = useSuspenseQuery(trpc.studentDashboard.getFellows.queryOptions());
@@ -64,11 +75,33 @@ export function RequestSessionDialog({ open, onOpenChange }: { open: boolean; on
   }, [open]);
 
   const handleBook = async () => {
-    const cal = await getCalApi({ namespace: 'quick-review' });
-    cal('modal', { calLink: 'dufitimana-eric/quick-review' });
-    // In real app, might pass selected admin/time to cal link
-  };
+    if (!selectedAdmin || !selectedTime) return;
 
+    // Map selectedTime (20_min, 40_min, 60_min) to the corresponding namespace key
+    const namespaceKeyMap: Record<string, string> = {
+      "20_min": "quick_review",
+      "40_min": "standard_session",
+      "60_min": "comprehensive_review"
+    };
+
+    const key = namespaceKeyMap[selectedTime];
+    const eventSlug = selectedAdmin.cal_sessions_namespace?.[key as keyof typeof selectedAdmin.cal_sessions_namespace] || "";
+    const calUserLink = selectedAdmin.cal_link || "";
+
+    if (!calUserLink || !eventSlug) {
+      console.error("Missing cal_link or event slug for admin:", selectedAdmin.name);
+      onOpenChange(false);
+      return;
+    }
+
+    // Close the dialog immediately when booking is initiated
+    onOpenChange(false);
+    
+    const cal = await getCalApi({ namespace: eventSlug });
+    cal('modal', { calLink: `${calUserLink}/${eventSlug}`, config: {
+      theme: 'light'
+    } });
+  };
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-visible bg-white rounded-2xl shadow-2xl border-0 [&>button]:!hidden">
@@ -134,8 +167,18 @@ export function RequestSessionDialog({ open, onOpenChange }: { open: boolean; on
               {fellows?.map((fellow) => (
                 <div key={fellow.id} onClick={() => setSelectedAdmin(fellow)} className={`p-4 border rounded-xl cursor-pointer transition-all duration-200 ${selectedAdmin?.id === fellow.id ? 'border-statColors-2 bg-statColors-2/10 shadow-sm' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm bg-white'}`}>
                   <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-slate-300 shadow-sm">
-                      <Users className="h-6 w-6 text-white" />
+                    <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0 bg-slate-300 shadow-sm">
+                      {fellow.profile_picture ? (
+                        <Image 
+                          src={fellow.profile_picture} 
+                          alt={fellow.name} 
+                          width={48} 
+                          height={48} 
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <Users className="h-6 w-6 text-white" />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-gray-900 text-sm mb-1 truncate">{fellow.name}</h3>
@@ -179,8 +222,18 @@ export function RequestSessionDialog({ open, onOpenChange }: { open: boolean; on
           <div className="space-y-8">
             <div className="bg-gray-50 rounded-xl p-6">
               <div className="flex items-center space-x-4 mb-4">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-statColors-2 shadow-sm">
-                  <Users className="h-5 w-5 text-white" />
+                <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center bg-slate-300 shadow-sm">
+                  {selectedAdmin?.profile_picture ? (
+                    <Image 
+                      src={selectedAdmin.profile_picture} 
+                      alt={selectedAdmin.name} 
+                      width={40} 
+                      height={40} 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <Users className="h-5 w-5 text-white" />
+                  )}
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900">Session Summary</h3>

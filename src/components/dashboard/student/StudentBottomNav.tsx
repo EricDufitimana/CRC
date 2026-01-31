@@ -58,6 +58,7 @@ export function StudentBottomNav() {
 
     return (
       <button
+        key={item.href}
         type="button"
         onClick={() => router.push(item.href)}
         className={
@@ -160,6 +161,7 @@ export function StudentBottomNavTablet() {
 
     return (
       <button
+        key={item.href}
         type="button"
         onClick={() => router.push(item.href)}
         className={

@@ -11,6 +11,7 @@ export type AdminUser = {
   last_name: string;
   email: string | null;
   role: string; // or specific role type
+  profile_picture: string | null;
 }
 
 export type StudentUser = {
@@ -67,6 +68,7 @@ export const createTRPCContext = async (): Promise<Context> => {
         last_name: true,
         role: true,
         email: true,
+        profile_picture: true,
       }
     });
     

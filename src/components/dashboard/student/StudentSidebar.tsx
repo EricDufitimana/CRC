@@ -274,8 +274,10 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
 
   return (
     <aside className={`hidden shrink-0 lg:block w-72 m-0.5 ${className}`}>
-      <div className="rounded-xl bg-white shadow-sm ring-1 ring-black/5 h-full overflow-auto flex flex-col justify-center items-center">
-        <div className="p-6">
+      <div className="rounded-xl bg-white shadow-sm ring-1 ring-black/5 h-full overflow-auto flex flex-col items-center">
+   
+
+        <div className="p-6 pt-2">
           <div className="mt-4 h-short:mt-1 flex flex-col items-center gap-3">
             <div 
               className={`relative group ${!userDataLoading ? 'cursor-pointer' : 'cursor-default'}`}

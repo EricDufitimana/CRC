@@ -4,7 +4,7 @@ export default function Head(title:string) {
       <title>{title}</title>
       <meta content="width=device-width, initial-scale=1" name="viewport" />
       <meta name="description" content="Career Resources Center Website" />
-      <link rel="icon" href="/images/logo/logo.svg" />
+      <link rel="icon" type="image/svg+xml" href="/images/logo/logo.svg" />
     </>
   );
 }

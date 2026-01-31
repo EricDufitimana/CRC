@@ -190,16 +190,34 @@ export const studentDashboardRouter = createTRPCRouter({
           first_name: true,
           last_name: true,
           honorific: true,
-          role: true, // Maybe filter by role if needed
+          role: true,
+          profile_picture: true,
+          cal_link: true,
+          cal_sessions_namespace: true,
         }
       });
 
-      // Simple transformation
-      return fellows.map(f => ({
-        id: f.id.toString(),
-        name: `${f.honorific || ''} ${f.first_name} ${f.last_name}`.trim(),
-        specialization: f.role || 'Fellow' // Fallback
+      // Simple transformation and profile picture signed URLs
+      const results = await Promise.all(fellows.map(async (f) => {
+        let profilePictureUrl = f.profile_picture;
+        if (f.profile_picture && !f.profile_picture.startsWith('http')) {
+          const { data } = await supabaseAdmin.storage
+            .from('avatars')
+            .createSignedUrl(f.profile_picture, 3600);
+          profilePictureUrl = data?.signedUrl || null;
+        }
+
+        return {
+          id: f.id.toString(),
+          name: `${f.honorific || ''} ${f.first_name} ${f.last_name}`.trim(),
+          specialization: f.role || 'Fellow',
+          profile_picture: profilePictureUrl,
+          cal_link: f.cal_link,
+          cal_sessions_namespace: f.cal_sessions_namespace as any,
+        };
       }));
+
+      return results;
     }),
 
   // Get available workshops

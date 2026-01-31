@@ -33,14 +33,14 @@ export default function AccountCheckPage() {
         console.log('🔍 [Account Check] Starting account verification...');
         console.log('🔍 [Account Check] Current URL:', window.location.href);
         console.log('🔍 [Account Check] User agent:', navigator.userAgent);
-        
+
         // Session is already established by the callback route
         // Just wait a bit to ensure cookies are fully propagated
         console.log('🔍 [Account Check] Waiting for session propagation...');
         await new Promise(resolve => setTimeout(resolve, 800));
-        
+
         const { data: { user }, error: userError } = await supabase.auth.getUser();
-        
+
         if (userError || !user) {
           console.error('❌ [Account Check] No authenticated user:', userError);
           console.error('❌ [Account Check] User error details:', {
@@ -115,7 +115,7 @@ export default function AccountCheckPage() {
         } else if (adminExists) {
           console.log('✅ [Account Check] User is an admin');
           setAccountExists(true);
-          
+
           // Check if super admin
           console.log('🔍 [Account Check] Checking super admin status...');
           const superAdminData = await queryClient.fetchQuery(
@@ -129,8 +129,13 @@ export default function AccountCheckPage() {
             setIsLoading(false);
 
             setTimeout(() => {
-              console.log('🔄 [Account Check] Executing redirect to', superAdminData.redirectTo);
-              window.location.href = superAdminData.redirectTo;
+              if (superAdminData.redirectTo) {
+                console.log('🔄 [Account Check] Executing redirect to', superAdminData.redirectTo);
+                window.location.href = superAdminData.redirectTo;
+              } else {
+                console.warn('⚠️ [Account Check] Success was true but redirectTo was missing, using default');
+                window.location.href = "/dashboard/admin";
+              }
             }, 800);
           } else {
             console.log('🔧 [Account Check] User is regular admin');

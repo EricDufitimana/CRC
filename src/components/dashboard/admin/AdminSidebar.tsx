@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Button } from "@/zenith/components/ui/button";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Settings } from "lucide-react";
 import { AdminHeader } from "./AdminHeader";
+import Image from "next/image";
 
 interface AdminSidebarProps {
   adminName: string;
@@ -37,6 +38,18 @@ export function AdminSidebar({ adminName, adminEmail }: AdminSidebarProps) {
 
   return (
     <div className="hidden lg:flex fixed left-0 top-0 bottom-0 w-60 backdrop-blur-2xl flex-col z-10 transition-colors duration-300 bg-gray-50 border-gray-200/30">
+      {/* Logo */}
+      <div className="p-6 pb-2">
+        <Image 
+          src="/images/logo/logo.svg" 
+          alt="CRC Logo" 
+          width={120} 
+          height={40} 
+          className="w-32 h-auto cursor-pointer" 
+          onClick={() => router.push('/dashboard/admin')}
+        />
+      </div>
+
       {/* Navigation */}
       <nav className="flex-1 p-6 space-y-2 overflow-y-auto overflow-x-hidden relative scrollbar-hide">
         {/* Dashboard */}

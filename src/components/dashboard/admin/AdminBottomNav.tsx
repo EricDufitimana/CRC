@@ -183,6 +183,7 @@ export function AdminBottomNav({ adminName, adminEmail }: AdminBottomNavProps) {
                       <BriefcaseBusiness className="h-4 w-4 mr-2" />
                       Opportunities
                     </Button>
+
                   </div>
 
                   <AdminHeader adminName={adminName} adminEmail={adminEmail} />
@@ -264,6 +265,8 @@ export function AdminBottomNav({ adminName, adminEmail }: AdminBottomNavProps) {
                       <Megaphone className="h-4 w-4 mr-2" />
                       Announcements
                     </Button>
+
+
                   </div>
 
                   <AdminHeader adminName={adminName} adminEmail={adminEmail} />

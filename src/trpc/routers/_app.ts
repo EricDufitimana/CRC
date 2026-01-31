@@ -23,6 +23,7 @@ import { essayViewRouter } from './essay-view';
 import { profilePictureRouter } from './profile-picture';
 import { essayEmailRouter } from './essay-email';
 import { documentsRouter } from './documents';
+import { adminSettingsRouter } from './admin-settings';
 
 export const appRouter = createTRPCRouter({
   resources: resourcesRouter,
@@ -49,6 +50,7 @@ export const appRouter = createTRPCRouter({
   profilePicture: profilePictureRouter,
   essayEmail: essayEmailRouter,
   documents: documentsRouter,
+  adminSettings: adminSettingsRouter,
 });
 // export type definition of API
 export type AppRouter = typeof appRouter;

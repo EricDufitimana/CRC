@@ -20,9 +20,10 @@ import {
   CommandGroup,
   CommandItem,
 } from "@/zenith/components/ui/command";
-import { Search, Loader2 } from "lucide-react";
+import { Search, Loader2, Settings } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTRPC } from "@/trpc/client";
+import { useQuery } from "@tanstack/react-query";
 
 // Default pages to show when search dialog opens
 const defaultPages = [
@@ -53,6 +54,20 @@ export function AdminHeader({ adminName, adminEmail }: AdminHeaderProps) {
   const [rateLimitInfo, setRateLimitInfo] = useState<{ remaining: number; resetIn: number } | null>(null);
   const [rateLimitMessage, setRateLimitMessage] = useState<string>('');
   const { signOut, isSigningOut } = useAuth();
+  const trpc = useTRPC();
+
+  // Fetch settings to get the real profile picture
+  const { data: settings } = useQuery(
+    trpc.adminSettings.getSettings.queryOptions()
+  );
+
+  const getProfileImageUrl = (path: string | null) => {
+    if (!path) return null;
+    if (path.startsWith("http")) return path;
+    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${path}`;
+  };
+
+  const profileDisplayUrl = getProfileImageUrl((settings as any)?.profile_picture || null);
 
   // Load default pages when dialog opens
   useEffect(() => {
@@ -139,8 +154,8 @@ export function AdminHeader({ adminName, adminEmail }: AdminHeaderProps) {
               variant="ghost" 
               className="w-full h-12 px-4 justify-start text-left transition-all duration-300 rounded-xl hover:bg-gray-100/80 text-gray-700 hover:text-gray-900">
               <Avatar className="h-6 w-6 mr-3">
-                <AvatarImage src="/api/placeholder/32/32" alt="Admin" />
-                <AvatarFallback className="bg-gradient-to-br from-purple-500 to-purple-600 text-white text-xs">
+                <AvatarImage src={profileDisplayUrl || undefined} alt="Admin" className="object-cover" />
+                <AvatarFallback className="bg-gradient-to-br from-orange-400 to-red-500 text-white text-[10px] font-bold">
                   {adminName ? adminName.split(' ')[0][0].toUpperCase() : 'A'}
                 </AvatarFallback>
               </Avatar>
@@ -161,6 +176,12 @@ export function AdminHeader({ adminName, adminEmail }: AdminHeaderProps) {
             <DropdownMenuItem onClick={() => window.location.href = '/'}>
               Home
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push('/dashboard/admin/settings')}>
+              <div className="flex items-center gap-2">
+                <span>Settings</span>
+              </div>
+            </DropdownMenuItem>
+            
             <DropdownMenuItem 
               onClick={handleLogout} 
               onSelect={(e) => e.preventDefault()}
