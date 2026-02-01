@@ -233,7 +233,7 @@ export default function SignUpForm() {
                         variant="outline"
                         role="combobox"
                         aria-expanded={open}
-                        className="w-full justify-between text-gray-700 transition-all duration-200 ease-in-out focus:ring-2 focus:ring-gray-500/40 hover:ring-2 hover:ring-gray-500/10 focus:border-gray-500/60"
+                        className="w-full justify-between text-gray-700 transition-all duration-200 ease-in-out focus:ring-2 focus:ring-gray-500/40 hover:ring-2 hover:ring-gray-500/10 "
                         disabled={isLoadingStudents}
                       >
                         {selectedStudentId
