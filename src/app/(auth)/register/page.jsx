@@ -166,7 +166,7 @@ export default function SignUpForm() {
     try{
       setIsGoogleSignUpLoading(true);
       console.log('Initiating Google OAuth with student code:', studentCode);
-      // Store student code in localStorage for the callback to access
+      // Store student code in localStorage for the caleback to access
       localStorage.setItem('pendingStudentCode', studentCode);
       
       const {data, error} = await supabase.auth.signInWithOAuth({
@@ -233,7 +233,7 @@ export default function SignUpForm() {
                         variant="outline"
                         role="combobox"
                         aria-expanded={open}
-                        className="w-full justify-between text-gray-700 transition-all duration-200 ease-in-out focus:ring-2 focus:ring-gray-500/40 hover:ring-2 hover:ring-gray-500/10 "
+                        className="w-full justify-between text-gray-700 transition-all duration-200 ease-in-out focus:ring-2 focus:ring-gray-500/40 hover:ring-2 hover:ring-gray-500/10 focus:border-none "
                         disabled={isLoadingStudents}
                       >
                         {selectedStudentId

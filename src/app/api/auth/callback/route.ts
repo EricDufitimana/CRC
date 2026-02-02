@@ -113,97 +113,158 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    console.log('🔐 [Auth Callback POST] Processing student creation request');
-    
     const body = await request.json();
-    const { user_id, student_code, email } = body;
+    const { user_id, student_code, admin_data, email } = body;
 
-    console.log('📝 [Auth Callback POST] Request data:', { user_id, student_code, email });
+    console.log('🔐 [Auth Callback POST] Processing registration request:', { 
+      user_id, 
+      student_code: student_code ? 'present' : 'absent', 
+      admin_data: admin_data ? 'present' : 'absent',
+      email 
+    });
 
-    if (!user_id || !student_code) {
-      console.error('❌ [Auth Callback POST] Missing required fields');
-      return NextResponse.json(
-        { error: 'Missing user_id or student_code' },
-        { status: 400 }
-      );
+    if (!user_id) {
+      console.error('❌ [Auth Callback POST] Missing user_id');
+      return NextResponse.json({ error: 'Missing user_id' }, { status: 400 });
     }
 
-    // Use service role client to bypass RLS
     const supabase = createServiceRoleClient();
+    let registrationEmail = email;
+    let fullName = '';
 
-    // Find the student by student_code
-    const { data: student, error: studentError } = await supabase
-      .from('students')
-      .select('*')
-      .eq('student_id', student_code)
-      .single();
+    // --- STUDENT REGISTRATION FLOW ---
+    if (student_code) {
+      console.log('🎓 [Auth Callback POST] Executing student registration flow');
+      
+      // Find the student by student_code
+      const { data: student, error: studentError } = await supabase
+        .from('students')
+        .select('*')
+        .eq('student_id', student_code)
+        .single();
 
-    if (studentError || !student) {
-      console.error('❌ [Auth Callback POST] Student not found:', studentError);
-      return NextResponse.json(
-        { error: 'Student not found', details: studentError?.message || 'Student record not found' },
-        { status: 404 }
-      );
+      if (studentError || !student) {
+        console.error('❌ [Auth Callback POST] Student record not found:', studentError);
+        return NextResponse.json(
+          { error: 'Student not found', details: studentError?.message || 'Student record not found' },
+          { status: 404 }
+        );
+      }
+
+      if (student.user_id) {
+        console.log('⚠️ [Auth Callback POST] Student already registered');
+        return NextResponse.json(
+          { error: 'Already registered', details: 'This student record is already linked' },
+          { status: 409 }
+        );
+      }
+
+      registrationEmail = email || student.email;
+      fullName = `${student.first_name} ${student.last_name}`;
+
+      // Link student to user_id
+      const { error: updateError } = await supabase
+        .from('students')
+        .update({ user_id, email: registrationEmail })
+        .eq('id', student.id);
+
+      if (updateError) {
+        console.error('❌ [Auth Callback POST] Failed to link student:', updateError);
+        return NextResponse.json({ error: 'Link failed', details: updateError.message }, { status: 500 });
+      }
+
+      // Create profile
+      try {
+        await prisma.profiles.create({
+          data: {
+            user_id,
+            email: registrationEmail,
+            role: 'student',
+            is_new_user: true,
+            has_setup: false,
+            Names: fullName,
+          },
+        });
+      } catch (pErr) {
+        console.error('❌ [Auth Callback POST] Profile creation error:', pErr);
+      }
+
+      console.log('✅ [Auth Callback POST] Student registration completed');
+    } 
+    // --- ADMIN REGISTRATION FLOW ---
+    else if (admin_data) {
+      console.log('🛡️ [Auth Callback POST] Executing admin registration flow');
+      
+      const { honorific, firstName, lastName, role } = admin_data;
+      registrationEmail = email; // For admins, email always comes from session
+      fullName = `${firstName} ${lastName}`;
+
+      try {
+        // Create admin record using Prisma
+        await prisma.admin.create({
+          data: {
+            user_id,
+            honorific,
+            first_name: firstName,
+            last_name: lastName,
+            role,
+            email: registrationEmail,
+          },
+        });
+
+        // Create profile
+        await prisma.profiles.create({
+          data: {
+            user_id,
+            email: registrationEmail,
+            role: 'admin',
+            is_new_user: true,
+            has_setup: false,
+            Names: fullName,
+          },
+        });
+      } catch (adminErr) {
+        console.error('❌ [Auth Callback POST] Admin creation error:', adminErr);
+        return NextResponse.json({ error: 'Admin creation failed', details: adminErr instanceof Error ? adminErr.message : 'Unknown' }, { status: 500 });
+      }
+
+      console.log('✅ [Auth Callback POST] Admin registration completed');
+    } else {
+      console.error('❌ [Auth Callback POST] Neither student_code nor admin_data provided');
+      return NextResponse.json({ error: 'Missing registration details' }, { status: 400 });
     }
 
-    // Check if student already has a user account
-    if (student.user_id) {
-      console.log('⚠️ [Auth Callback POST] Student already has user account');
-      return NextResponse.json(
-        { error: 'Student already registered', details: 'This student record is already linked to a user account' },
-        { status: 409 }
-      );
+    // --- SHARED: SEND WELCOME EMAIL ---
+    if (registrationEmail) {
+      try {
+        console.log('📧 [Auth Callback POST] Invoking welcome email function for:', registrationEmail);
+        const { error: functionError } = await supabase.functions.invoke('send_welcome_email', {
+          body: { email: registrationEmail },
+        });
+
+        if (functionError) {
+          console.error('⚠️ [Auth Callback POST] Welcome email function failed:', functionError);
+        } else {
+          console.log('✅ [Auth Callback POST] Welcome email sent successfully');
+          // Mark email as sent in profile
+          await prisma.profiles.update({
+            where: { user_id },
+            data: { welcome_email_sent: true },
+          });
+        }
+      } catch (emailErr) {
+        console.error('⚠️ [Auth Callback POST] Error in email flow:', emailErr);
+        // We don't fail the registration if only the email fails
+      }
     }
 
-    // Update student with user_id and email
-    const { data: updatedStudent, error: updateError } = await supabase
-      .from('students')
-      .update({ 
-        user_id,
-        email: email || student.email // Use Google email or fallback to existing
-      })
-      .eq('id', student.id)
-      .select()
-      .single();
-
-    if (updateError) {
-      console.error('❌ [Auth Callback POST] Failed to update student:', updateError);
-      return NextResponse.json(
-        { error: 'Failed to update student', details: updateError.message },
-        { status: 500 }
-      );
-    }
-
-    // Create profile record for the user
-    try {
-      const profile = await prisma.profiles.create({
-        data: {
-          user_id: user_id,
-          email: student.email,
-          role: 'student',
-          is_new_user: true,
-          has_setup: false,
-          Names: `${student.first_name} ${student.last_name}`
-        },
-      });
-
-      console.log('✅ [Auth Callback POST] Profile created successfully:', profile);
-    } catch (profileError) {
-      console.error('❌ [Auth Callback POST] Failed to create profile:', profileError);
-      // Don't fail the whole request if profile creation fails, but log it
-      // The student was already updated successfully
-    }
-
-    console.log('✅ [Auth Callback POST] Student updated successfully:', updatedStudent);
-    
     return NextResponse.json({
       success: true,
-      message: 'Student account created successfully',
-      student: updatedStudent
+      message: 'Registration successful',
     });
 
   } catch (error) {
-    console.error('❌ [Auth Callback POST] Unexpected error:', error);
+    console.error('❌ [Auth Callback POST] Critical error:', error);
     return NextResponse.json(
       { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
