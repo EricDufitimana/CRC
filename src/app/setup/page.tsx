@@ -404,7 +404,7 @@ export default function StudentSetupPage() {
       description: "Upload your academic report"
     },
     {
-      icon: FileText,
+      icon: Link,
       title: "Upload Resume",
       description: "Upload your resume"
     }
@@ -606,8 +606,8 @@ export default function StudentSetupPage() {
                       <p className="text-xs text-gray-600">{step.description}</p>
                     </div>
                     <div className="flex-shrink-0">
-                      <div className="h-4 w-4 rounded-full bg-gray-300 flex items-center justify-center">
-                        <span className="text-xs font-medium text-gray-600">{index + 1}</span>
+                      <div className="h-5 w-5 rounded-full bg-gray-300 flex items-center justify-center">
+                        <span className="text-sm font-medium text-gray-600">{index + 1}</span>
                       </div>
                     </div>
                   </div>
@@ -860,6 +860,7 @@ export default function StudentSetupPage() {
                     type="url"
                     placeholder="https://docs.google.com/document/..."  
                     value={resumeLink}
+                    className="focus:border-none focus:ring-2 focus:ring-gray-500"
                     onChange={(e) => {
                       console.log('🔗 Setup: Resume link changed:', e.target.value);
                       setResumeLink(e.target.value);

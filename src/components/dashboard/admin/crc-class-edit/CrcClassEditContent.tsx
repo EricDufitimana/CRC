@@ -83,6 +83,29 @@ export function CrcClassEditContent() {
     },
   });
 
+  const bulkImportMutation = useMutation({
+    ...trpc.crcClassManagement.bulkImportStudents.mutationOptions(),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: [['crcClassManagement', 'getCrcClassStudents']] });
+      queryClient.invalidateQueries({ queryKey: [['studentManagement', 'getStudents']] });
+      setShowConflictDialog(false);
+      setConflictStudents([]);
+      setSelectedToRemove([]);
+      showToastSuccess({
+        headerText: 'Bulk Import Completed',
+        paragraphText: data.message || 'Students have been successfully added to the class.',
+        direction: 'right'
+      });
+    },
+    onError: (error) => {
+      showToastError({
+        headerText: 'Bulk Import Failed',
+        paragraphText: error.message || 'Failed to complete bulk import. Please try again.',
+        direction: 'right'
+      });
+    },
+  });
+
   // Available students (not in any class or in this class)
   const availableStudents = useMemo(() => {
     const memberIds = new Set((classData?.students || []).map((s: any) => String(s.id)));
@@ -205,6 +228,16 @@ export function CrcClassEditContent() {
     });
   };
 
+  const confirmBulkImport = async () => {
+    if (conflictStudents.length === 0) return;
+    
+    const studentIds = conflictStudents.map(student => student.studentId);
+    bulkImportMutation.mutate({
+      classId: groupId,
+      studentIds: studentIds,
+    });
+  };
+
   const selectAllMembers = () => {
     const memberIds = filteredMembers.map((s: any) => String(s.id));
     const allSelected = memberIds.every((id: string) => selectedToRemove.includes(id));
@@ -247,14 +280,28 @@ export function CrcClassEditContent() {
       const data = await response.json();
 
       if (data.success) {
-        queryClient.invalidateQueries({ queryKey: [['crcClassManagement', 'getCrcClassStudents']] });
-        queryClient.invalidateQueries({ queryKey: [['studentManagement', 'getStudents']] });
+        console.log('📊 Bulk import analysis:', data);
         
-        showToastSuccess({
-          headerText: 'Students Imported Successfully',
-          paragraphText: `${data.matchedStudents} student(s) have been added to the class.`,
-          direction: 'right'
-        });
+        // Show matching results in conflict dialog
+        setConflictStudents(data.studentsToAdd || []);
+        setShowConflictDialog(true);
+        
+        // Show summary info
+        const summaryMessage = `Found ${data.matching.matched} matching students. ${data.matching.alreadyInClass} already in class, ${data.matching.canBeAdded} can be added.`;
+        
+        if (data.matching.canBeAdded > 0) {
+          showToastSuccess({
+            headerText: 'Students Matched Successfully',
+            paragraphText: summaryMessage,
+            direction: 'right'
+          });
+        } else {
+          showToastError({
+            headerText: 'No New Students to Add',
+            paragraphText: summaryMessage,
+            direction: 'right'
+          });
+        }
       } else {
         setBulkImportError(data.error || 'Failed to import students');
       }
@@ -567,33 +614,64 @@ export function CrcClassEditContent() {
         </div>
       </div>
 
-      {/* Conflict Dialog */}
+      {/* Conflict Dialog - Handles both conflicts and bulk import confirmation */}
       <AlertDialog open={showConflictDialog} onOpenChange={setShowConflictDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-orange-500" />
-              Students Already Assigned
+              {conflictStudents.some(s => s.currentClassId) ? (
+                <>
+                  <AlertTriangle className="h-5 w-5 text-orange-500" />
+                  Students Already Assigned
+                </>
+              ) : (
+                <>
+                  <Users className="h-5 w-5 text-green-500" />
+                  Confirm Bulk Import
+                </>
+              )}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              The following student{conflictStudents.length > 1 ? 's are' : ' is'} already assigned to another class:
+              {conflictStudents.some(s => s.currentClassId) 
+                ? "The following student(s) are already assigned to another class:"
+                : `Confirm adding ${conflictStudents.length} student(s) to this class:`
+              }
             </AlertDialogDescription>
           </AlertDialogHeader>
           
           <div className="space-y-3 max-h-64 overflow-y-auto">
             {conflictStudents.map((student) => (
-              <div key={student.id} className="flex items-center gap-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center">
-                  <span className="text-orange-700 font-medium text-sm">
-                    {student.first_name?.[0]}{student.last_name?.[0]}
+              <div key={student.studentId} className={`flex items-center gap-3 p-3 border rounded-lg ${
+                student.currentClassId 
+                  ? 'bg-orange-50 border-orange-200' 
+                  : 'bg-green-50 border-green-200'
+              }`}>
+                <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
+                  student.currentClassId 
+                    ? 'bg-orange-100' 
+                    : 'bg-green-100'
+                }`}>
+                  <span className={`font-medium text-sm ${
+                    student.currentClassId 
+                      ? 'text-orange-700' 
+                      : 'text-green-700'
+                  }`}>
+                    {student.name?.split(' ').map(n => n[0]).join('')}
                   </span>
                 </div>
                 <div className="flex-1">
                   <p className="font-medium text-gray-900">
-                    {student.first_name} {student.last_name}
+                    {student.name}
                   </p>
-                  <p className="text-sm text-orange-600">
-                    Currently in: <span className="font-medium">{student.current_class_name}</span>
+                  <p className={`text-sm ${
+                    student.currentClassId 
+                      ? 'text-orange-600' 
+                      : 'text-green-600'
+                  }`}>
+                    {student.currentClassId 
+                      ? `Currently in: ${student.currentClassId || 'Unknown class'}`
+                      : `ID: ${student.studentIdNumber || student.studentId}`
+                    }
                   </p>
                 </div>
               </div>
@@ -604,16 +682,38 @@ export function CrcClassEditContent() {
             <AlertDialogCancel onClick={() => setShowConflictDialog(false)}>
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                const conflictIds = conflictStudents.map(s => String(s.id));
-                setSelected(prev => prev.filter(id => !conflictIds.includes(id)));
-                setShowConflictDialog(false);
-              }}
-              className="bg-orange-600 hover:bg-orange-700"
-            >
-              Remove from Selection
-            </AlertDialogAction>
+            {conflictStudents.some(s => s.currentClassId) ? (
+              <AlertDialogAction
+                onClick={() => {
+                  const conflictIds = conflictStudents
+                    .filter(s => s.currentClassId)
+                    .map(s => s.studentId);
+                  setSelected(prev => prev.filter(id => !conflictIds.includes(id)));
+                  setShowConflictDialog(false);
+                }}
+                className="bg-orange-600 hover:bg-orange-700"
+              >
+                Remove Conflicts from Selection
+              </AlertDialogAction>
+            ) : (
+              <AlertDialogAction
+                onClick={confirmBulkImport}
+                className="bg-green-600 hover:bg-green-700"
+                disabled={bulkImportMutation.isPending}
+              >
+                {bulkImportMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Importing...
+                  </>
+                ) : (
+                  <>
+                    <Users className="h-4 w-4 mr-2" />
+                    Import {conflictStudents.length} Student(s)
+                  </>
+                )}
+              </AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

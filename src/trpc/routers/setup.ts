@@ -149,7 +149,7 @@ export const setupRouter = createTRPCRouter({
           
           // Use original filename or fallback to report.pdf
           const fileName = input.academic_report_name || 'report.pdf';
-          const path = `${studentNamePath}/${currentDate}/${fileName}`;
+          const path = `${studentNamePath}/${currentDate}-${Date.now()}/${fileName}`;
           console.log("3. Uploading report to the storage")
           
           const { error: uploadError } = await supabase.storage
@@ -171,10 +171,48 @@ export const setupRouter = createTRPCRouter({
           academicReportPath = path;
         }
 
+        // Extract GPA from academic report if uploaded
+        let extractedGPA: number | null = null;
+        if (academicReportPath) {
+          try {
+            console.log('🤖 Setup: Extracting GPA from academic report...');
+            
+            const reportProcessingResponse = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/scan_report_card_ai`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
+              },
+              body: JSON.stringify({
+                filePath: academicReportPath,
+                useFallback: false,
+              })
+            });
+
+            if (reportProcessingResponse.ok) {
+              const reportData = await reportProcessingResponse.json();
+              console.log('📊 Setup: Report processing result:', reportData);
+              
+              if (reportData.success && reportData.average !== null) {
+                extractedGPA = reportData.average;
+                console.log('✅ Setup: GPA extracted successfully:', extractedGPA);
+              } else {
+                console.log('⚠️ Setup: GPA extraction failed:', reportData.reasoning || 'Unknown reason');
+              }
+            } else {
+              console.error('❌ Setup: Report processing failed with status:', reportProcessingResponse.status);
+            }
+          } catch (gpaError) {
+            console.error('❌ Setup: GPA extraction error:', gpaError);
+            // Don't fail the whole setup if GPA extraction fails
+          }
+        }
+
         // Update student record
         const updateData: any = {};
         if (finalAvatarPath) updateData.profile_picture = finalAvatarPath;
         if (academicReportPath) updateData.academic_report_path = academicReportPath;
+        if (extractedGPA !== null) updateData.gpa = extractedGPA;
         if (input.resume_link) updateData.resume_link = input.resume_link;
 
         console.log("5. Updating Student Data")
@@ -238,6 +276,21 @@ export const setupRouter = createTRPCRouter({
             code: 'INTERNAL_SERVER_ERROR',
             message: 'Failed to mark setup as completed'
           });
+        }
+
+        // Also update the profile table to mark setup as completed
+        console.log('🔄 Setup: Updating profile table...');
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ has_setup: true })
+          .eq('user_id', userId);
+
+        if (profileError) {
+          console.error('❌ Error updating profile table:', profileError);
+          // Don't fail the whole process, but log the error
+          console.warn('⚠️ Setup: User metadata updated but profile table update failed');
+        } else {
+          console.log('✅ Setup: Profile table updated successfully');
         }
 
         console.log('✅ Setup: Marked as completed for user:', userId);

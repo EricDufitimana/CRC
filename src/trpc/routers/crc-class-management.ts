@@ -283,28 +283,55 @@ export const crcClassManagementRouter = createTRPCRouter({
     .input(
       z.object({
         classId: z.string(),
-        file: z.instanceof(File),
+        studentIds: z.array(z.string()),
       })
     )
     .mutation(async ({ input, ctx }) => {
-      const { classId, file } = input;
+      const { classId, studentIds } = input;
 
-      // This is a complex operation that involves:
-      // 1. Uploading file to Supabase storage
-      // 2. Calling edge function to extract names
-      // 3. Matching names with students
-      // 4. Assigning matched students to class
-      
-      // For now, we'll use the existing API route logic
-      // In a production app, you might want to move this logic here
-      // or keep it as an API route if it requires special handling
-      
-      // Since tRPC doesn't handle FormData well, we'll keep bulk import as an API route
-      // But we can create a wrapper that calls it
-      throw new TRPCError({
-        code: 'NOT_IMPLEMENTED',
-        message: 'Bulk import should be handled via API route due to file upload complexity',
-      });
+      try {
+        console.log('🔄 Starting bulk import for class:', classId);
+        console.log('👥 Students to add:', studentIds.length);
+
+        // Verify the class exists
+        const targetClass = await prisma.crc_class.findUnique({
+          where: { id: BigInt(classId) }
+        });
+
+        if (!targetClass) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Target class not found'
+          });
+        }
+
+        // Update students to assign them to the class
+        const updateResult = await prisma.students.updateMany({
+          where: { 
+            id: { in: studentIds.map(id => BigInt(id)) }
+          },
+          data: { crc_class_id: BigInt(classId) }
+        });
+
+        console.log('✅ Bulk import completed:', {
+          classId,
+          studentsUpdated: updateResult.count
+        });
+
+        return {
+          success: true,
+          classId,
+          studentsUpdated: updateResult.count,
+          message: `Successfully assigned ${updateResult.count} students to ${targetClass.name}`
+        };
+
+      } catch (error) {
+        console.error('❌ Bulk import error:', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: error instanceof Error ? error.message : 'Failed to bulk import students'
+        });
+      }
     }),
 });
 
