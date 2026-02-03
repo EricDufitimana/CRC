@@ -77,6 +77,7 @@ export const setupRouter = createTRPCRouter({
       
       try {
         // Fetch student data to get name information
+        console.log("1. Fetching student data")
         const student = await prisma.students.findUnique({
           where: { id: studentId },
           select: {
@@ -108,6 +109,8 @@ export const setupRouter = createTRPCRouter({
           const key = randomUUID();
           const currentDate = new Date().toISOString().split('T')[0];
           const path = `student-${studentId}/${currentDate}/avatar-${key}.${ext}`;
+
+          console.log("2. Uploading the picture to the database")
           
           // Upload to Supabase Storage
           const { error: uploadError } = await supabase.storage
@@ -147,6 +150,7 @@ export const setupRouter = createTRPCRouter({
           // Use original filename or fallback to report.pdf
           const fileName = input.academic_report_name || 'report.pdf';
           const path = `${studentNamePath}/${currentDate}/${fileName}`;
+          console.log("3. Uploading report to the storage")
           
           const { error: uploadError } = await supabase.storage
             .from('reports')
@@ -172,6 +176,8 @@ export const setupRouter = createTRPCRouter({
         if (finalAvatarPath) updateData.profile_picture = finalAvatarPath;
         if (academicReportPath) updateData.academic_report_path = academicReportPath;
         if (input.resume_link) updateData.resume_link = input.resume_link;
+
+        console.log("5. Updating Student Data")
 
         const { data: updatedStudent, error: updateError } = await supabase
           .from('students')
