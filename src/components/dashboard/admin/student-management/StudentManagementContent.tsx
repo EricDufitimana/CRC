@@ -39,7 +39,7 @@ export function StudentManagementContent() {
 
   // Filter students based on search term and filters
   const filteredStudents = useMemo(() => {
-    return students.filter(student => {
+    let filtered = students.filter(student => {
       // Search term filtering (case-insensitive)
       const searchMatch = searchTerm === "" || 
         student.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -76,6 +76,11 @@ export function StudentManagementContent() {
 
       return searchMatch && gradeMatch && majorMatch && gpaMatch && crcClassMatch && genderMatch;
     });
+
+    // Randomize the filtered students to ensure mix from different grades
+    const shuffled = [...filtered].sort(() => Math.random() - 0.5);
+    
+    return shuffled;
   }, [students, searchTerm, filters]);
 
   // Pagination logic
@@ -137,12 +142,25 @@ export function StudentManagementContent() {
 
   // Student selection handlers
   const handleSelectStudent = (studentId: string, studentEmail: string | null) => {
+    console.log('=== SELECT STUDENT DEBUG ===');
+    console.log('studentId:', studentId);
+    console.log('studentEmail:', studentEmail);
+    console.log('current selectedStudents:', selectedStudents);
+    
     if (!studentEmail) return; // Don't select students without emails
+    
     setSelectedStudents(prev => {
       const isSelected = prev.some(student => student.id === studentId);
-      return isSelected 
+      console.log('isSelected:', isSelected);
+      
+      const newSelection = isSelected 
         ? prev.filter(student => student.id !== studentId)
         : [...prev, { id: studentId, email: studentEmail }];
+      
+      console.log('newSelection:', newSelection);
+      console.log('============================');
+      
+      return newSelection;
     });
   };
 
@@ -275,12 +293,12 @@ export function StudentManagementContent() {
   }, [filters, crcClassNames]);
 
   return (
-    <div className="p-6">
+    <div className="p-8">
       <div className="space-y-4">
         <StudentManagementHeader />
 
         {/* Filters and Search */}
-        <div className="flex flex-col gap-2 mb-4">
+        <div className="flex flex-col gap-3 mb-6">
           <StudentSearchBar
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}

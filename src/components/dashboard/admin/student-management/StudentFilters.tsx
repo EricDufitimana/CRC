@@ -55,16 +55,16 @@ export function StudentFilters({
   onEmailSent,
 }: StudentFiltersProps) {
   const grades = ["Enrichment Year", "Senior 4", "Senior 5", "Senior 6"];
-  const majors = ["MPC", "HGL", "PCB", "MCE", "MEG"];
+  const majors = ["MPC", "HGL", "PCB", "MCE", "MEG", "Ey_Dove", "Ey_Falcon", "Ey_Eagle", "Ey_Sparrow", "MPCB", "MPGE_A", "HGLP_A", "MPGE_B", "HGLP_B"];
   const gpaRanges = ["90-100", "80-89", "70-79", "60-69", "50-59", "below-50"];
   const uniqueGenders = Array.from(new Set(students.map(s => s.gender).filter(Boolean)));
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
+    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
       {/* Grade Filter */}
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="w-full h-9 gap-1.5 justify-between text-xs bg-white/80 border-gray-300/80 dark:bg-gray-800/80 dark:border-gray-600/80">
+          <Button variant="outline" size="sm" className="w-full h-11 gap-1.5 justify-between text-xs bg-white/80 border-gray-300/80 dark:bg-gray-800/80 dark:border-gray-600/80">
             <span className="hidden sm:inline">Grade</span>
             <span className="sm:hidden">Grade</span>
             {filters.grade.length > 0 && (
@@ -103,7 +103,7 @@ export function StudentFilters({
                   variant="outline"
                   size="sm"
                   onClick={() => onGradeToggle(grade)}
-                  className={`justify-start cursor-pointer text-xs h-7 px-2 ${filters.grade.includes(grade) ? 'bg-black text-white border-black hover:bg-black hover:text-white' : 'hover:bg-transparent'}`}
+                  className={`justify-start cursor-pointer text-xs h-9 px-2 ${filters.grade.includes(grade) ? 'bg-black text-white border-black hover:bg-black hover:text-white' : 'hover:bg-transparent'}`}
                 >
                   {grade}
                 </Button>
@@ -116,7 +116,7 @@ export function StudentFilters({
       {/* Major Filter */}
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="w-full h-9 gap-1.5 justify-between text-xs bg-white/80 border-gray-300/80 dark:bg-gray-800/80 dark:border-gray-600/80">
+          <Button variant="outline" size="sm" className="w-full h-11 gap-1.5 justify-between text-xs bg-white/80 border-gray-300/80 dark:bg-gray-800/80 dark:border-gray-600/80">
             <span className="hidden sm:inline">Major</span>
             <span className="sm:hidden">Major</span>
             {filters.major.length > 0 && (
@@ -155,7 +155,7 @@ export function StudentFilters({
                   variant="outline"
                   size="sm"
                   onClick={() => onMajorToggle(major)}
-                  className={`justify-start cursor-pointer text-xs h-7 px-2 ${filters.major.includes(major) ? 'bg-black text-white border-black hover:bg-black hover:text-white' : 'hover:bg-transparent'}`}
+                  className={`justify-start cursor-pointer text-xs h-9 px-2 ${filters.major.includes(major) ? 'bg-black text-white border-black hover:bg-black hover:text-white' : 'hover:bg-transparent'}`}
                 >
                   {major}
                 </Button>
@@ -168,7 +168,7 @@ export function StudentFilters({
       {/* GPA Filter */}
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="w-full h-9 gap-1.5 justify-between text-xs bg-white/80 border-gray-300/80 dark:bg-gray-800/80 dark:border-gray-600/80">
+          <Button variant="outline" size="sm" className="w-full h-11 gap-1.5 justify-between text-xs bg-white/80 border-gray-300/80 dark:bg-gray-800/80 dark:border-gray-600/80">
             <span className="hidden sm:inline">GPA</span>
             <span className="sm:hidden">GPA</span>
             {filters.gpa.length > 0 && (
@@ -207,7 +207,7 @@ export function StudentFilters({
                   variant="outline"
                   size="sm"
                   onClick={() => onGpaToggle(gpa)}
-                  className={`justify-start cursor-pointer text-xs h-7 px-2 ${filters.gpa.includes(gpa) ? 'bg-black text-white border-black hover:bg-black hover:text-white' : 'hover:bg-transparent'}`}
+                  className={`justify-start cursor-pointer text-xs h-9 px-2 ${filters.gpa.includes(gpa) ? 'bg-black text-white border-black hover:bg-black hover:text-white' : 'hover:bg-transparent'}`}
                 >
                   {gpa === "below-50" ? "Below 50%" : `${gpa}%`}
                 </Button>
@@ -220,7 +220,7 @@ export function StudentFilters({
       {/* Gender Filter */}
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="w-full h-9 gap-1.5 justify-between text-xs bg-white/80 border-gray-300/80 dark:bg-gray-800/80 dark:border-gray-600/80">
+          <Button variant="outline" size="sm" className="w-full h-11 gap-1.5 justify-between text-xs bg-white/80 border-gray-300/80 dark:bg-gray-800/80 dark:border-gray-600/80">
             <span className="hidden sm:inline">Gender</span>
             <span className="sm:hidden">Gender</span>
             {filters.gender.length > 0 && (
@@ -259,7 +259,7 @@ export function StudentFilters({
                   variant="outline"
                   size="sm"
                   onClick={() => onGenderToggle(gender)}
-                  className={`justify-start cursor-pointer text-xs h-7 px-2 ${filters.gender.includes(gender) ? 'bg-black text-white border-black hover:bg-black hover:text-white' : 'hover:bg-transparent'}`}
+                  className={`justify-start cursor-pointer text-xs h-9 px-2 ${filters.gender.includes(gender) ? 'bg-black text-white border-black hover:bg-black hover:text-white' : 'hover:bg-transparent'}`}
                 >
                   {gender.charAt(0).toUpperCase() + gender.slice(1)}
                 </Button>
@@ -272,7 +272,7 @@ export function StudentFilters({
       {/* CRC Class Filter */}
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="w-full h-9 gap-1.5 justify-between text-xs bg-white/80 border-gray-300/80 dark:bg-gray-800/80 dark:border-gray-600/80">
+          <Button variant="outline" size="sm" className="w-full h-11 gap-1.5 justify-between text-xs bg-white/80 border-gray-300/80 dark:bg-gray-800/80 dark:border-gray-600/80">
             <span className="hidden sm:inline">CRC Class</span>
             <span className="sm:hidden">CRC</span>
             {filters.crcClass.length > 0 && (
@@ -314,7 +314,7 @@ export function StudentFilters({
                   variant="outline"
                   size="sm"
                   onClick={() => onCrcClassToggle(crcClass.id)}
-                  className={`justify-start cursor-pointer text-xs h-7 px-2 ${filters.crcClass.includes(crcClass.id) ? 'bg-black text-white border-black hover:bg-black hover:text-white' : 'hover:bg-transparent'}`}
+                  className={`justify-start cursor-pointer text-xs h-9 px-2 ${filters.crcClass.includes(crcClass.id) ? 'bg-black text-white border-black hover:bg-black hover:text-white' : 'hover:bg-transparent'}`}
                 >
                   {crcClass.name}
                 </Button>

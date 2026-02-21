@@ -15,9 +15,23 @@ import { showToastPromise } from "@/components/toasts";
 
 export function StudentDocumentsContent() {
   const trpc = useTRPC();
-  const { data: documents, refetch } = useSuspenseQuery(
+  const { data: documents, refetch, isLoading, error } = useSuspenseQuery(
     trpc.studentDashboard.getDocuments.queryOptions()
   );
+
+  // DEBUG: Log documents data
+  console.log('=== DOCUMENTS DEBUG ===');
+  console.log('isLoading:', isLoading);
+  console.log('error:', error);
+  console.log('documents:', documents);
+  console.log('documents type:', typeof documents);
+  console.log('documents keys:', documents ? Object.keys(documents) : 'null/undefined');
+  console.log('academic_report_path:', documents?.academic_report_path);
+  console.log('academic_report_url:', documents?.academic_report_url);
+  console.log('resume_link:', documents?.resume_link);
+  console.log('first_name:', documents?.first_name);
+  console.log('last_name:', documents?.last_name);
+  console.log('=====================');
 
   const [academicReportFile, setAcademicReportFile] = useState<File[]>([]);
   const [resumeLink, setResumeLink] = useState<string>(documents.resume_link || '');
@@ -128,7 +142,27 @@ export function StudentDocumentsContent() {
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 mb-2">
                             <FileText className="h-4 w-4 text-neutral-500" />
-                            <span className="text-sm font-medium text-neutral-900">{documents.academic_report_url ? 'Academic Report' : 'No Report'}</span>
+                            <span className="text-sm font-medium text-neutral-900">
+                              {(() => {
+                                // DEBUG: Check why it shows "No Report"
+                                console.log('=== REPORT DISPLAY DEBUG ===');
+                                console.log('documents.academic_report_url:', documents.academic_report_url);
+                                console.log('Type of academic_report_url:', typeof documents.academic_report_url);
+                                console.log('Boolean value:', Boolean(documents.academic_report_url));
+                                console.log('documents.academic_report_path:', documents.academic_report_path);
+                                console.log('Boolean of academic_report_path:', Boolean(documents.academic_report_path));
+                                console.log('==========================');
+                                
+                                if (!documents.academic_report_url) {
+                                  return 'No Report';
+                                }
+                                
+                                // Extract filename from the path
+                                const path = documents.academic_report_path;
+                                const filename = path ? path.split('/').pop() : 'Academic Report';
+                                return filename || 'Academic Report';
+                              })()}
+                            </span>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">

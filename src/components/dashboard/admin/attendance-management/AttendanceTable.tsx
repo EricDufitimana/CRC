@@ -158,47 +158,49 @@ export function AttendanceTable({ records, loading }: AttendanceTableProps) {
   }
 
   return (
-    <div className="rounded-xl border w-full">
-      <Table className="w-full">
-        <TableHead>
-          <TableRow>
-            <TableHead className="w-[25%]">Name</TableHead>
-            <TableHead className="w-[30%]">Workshop</TableHead>
-            <TableHead className="w-[20%]">Status</TableHead>
-            <TableHead className="w-[25%]">Date</TableHead>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {records.map((record) => (
-            <TableRow key={record.id}>
-              <TableCell>
-                <div className="flex items-center space-x-3">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback>
-                      {record.student.first_name?.[0] || ''}{record.student.last_name?.[0] || ''}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <div className="font-medium">
-                      {record.student.first_name || ''} {record.student.last_name || ''}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {record.student.grade || 'N/A'} • {record.student.major_short || 'N/A'}
+    <div className="rounded-xl border border-gray-200 w-full overflow-hidden bg-white">
+      <div className="overflow-x-auto">
+        <Table className="w-full">
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[25%] bg-gray-50/50">Name</TableHead>
+              <TableHead className="w-[30%] bg-gray-50/50">Workshop</TableHead>
+              <TableHead className="w-[20%] bg-gray-50/50">Status</TableHead>
+              <TableHead className="w-[25%] bg-gray-50/50">Date</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {records.map((record) => (
+              <TableRow key={record.id}>
+                <TableCell>
+                  <div className="flex items-center space-x-3">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback>
+                        {record.student.first_name?.[0] || ""}{record.student.last_name?.[0] || ""}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="font-medium">
+                        {record.student.first_name || ""} {record.student.last_name || ""}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {record.student.grade || "N/A"} • {record.student.major_short || "N/A"}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </TableCell>
-              <TableCell className="max-w-xs truncate">{record.workshop_title}</TableCell>
-              <TableCell>
-                {getStatusBadge(record.status, record.id, handleStatusUpdate)}
-              </TableCell>
-              <TableCell>
-                {format(new Date(record.created_at), "MMM dd, yyyy")}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+                </TableCell>
+                <TableCell className="max-w-xs truncate">{record.workshop_title}</TableCell>
+                <TableCell>
+                  {getStatusBadge(record.status, record.id, handleStatusUpdate)}
+                </TableCell>
+                <TableCell>
+                  {format(new Date(record.created_at), "MMM dd, yyyy")}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 }

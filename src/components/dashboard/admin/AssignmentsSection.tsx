@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Calendar, Users, ArrowRight } from "lucide-react";
+import { Calendar, Users, ArrowRight } from "@phosphor-icons/react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 
@@ -20,27 +20,28 @@ interface Assignment {
 interface AssignmentsSectionProps {
   assignments: Assignment[];
   loading: boolean;
+  basePath?: string;
 }
 
-export function AssignmentsSection({ assignments, loading }: AssignmentsSectionProps) {
+export function AssignmentsSection({ assignments, loading, basePath = "/dashboard/admin" }: AssignmentsSectionProps) {
   const router = useRouter();
 
   const handleAssignmentClick = (assignment: Assignment) => {
     const params = new URLSearchParams();
     params.set('assignmentId', assignment.id);
-    
+
     if (assignment.workshop_title) {
       params.set('workshopId', assignment.workshop_title);
     }
-    
+
     if (assignment.crc_class_name) {
       params.set('crcClassId', assignment.crc_class_name);
       if (assignment.crc_class_id) {
         params.set('subClassId', assignment.crc_class_id);
       }
     }
-    
-    router.push(`/dashboard/admin/assignments-management?${params.toString()}`);
+
+    router.push(`${basePath}/assignments-management?${params.toString()}`);
   };
 
   return (
@@ -76,8 +77,8 @@ export function AssignmentsSection({ assignments, loading }: AssignmentsSectionP
           ) : assignments.length > 0 ? (
             <div className="space-y-4 pr-4">
               {assignments.map((assignment) => (
-                <div 
-                  key={assignment.id} 
+                <div
+                  key={assignment.id}
                   className="group relative p-4 border border-gray-200 rounded-xl hover:border-purple-200 hover:bg-gradient-to-r hover:from-purple-50 hover:to-transparent transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50"
                   onClick={() => handleAssignmentClick(assignment)}
                   onKeyDown={(e) => {

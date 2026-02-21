@@ -3,27 +3,15 @@ import { AdminSidebar } from "@/components/dashboard/admin/AdminSidebar";
 import { AdminBottomNav } from "@/components/dashboard/admin/AdminBottomNav";
 import { ToastProvider } from "@/components/dashboard/admin/ToastProvider";
 import { getServerContext } from "@/trpc/init";
+import { getDashboardTitle } from "@/utils/dashboard-titles";
+import { headers } from 'next/headers';
 import "../../../../../zenith/src/index.css";
 import "../../../../../zenith/src/App.css";
 import "../../../../styles/index.css";
 import '@uiw/react-md-editor/markdown-editor.css';
 import '@uiw/react-markdown-preview/markdown.css';
 
-function getTitle(pathname: string | null) {
-  if (pathname?.includes("student-management")) return "Student Management | Admin Dashboard"
-  else if (pathname?.includes("assignments-management")) return "Assignments Management | Admin Dashboard"
-  else if (pathname?.includes("announcements-management")) return "Announcements Management | Admin Dashboard"
-  else if (pathname?.includes("events-management")) return "Events Management | Admin Dashboard"
-  else if (pathname?.includes("content-management")) return "Content Management | Admin Dashboard"
-  else if (pathname?.includes("workshops")) return "Workshops | Admin Dashboard"
-  else if (pathname?.includes("attendance")) return "Attendance | Admin Dashboard"
-  else if (pathname?.includes("crc-class-groups")) return "CRC Class Groups | Admin Dashboard"
-  else if (pathname?.includes("testing")) return "Testing | Admin Dashboard"
-  else return "Admin Dashboard | Career Resources Center"
-}
-
 export const dynamic = 'force-dynamic';
-
 
 async function getAdminProfile() {
   const context = await getServerContext();
@@ -35,7 +23,7 @@ async function getAdminProfile() {
     };
   }
 
-  // Use context data directly since we already have the admin user
+  // Use context data directly since we already have admin user
   // Type assertion is safe because we checked role === 'admin'
   const adminUser = context.user as { honorific: string | null; first_name: string; last_name: string; email: string | null };
   const fullName = [
@@ -58,10 +46,12 @@ export default async function DashboardAdminLayout({
   children: React.ReactNode
 }) {
   const { adminName, adminEmail } = await getAdminProfile();
+  const headersList = await headers();
+  const pathname = headersList.get('x-pathname') || '/';
 
   return (
     <>
-      {Head(getTitle(null))}
+      {Head(getDashboardTitle(pathname, 'admin'))}
       <div
         suppressHydrationWarning={true}
         className="min-h-screen background-blur-2xl transition-colors duration-300 bg-gray-50"

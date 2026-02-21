@@ -109,7 +109,7 @@ export default function SignInForm() {
 
           <div className="space-y-4">
             <Link href="/login/admin" className="block group">
-              <Card className="w-full border border-gray-200 dark:border-gray-700 hover:border-orange-300 dark:hover:border-orange-600 transition-colors ">
+              <Card className="w-full shadow-none dark:border-gray-700 hover:border-orange-300 dark:hover:border-orange-600 transition-colors ">
                 <CardContent className="p-6">
                   <div className="flex items-center space-x-4">
                     <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
@@ -126,7 +126,7 @@ export default function SignInForm() {
             </Link>
 
             <Link href="/login/student" className="block group">
-              <Card className="w-full border border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-600 transition-colors">
+              <Card className="w-full border shadow-none dark:border-gray-700 hover:border-green-300 dark:hover:border-green-600 transition-colors">
                 <CardContent className="p-6">
                   <div className="flex items-center space-x-4">
                     <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">

@@ -3,6 +3,17 @@ import { prisma } from "@/lib/prisma";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
+const toBigInt = (id: string, name: string) => {
+  try {
+    return BigInt(id);
+  } catch (e) {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message: `Invalid ${name}: ${id}. Must be a numeric string.`,
+    });
+  }
+};
+
 export const crcClassManagementRouter = createTRPCRouter({
   // Get all CRC classes
   getCrcClasses: adminProcedure.query(async () => {
@@ -132,16 +143,16 @@ export const crcClassManagementRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ input }) => {
-      const { id } = input;
+      const classId = toBigInt(id, 'class ID');
 
       // First, remove all students from this class
       await prisma.students.updateMany({
-        where: { crc_class_id: BigInt(id) },
+        where: { crc_class_id: classId },
         data: { crc_class_id: null },
       });
 
       // Then delete the class
-      await prisma.crc_class.delete({ where: { id: BigInt(id) } });
+      await prisma.crc_class.delete({ where: { id: classId } });
 
       return { success: true };
     }),
@@ -155,6 +166,7 @@ export const crcClassManagementRouter = createTRPCRouter({
     )
     .query(async ({ input }) => {
       const { classId } = input;
+      const bClassId = toBigInt(classId, 'class ID');
 
       const formatEnumValue = (value: string | null) => {
         if (!value) return null;
@@ -162,7 +174,7 @@ export const crcClassManagementRouter = createTRPCRouter({
       };
 
       const crcClass = await prisma.crc_class.findUnique({
-        where: { id: BigInt(classId) },
+        where: { id: bClassId },
         include: {
           admin: { select: { first_name: true, last_name: true } },
           students: { 

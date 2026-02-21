@@ -4,6 +4,11 @@ import ScrollUp from '@/components/Common/ScrollUp';
 import ConditionalHeader from '../../../../components/other/ConditionalHeader';
 import MultipleAnnouncementsBanner from '@/components/Banner/MultipleAnnouncementsBanner';
 import { ELLContent } from './ell-content';
+import { Suspense } from 'react';
+
+function ContentWrapper() {
+  return <ELLContent />;
+}
 
 export default async function Home() {
   const queryClient = getQueryClient();
@@ -27,7 +32,8 @@ export default async function Home() {
           />
         <div className="flex justify-center pb-12">
           <div className="content border border-gray-700 rounded-md p-8 w-[1100px] max-w-[90%] mx-auto">
-              <ELLContent />
+
+            <ContentWrapper />
           </div>
         </div>
       </div>

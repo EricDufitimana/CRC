@@ -2,8 +2,10 @@ import { useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/zenith/components/ui/table";
 import { Button } from "@/zenith/components/ui/button";
 import { Badge } from "@/zenith/components/ui/badge";
-import { Edit, Trash2, Calendar, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Edit, Trash2, Calendar, Loader2, ChevronLeft, ChevronRight, MoreVertical, Eye } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/zenith/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/zenith/components/ui/alert-dialog";
 
 type SupabaseWorkshop = {
   id: string;
@@ -126,29 +128,64 @@ export function WorkshopsTable({
                 </Badge>
               </TableCell>
               <TableCell className="text-right">
-                <div className="flex items-center justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onEdit(workshop)}
-                    className="h-8 w-8 p-0"
-                  >
-                    <Edit className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onDelete(workshop.id)}
-                    disabled={deletingWorkshopId === workshop.id}
-                    className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                  >
-                    {deletingWorkshopId === workshop.id ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-3.5 w-3.5" />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="border-none hover:bg-transparent bg-transparent">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => onEdit(workshop)}>
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit
+                    </DropdownMenuItem>
+                    {workshop.has_assignment && (
+                      <DropdownMenuItem onClick={() => onViewAssignment(workshop)}>
+                        <Eye className="h-4 w-4 mr-2" />
+                        View Assignment
+                      </DropdownMenuItem>
                     )}
-                  </Button>
-                </div>
+                    <DropdownMenuSeparator />
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <DropdownMenuItem 
+                          className="text-red-600 focus:text-red-600"
+                          onSelect={(e) => {
+                            e.preventDefault();
+                            onDelete(workshop.id);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Workshop</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete the workshop &quot;{workshop.title}&quot;? This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => onDelete(workshop.id)}
+                            disabled={deletingWorkshopId === workshop.id}
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                          >
+                            {deletingWorkshopId === workshop.id ? (
+                              <div className="flex items-center justify-center">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              </div>
+                            ) : (
+                              'Delete Workshop'
+                            )}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </TableCell>
             </TableRow>
           ))}

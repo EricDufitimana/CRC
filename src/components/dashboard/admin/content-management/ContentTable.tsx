@@ -3,9 +3,11 @@
 import { Button } from "@/zenith/components/ui/button";
 import { Badge } from "@/zenith/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/zenith/components/ui/table";
-import { Edit, PowerOff, FileText, Trash2 } from "lucide-react";
+import { Edit, PowerOff, FileText, Trash2, MoreVertical, Eye } from "lucide-react";
 import { Resource } from "./types";
 import { EmptyState } from "@/components/ui/empty-state";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/zenith/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/zenith/components/ui/alert-dialog";
 
 interface ContentTableProps {
   resources: Resource[];
@@ -147,57 +149,98 @@ export function ContentTable({
                 </Badge>
               </TableCell>
               <TableCell>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onEdit(resource)}
-                  >
-                    <Edit className="h-3 w-3" />
-                  </Button>
-                  {resource.status === 'active' ? (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onDeactivate(resource.id.toString())}
-                        className="text-red-600 hover:text-red-700"
-                        title="Deactivate resource"
-                      >
-                        <PowerOff className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onDelete(resource.id.toString())}
-                        className="text-red-600 hover:text-red-700"
-                        title="Delete resource permanently"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onReactivate(resource.id.toString())}
-                        className="text-green-600 hover:text-green-700"
-                      >
-                        Activate
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onDelete(resource.id.toString())}
-                        className="text-red-600 hover:text-red-700"
-                        title="Delete resource permanently"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </>
-                  )}
-                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="border-none hover:bg-transparent bg-transparent">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => onEdit(resource)}>
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit
+                    </DropdownMenuItem>
+                    {resource.status === 'active' ? (
+                      <>
+                        <DropdownMenuItem onClick={() => onDeactivate(resource.id.toString())} className="text-orange-600 focus:text-orange-600">
+                          <PowerOff className="h-4 w-4 mr-2" />
+                          Deactivate
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <DropdownMenuItem 
+                              className="text-red-600 focus:text-red-600"
+                              onSelect={(e) => {
+                                e.preventDefault();
+                                onDelete(resource.id.toString());
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Resource</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete the resource &quot;{resource.title}&quot;? This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => onDelete(resource.id.toString())}
+                                className="bg-red-600 hover:bg-red-700 text-white"
+                              >
+                                Delete Resource
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </>
+                    ) : (
+                      <>
+                        <DropdownMenuItem onClick={() => onReactivate(resource.id.toString())} className="text-green-600 focus:text-green-600">
+                          <PowerOff className="h-4 w-4 mr-2" />
+                          Activate
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <DropdownMenuItem 
+                              className="text-red-600 focus:text-red-600"
+                              onSelect={(e) => {
+                                e.preventDefault();
+                                onDelete(resource.id.toString());
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Resource</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete the resource &quot;{resource.title}&quot;? This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => onDelete(resource.id.toString())}
+                                className="bg-red-600 hover:bg-red-700 text-white"
+                              >
+                                Delete Resource
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </TableCell>
             </TableRow>
           ))}

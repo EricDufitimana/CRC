@@ -2,8 +2,10 @@
 
 import { Fragment } from 'react';
 import Layout from '@/components/other/ResourceLayout';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, Loader2 } from 'lucide-react';
 import { useTRPCRealtime } from '@/hooks/useTRPCRealtime';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ClimbingBoxLoader } from 'react-spinners';
 
 type Opportunity = {
   id: number;
@@ -24,7 +26,9 @@ export function RecurringOpportunitiesContent() {
   if (loading) {
     return (
       <div className="text-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+        <div className="scale-75">
+          <ClimbingBoxLoader />
+        </div>
         <p className="mt-4 text-gray-600">Loading opportunities...</p>
       </div>
     );
@@ -49,22 +53,21 @@ export function RecurringOpportunitiesContent() {
 
   if (!data || data.length === 0) {
     return (
-      <div className="text-center text-gray-500 py-12">
-        <div className="mb-6">
-          <div className="relative">
-            <RotateCcw className="h-16 w-16 mx-auto text-gray-300" />
-          </div>
-        </div>
-        <h3 className="text-lg font-medium text-gray-600 mb-2">No recurring opportunities available</h3>
-        <p className="text-gray-500 max-w-md mx-auto">
-          These opportunities repeat on a regular basis. Check back soon for new programs and ongoing initiatives.
-        </p>
+      <div className="content w-[1100px] max-w-[90%] mx-auto">
+        <EmptyState
+          image="/images/empty-state/empty-resources.svg"
+          headerText="No recurring opportunities available"
+          subtext="These opportunities repeat on a regular basis. Check back soon for new programs and ongoing initiatives."
+          imageClassName="-ml-8 w-48 h-48"
+          imageSize="custom"
+          showDashedBorder={false}
+        />
       </div>
     );
   }
 
   return (
-    <>
+    <div className="content border border-gray-700 rounded-md p-8 w-[1100px] max-w-[90%] mx-auto">
       {data.map((item, index) => (
         <Fragment key={item.id.toString()}>
           <Layout
@@ -75,7 +78,7 @@ export function RecurringOpportunitiesContent() {
             double={false}
             deadline={item.opportunity_deadline?.toString()}
             links={
-              item.url ? [{ text: `Learn More About ${item.title}`, href: item.url }] : []
+              item.url ? [{ text: `Go to ${item.title}`, href: item.url }] : []
             }
           />
           {index < data.length - 1 && (
@@ -83,7 +86,7 @@ export function RecurringOpportunitiesContent() {
           )}
         </Fragment>
       ))}
-    </>
+    </div>
   );
 }
 

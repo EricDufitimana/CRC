@@ -2,7 +2,11 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { AlertTriangle, CheckCircle, ArrowRight } from "lucide-react";
+import { 
+  WarningCircle, 
+  CheckCircle, 
+  ArrowRight
+} from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 
 interface AttentionItem {
@@ -18,9 +22,10 @@ interface AttentionItem {
 interface AttentionNeededSectionProps {
   items: AttentionItem[];
   loading: boolean;
+  basePath?: string;
 }
 
-export function AttentionNeededSection({ items, loading }: AttentionNeededSectionProps) {
+export function AttentionNeededSection({ items, loading, basePath = "/dashboard/admin" }: AttentionNeededSectionProps) {
   const router = useRouter();
 
   const handleAssignmentClick = (assignment: any) => {
@@ -38,7 +43,7 @@ export function AttentionNeededSection({ items, loading }: AttentionNeededSectio
       }
     }
     
-    router.push(`/dashboard/admin/assignments-management?${params.toString()}`);
+    router.push(`${basePath}/assignments-management?${params.toString()}`);
   };
 
   return (
@@ -47,7 +52,7 @@ export function AttentionNeededSection({ items, loading }: AttentionNeededSectio
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="p-2 bg-red-100 rounded-lg">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
+              <WarningCircle weight="fill" className="h-5 w-5 text-red-600" />
             </div>
             <div>
               <CardTitle className="text-md font-semibold text-gray-900">Attention Needed</CardTitle>
@@ -94,7 +99,7 @@ export function AttentionNeededSection({ items, loading }: AttentionNeededSectio
                   aria-label={item.type === 'assignment' ? `View assignment: ${item.title}` : undefined}
                 >
                   <div className="flex items-start">
-                    <AlertTriangle className="h-4 w-4 text-red-600 mr-3 flex-shrink-0 mt-0.5" />
+                    <WarningCircle weight="fill" className="h-4 w-4 text-red-600 mr-3 flex-shrink-0 mt-0.5" />
                     <div className="flex-1">
                       <span className="text-sm text-red-800 font-medium">{item.title}</span>
                       <div className="text-xs text-red-600 mt-1">{item.description}</div>
@@ -106,7 +111,7 @@ export function AttentionNeededSection({ items, loading }: AttentionNeededSectio
                     </div>
                     {item.type === 'assignment' && (
                       <div className="ml-2 flex-shrink-0">
-                        <ArrowRight className="h-3 w-3 text-red-500 group-hover:text-red-600 transition-colors" />
+                        <ArrowRight weight="fill" className="h-3 w-3 text-red-500 group-hover:text-red-600 transition-colors" />
                       </div>
                     )}
                   </div>
@@ -117,7 +122,7 @@ export function AttentionNeededSection({ items, loading }: AttentionNeededSectio
           ) : (
             <div className="text-center py-8 text-gray-500">
               <div className="relative">
-                <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-500" />
+                <CheckCircle weight="fill" className="h-12 w-12 mx-auto mb-4 text-green-500" />
                 <div className="absolute inset-0 bg-green-100 rounded-full opacity-20 animate-pulse"></div>
               </div>
               <p className="text-lg font-medium text-gray-600 mb-2">All caught up!</p>

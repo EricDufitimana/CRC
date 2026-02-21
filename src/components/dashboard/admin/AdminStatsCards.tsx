@@ -1,7 +1,14 @@
 "use client";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, Users, FileText, Briefcase, TrendingUp, TrendingDown } from "lucide-react";
+import { 
+  Calendar, 
+  Users, 
+  Note, 
+  Briefcase, 
+  ArrowUp, 
+  ArrowDown
+} from "@phosphor-icons/react";
 
 interface DashboardStats {
   essayRequestsThisWeek: number;
@@ -60,7 +67,7 @@ export function AdminStatsCards({ stats, loading }: AdminStatsCardsProps) {
       title: "Essay Requests",
       value: stats.essayRequestsThisWeek,
       description: "This week",
-      icon: FileText,
+      icon: Note,
       iconBg: "bg-green-100",
       iconColor: "text-green-700",
       current: stats.essayRequestsThisWeek,
@@ -104,7 +111,7 @@ export function AdminStatsCards({ stats, loading }: AdminStatsCardsProps) {
                     )}
                   </div>
                   <div className={`h-12 w-12 rounded-xl ${stat.iconBg} ${stat.iconColor} flex items-center justify-center`}>
-                    <Icon className="h-6 w-6" />
+                    <Icon weight="fill" className="h-6 w-6" />
                   </div>
                 </div>
                 {loading ? (
@@ -115,9 +122,9 @@ export function AdminStatsCards({ stats, loading }: AdminStatsCardsProps) {
                 ) : (
                   <div className="mt-4 flex items-center text-xs">
                     {trend === 'up' ? (
-                      <TrendingUp className="h-3 w-3 text-green-600 mr-1" />
+                      <ArrowUp weight="fill" className="h-3 w-3 text-green-600 mr-1" />
                     ) : trend === 'down' ? (
-                      <TrendingDown className="h-3 w-3 text-red-600 mr-1" />
+                      <ArrowDown weight="fill" className="h-3 w-3 text-red-600 mr-1" />
                     ) : null}
                     <span className={`font-medium ${
                       trend === 'up' ? 'text-green-600' : 

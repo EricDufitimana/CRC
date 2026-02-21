@@ -25,14 +25,14 @@ export function StudentSearchBar({
   onClearSaved,
 }: StudentSearchBarProps) {
   return (
-    <div className="flex gap-2 items-center">
+    <div className="flex gap-3 items-center">
       <div className="relative flex-1">
         <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 transition-colors duration-300 text-gray-400 dark:text-gray-500" />
         <Input
           placeholder="Search students by name..."
           value={searchTerm}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => onSearchChange(e.target.value)}
-          className="pl-8 pr-8 h-9 text-sm transition-colors duration-300 bg-white/80 border-gray-300 text-gray-900 placeholder:text-gray-500"
+          className="pl-8 pr-8 h-11 text-sm transition-colors duration-300 bg-white/80 border-gray-300 text-gray-900 placeholder:text-gray-500"
         />
         {searchTerm && (
           <button
@@ -51,7 +51,7 @@ export function StudentSearchBar({
             onClick={onSaveSelection}
             disabled={selectedCount === 0}
             size="sm"
-            className="bg-black hover:bg-gray-800 text-white text-xs h-9 px-3 whitespace-nowrap shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition duration-200"
+            className="bg-black hover:bg-gray-800 text-white text-xs h-11 px-4 whitespace-nowrap shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition duration-200"
           >
             Save ({selectedCount})
           </Button>
@@ -85,7 +85,7 @@ export function StudentSearchBar({
           disabled={selectedCount === 0}
           variant="outline"
           size="sm"
-          className="h-9 px-3 text-xs transition-colors duration-300 border-gray-300 hover:bg-gray-50 text-gray-700 dark:border-gray-600 dark:hover:bg-gray-800 dark:text-gray-300 dark:hover:text-white"
+          className="h-11 px-4 text-xs transition-colors duration-300 border-gray-300 hover:bg-gray-50 text-gray-700 dark:border-gray-600 dark:hover:bg-gray-800 dark:text-gray-300 dark:hover:text-white"
         >
           Clear Selected
         </Button>

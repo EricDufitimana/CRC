@@ -2,8 +2,10 @@
 
 import { Fragment } from 'react';
 import Layout from '@/components/other/ResourceLayout';
-import { Briefcase } from 'lucide-react';
+import { Briefcase, Loader2 } from 'lucide-react';
 import { useTRPCRealtime } from '@/hooks/useTRPCRealtime';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ClimbingBoxLoader } from 'react-spinners';
 
 type Internship = {
   id: number;
@@ -24,7 +26,9 @@ export function InternshipsContent() {
   if (loading) {
     return (
       <div className="text-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+        <div className="scale-75">
+          <ClimbingBoxLoader />
+        </div>
         <p className="mt-4 text-gray-600">Loading internships...</p>
       </div>
     );
@@ -49,22 +53,21 @@ export function InternshipsContent() {
 
   if (!data || data.length === 0) {
     return (
-      <div className="text-center text-gray-500 py-12">
-        <div className="mb-6">
-          <div className="relative">
-            <Briefcase className="h-16 w-16 mx-auto text-gray-300" />
-          </div>
-        </div>
-        <h3 className="text-lg font-medium text-gray-600 mb-2">No internships available</h3>
-        <p className="text-gray-500 max-w-md mx-auto">
-          We&apos;re constantly seeking new internship opportunities for our students. Check back regularly for new openings and partnerships.
-        </p>
+      <div className="content w-[1100px] max-w-[90%] mx-auto">
+        <EmptyState
+          image="/images/empty-state/empty-workshops.svg"
+          headerText="No internships available"
+          subtext="We're constantly seeking new internship opportunities for our students. Check back regularly for new openings and partnerships."
+          imageClassName="-ml-8 w-48 h-48"
+          imageSize="custom"
+          showDashedBorder={false}
+        />
       </div>
     );
   }
 
   return (
-    <>
+    <div className="content border border-gray-700 rounded-md p-8 w-[1100px] max-w-[90%] mx-auto">
       {data.map((item, index) => (
         <Fragment key={item.id.toString()}>
           <Layout
@@ -75,7 +78,7 @@ export function InternshipsContent() {
             double={false}
             deadline={item.opportunity_deadline?.toString()}
             links={
-              item.url ? [{ text: `Apply to ${item.title}`, href: item.url }] : []
+              item.url ? [{ text: `Go to ${item.title}`, href: item.url }] : []
             }
           />
           {index < data.length - 1 && (
@@ -83,7 +86,7 @@ export function InternshipsContent() {
           )}
         </Fragment>
       ))}
-    </>
+    </div>
   );
 }
 

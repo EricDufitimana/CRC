@@ -1,8 +1,14 @@
+import type { Metadata } from "next";
 import "../../styles/index.css";
 import { Suspense } from "react";
 import PreLoader from "@/components/Common/PreLoader";
 
-
+export const metadata: Metadata = {
+  description: 'Career Resources Center Dashboard',
+  icons: {
+    icon: "/images/logo/logo.svg",
+  },
+};
 
 export default function DashboardLayout({
   children,

@@ -129,7 +129,7 @@ export function EmailDialog({
         <Button 
           variant="outline" 
           size="sm"
-          className="w-full h-9 gap-1.5 text-xs bg-white/80 border-gray-300/80 dark:bg-gray-800/80 dark:border-gray-600/80" 
+          className="w-full h-11 gap-1.5 text-xs bg-white/80 border-gray-300/80 dark:bg-gray-800/80 dark:border-gray-600/80" 
           disabled={totalSelections === 0 || sendEmailMutation.isPending}
           onClick={handleOpenClick}
         >

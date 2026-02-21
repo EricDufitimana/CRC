@@ -612,18 +612,42 @@ export const studentDashboardRouter = createTRPCRouter({
         }
       });
 
+      console.log('=== DATABASE DEBUG ===');
+      console.log('studentId:', studentId);
+      console.log('student from database:', student);
+      console.log('student keys:', student ? Object.keys(student) : 'null');
+      console.log('==================');
+
       if (!student) {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Student not found' });
       }
 
       // Get signed URL for academic report if it exists
       let academic_report_url = null;
+      console.log('=== SUPABASE DEBUG ===');
+      console.log('student.academic_report_path:', student.academic_report_path);
+      console.log('Type of academic_report_path:', typeof student.academic_report_path);
+      
       if (student.academic_report_path) {
-        const { data } = await supabaseAdmin.storage
-          .from('academic-reports')
-          .createSignedUrl(student.academic_report_path, 3600);
-        academic_report_url = data?.signedUrl || null;
+        console.log('Attempting to create signed URL for:', student.academic_report_path);
+        try {
+          const { data, error } = await supabaseAdmin.storage
+            .from('reports')
+            .createSignedUrl(student.academic_report_path, 3600);
+          
+          console.log('Supabase response data:', data);
+          console.log('Supabase error:', error);
+          
+          academic_report_url = data?.signedUrl || null;
+          console.log('Final academic_report_url:', academic_report_url);
+        } catch (err) {
+          console.error('Error creating signed URL:', err);
+          academic_report_url = null;
+        }
+      } else {
+        console.log('No academic_report_path found in database');
       }
+      console.log('===================');
 
       return {
         first_name: student.first_name,

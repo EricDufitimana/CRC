@@ -699,10 +699,10 @@ enum major_short {
   PCB
   MCE
   MEG
-  A
-  B
-  C
-  D
+  Ey_Dove 
+  Ey_Falcon 
+  Ey_Eagle
+  Ey_Sparrow
   MPCB
   MPGE_A @map("MPGE A")
   HGLP_A @map("HGLP A")

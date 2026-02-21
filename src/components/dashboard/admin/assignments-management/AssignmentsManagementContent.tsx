@@ -10,7 +10,7 @@ import { AssignmentsTable } from "./AssignmentsTable";
 import { AssignmentsMetrics } from "./AssignmentsMetrics";
 import { SubmissionDialog } from "./SubmissionDialog";
 import { AssignmentDetailLoading } from "./AssignmentDetailLoading";
-import { FileText } from "lucide-react";
+import { DeskIcon } from "@phosphor-icons/react";
 
 export function AssignmentsManagementContent() {
   const trpc = useTRPC();
@@ -199,7 +199,11 @@ export function AssignmentsManagementContent() {
         {!assignmentId ? (
           /* Navigation Guide */
           <div className="border border-dashed border-gray-300 rounded-lg p-8 text-center bg-gray-50/50">
-            <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <div className="flex items-center justify-center">
+
+              <DeskIcon size={70} className="text-gray-500 text-center"/>
+
+            </div>
             <h3 className="text-lg font-medium text-gray-700 mb-2">Select an Assignment</h3>
             <p className="text-gray-500 mb-4">
               Choose a class, then workshop, then assignment to view student submission data.

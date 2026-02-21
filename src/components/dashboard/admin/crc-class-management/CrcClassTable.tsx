@@ -5,8 +5,9 @@ import Link from "next/link";
 import { Button } from "@/zenith/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/zenith/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/zenith/components/ui/alert-dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/zenith/components/ui/dropdown-menu";
 import { Skeleton } from "@/zenith/components/ui/skeleton";
-import { Users, GraduationCap, Calendar, Trash2, Edit, Eye } from "lucide-react";
+import { Users, GraduationCap, Calendar, Trash2, Edit, Eye, MoreHorizontal, MoreVertical } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
 import { showToastSuccess, showToastError } from "@/components/toasts";
@@ -16,9 +17,10 @@ interface CrcClassTableProps {
   classes: CrcClass[];
   loading: boolean;
   onView: (group: CrcClass) => void;
+  basePath?: string;
 }
 
-export function CrcClassTable({ classes, loading, onView }: CrcClassTableProps) {
+export function CrcClassTable({ classes, loading, onView, basePath = "/dashboard/admin/crc-class-groups" }: CrcClassTableProps) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const [deletingClassId, setDeletingClassId] = useState<string | null>(null);
@@ -120,70 +122,64 @@ export function CrcClassTable({ classes, loading, onView }: CrcClassTableProps) 
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="gap-1"
-                        onClick={() => onView(g)}
-                      >
-                        <Eye className="h-3 w-3" />
-                        View
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="gap-1"
-                        asChild
-                      >
-                        <Link href={`/dashboard/admin/crc-class-groups/${g.id}`}>
-                          <Edit className="h-3 w-3" />
-                          Edit
-                        </Link>
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="gap-1 text-red-600 hover:text-red-700"
-                            onClick={() => handleDelete(g)}
-                            disabled={deletingClassId === g.id}
-                          >
-                            {deletingClassId === g.id ? (
-                              <div className="animate-spin h-3 w-3 border-2 border-red-600 border-t-transparent rounded-full"></div>
-                            ) : (
-                              <Trash2 className="h-3 w-3" />
-                            )}
-                            {deletingClassId === g.id ? 'Deleting...' : 'Delete'}
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete CRC Class</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to delete the class &quot;{g.name}&quot;? This will unassign all students from this class. This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={confirmDelete}
-                              disabled={deletingClassId === deletingGroup?.id}
-                              className="bg-red-600 hover:bg-red-700 text-white"
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="border-none hover:bg-transparent bg-transpa">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onView(g)}>
+                          <Eye className="h-4 w-4 mr-2" />
+                          View
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href={`${basePath}/${g.id}`}>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <DropdownMenuItem 
+                              className="text-red-600 focus:text-red-600"
+                              onSelect={(e) => {
+                                e.preventDefault();
+                                handleDelete(g);
+                              }}
                             >
-                              {deletingClassId === deletingGroup?.id ? (
-                                <div className="flex items-center justify-center">
-                                  <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                                </div>
-                              ) : (
-                                'Delete Class'
-                              )}
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete CRC Class</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete the class &quot;{g.name}&quot;? This will unassign all students from this class. This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={confirmDelete}
+                                disabled={deletingClassId === deletingGroup?.id}
+                                className="bg-red-600 hover:bg-red-700 text-white"
+                              >
+                                {deletingClassId === deletingGroup?.id ? (
+                                  <div className="flex items-center justify-center">
+                                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                                  </div>
+                                ) : (
+                                  'Delete Class'
+                                )}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))

@@ -3,6 +3,7 @@ import Head from "../../../(site)/head";
 import { StudentLayoutContent } from "@/components/dashboard/student/StudentLayoutContent";
 import { HydrateClient, prefetch, trpc } from '@/trpc/server';
 import { getServerContext } from '@/trpc/init';
+import { getDashboardTitle } from "@/utils/dashboard-titles";
 import { headers } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
@@ -26,17 +27,9 @@ export default async function StudentLayout({ children }: { children: ReactNode 
   const headersList = await headers();
   const pathname = headersList.get('x-pathname') || '/';
   
-  const getTitle = () => {
-    if (pathname?.includes("assignments")) return "Assignments | Student Dashboard"
-    else if (pathname?.includes("documents")) return "Documents | Student Dashboard"
-    else if (pathname?.includes("requests")) return "Requests | Student Dashboard"
-    else return "Student Dashboard | Career Resources Center"
-  }
-
-
   return (
     <HydrateClient>
-      {Head(getTitle())}
+      {Head(getDashboardTitle(pathname, 'student'))}
       <StudentLayoutContent>
         {children}
       </StudentLayoutContent>
