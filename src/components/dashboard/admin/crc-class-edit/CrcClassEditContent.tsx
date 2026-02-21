@@ -656,7 +656,7 @@ export function CrcClassEditContent() {
                       ? 'text-orange-700' 
                       : 'text-green-700'
                   }`}>
-                    {student.name?.split(' ').map(n => n[0]).join('')}
+                    {student.name?.split(' ').map((n: string) => n[0]).join('')}
                   </span>
                 </div>
                 <div className="flex-1">

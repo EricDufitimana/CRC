@@ -143,6 +143,7 @@ export const crcClassManagementRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ input }) => {
+      const id = input?.id;
       const classId = toBigInt(id, 'class ID');
 
       // First, remove all students from this class
