@@ -345,6 +345,16 @@ export default function StudentSetupPage() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
 
+  // Component state
+  const [isUploading, setIsUploading] = useState(false);
+  const [setupError, setSetupError] = useState<string | null>(null);
+  const [resumeUrlError, setResumeUrlError] = useState<string | null>(null);
+  const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null);
+  const [selectedAvatarPath, setSelectedAvatarPath] = useState<string | null>(null);
+  const [uploadedAvatarFile, setUploadedAvatarFile] = useState<File[]>([]);
+  const [academicReportFile, setAcademicReportFile] = useState<File[]>([]);
+  const [resumeLink, setResumeLink] = useState("");
+
   // tRPC queries
   const getStudentDataOptions = trpc.setup.getStudentData.queryOptions({ userId: userId || "" });
   const { data: studentData, isLoading: isLoadingStudent, error: studentError } = useQuery(getStudentDataOptions);
