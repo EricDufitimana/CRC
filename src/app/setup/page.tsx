@@ -139,8 +139,6 @@ function StepProfilePicture({
   selectedAvatarPath,
   setSelectedAvatarPath,
   uploadedAvatarFile,
-  setUploadedAvatarFile,
-  uploadedAvatarFile,
   setUploadedAvatarFile
 }: StepProfilePictureProps) {
   const [localUploadUrl, setLocalUploadUrl] = useState<string | null>(null);
