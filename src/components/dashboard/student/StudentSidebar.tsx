@@ -472,7 +472,6 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
                     alt="Preview"
                     className={`h-full w-full object-cover p-1 transition-opacity duration-300 ${isUploadingAvatar ? 'opacity-50' : 'opacity-100'}`}
                   />
-                  
                 </div>
               </div>
 

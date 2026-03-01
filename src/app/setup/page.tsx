@@ -182,6 +182,7 @@ function StepProfilePicture({
         >
           {previewSrc
             ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={previewSrc} alt="Selected" style={{ width: "100%", height: "100%", objectFit: "cover", padding: previewSrc.includes('dicebear') ? '8px' : '0' }} />
+            : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "32px", fontWeight: 700, color: "rgba(34,34,34,0.2)" }}>{fallbackInitial}</div>
           }
         </div>
       </div>
