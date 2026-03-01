@@ -66,6 +66,7 @@ export const setupRouter = createTRPCRouter({
   updateProfile: studentProcedure
     .input(z.object({
       avatar_path: z.string().optional(),
+      profile_background: z.string().optional(),
       avatar: z.string().optional(), // base64 string
       academic_report: z.string().optional(), // base64 string
       academic_report_name: z.string().optional(), // original filename
@@ -74,7 +75,7 @@ export const setupRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const studentId = ctx.user.id;
       const userId = ctx.user.user_id;
-      
+
       try {
         // Fetch student data to get name information
         console.log("1. Fetching student data")
@@ -99,11 +100,11 @@ export const setupRouter = createTRPCRouter({
         // Handle avatar upload
         if (input.avatar) {
           console.log('📤 Setup: Uploading avatar file');
-          
+
           // Decode base64
           const base64Data = input.avatar.split(',')[1];
           const buffer = Buffer.from(base64Data, 'base64');
-          
+
           // Generate unique filename
           const ext = 'jpg'; // Default extension
           const key = randomUUID();
@@ -111,7 +112,7 @@ export const setupRouter = createTRPCRouter({
           const path = `student-${studentId}/${currentDate}/avatar-${key}.${ext}`;
 
           console.log("2. Uploading the picture to the database")
-          
+
           // Upload to Supabase Storage
           const { error: uploadError } = await supabase.storage
             .from('avatars')
@@ -120,7 +121,7 @@ export const setupRouter = createTRPCRouter({
               upsert: false,
               contentType: 'image/jpeg',
             });
-          
+
           if (uploadError) {
             console.error('❌ Avatar upload error:', uploadError);
             throw new TRPCError({
@@ -128,7 +129,7 @@ export const setupRouter = createTRPCRouter({
               message: 'Failed to upload avatar',
             });
           }
-          
+
           finalAvatarPath = path;
         } else if (input.avatar_path) {
           finalAvatarPath = input.avatar_path;
@@ -138,20 +139,20 @@ export const setupRouter = createTRPCRouter({
         let academicReportPath: string | null = null;
         if (input.academic_report) {
           console.log('📄 Setup: Uploading academic report');
-          
+
           const base64Data = input.academic_report.split(',')[1];
           const buffer = Buffer.from(base64Data, 'base64');
-          
+
           const currentDate = new Date().toISOString().split('T')[0];
-          
+
           // Create student name path: FirstName_LastName_StudentID
           const studentNamePath = `${student.first_name}_${student.last_name}_${student.student_id}`;
-          
+
           // Use original filename or fallback to report.pdf
           const fileName = input.academic_report_name || 'report.pdf';
           const path = `${studentNamePath}/${currentDate}-${Date.now()}/${fileName}`;
           console.log("3. Uploading report to the storage")
-          
+
           const { error: uploadError } = await supabase.storage
             .from('reports')
             .upload(path, buffer, {
@@ -159,7 +160,7 @@ export const setupRouter = createTRPCRouter({
               upsert: false,
               contentType: 'application/pdf',
             });
-          
+
           if (uploadError) {
             console.error('❌ Academic report upload error:', uploadError);
             throw new TRPCError({
@@ -167,7 +168,7 @@ export const setupRouter = createTRPCRouter({
               message: 'Failed to upload academic report',
             });
           }
-          
+
           academicReportPath = path;
         }
 
@@ -176,7 +177,7 @@ export const setupRouter = createTRPCRouter({
         if (academicReportPath) {
           try {
             console.log('🤖 Setup: Extracting GPA from academic report...');
-            
+
             const reportProcessingResponse = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/scan_report_card_ai`, {
               method: 'POST',
               headers: {
@@ -192,7 +193,7 @@ export const setupRouter = createTRPCRouter({
             if (reportProcessingResponse.ok) {
               const reportData = await reportProcessingResponse.json();
               console.log('📊 Setup: Report processing result:', reportData);
-              
+
               if (reportData.success && reportData.average !== null) {
                 extractedGPA = reportData.average;
                 console.log('✅ Setup: GPA extracted successfully:', extractedGPA);
@@ -211,6 +212,7 @@ export const setupRouter = createTRPCRouter({
         // Update student record
         const updateData: any = {};
         if (finalAvatarPath) updateData.profile_picture = finalAvatarPath;
+        if (input.profile_background) updateData.profile_background = input.profile_background;
         if (academicReportPath) updateData.academic_report_path = academicReportPath;
         if (extractedGPA !== null) updateData.gpa = extractedGPA;
         if (input.resume_link) updateData.resume_link = input.resume_link;
@@ -243,7 +245,7 @@ export const setupRouter = createTRPCRouter({
         if (error instanceof TRPCError) {
           throw error;
         }
-        
+
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: error instanceof Error ? error.message : 'Failed to update profile'
@@ -255,14 +257,14 @@ export const setupRouter = createTRPCRouter({
   markSetupCompleted: studentProcedure
     .mutation(async ({ ctx }) => {
       const userId = ctx.user.user_id;
-      
+
       if (!userId) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
           message: 'User ID is required'
         });
       }
-      
+
       try {
         // Update user metadata to mark setup as completed
         const { error } = await supabase.auth.admin.updateUserById(

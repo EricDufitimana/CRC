@@ -6,6 +6,7 @@ interface AnimatedTextProps {
   children: React.ReactNode;
   animation: TextAnimationType;
   className?: string;
+  style?: React.CSSProperties;
   as?: "div" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "p" | "span";
   trigger?: string;
   startTrigger?: string;
@@ -16,6 +17,7 @@ export const AnimatedText: React.FC<AnimatedTextProps> = ({
   children,
   animation,
   className = "",
+  style,
   as: Component = "div",
   trigger,
   startTrigger,
@@ -29,11 +31,12 @@ export const AnimatedText: React.FC<AnimatedTextProps> = ({
   });
 
   return (
-    <Component 
-      ref={elementRef as any} 
+    <Component
+      ref={elementRef as any}
       className={`${className}`}
-      style={{ 
-        opacity: 0
+      style={{
+        opacity: 0,
+        ...style,
       }}
     >
       {children}

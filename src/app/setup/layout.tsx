@@ -15,9 +15,6 @@ export default async function SetupLayout({ children }: { children: ReactNode })
       // Prefetch student data for setup
       prefetch(trpc.setup.getStudentData.queryOptions({ userId: context.user.user_id }));
       
-      // Prefetch avatars for profile picture selection
-      prefetch(trpc.studentSidebar.getAvatarsWithSignedUrls.queryOptions());
-      
       console.log('🚀 [Setup Layout] Prefetched tRPC queries for user:', context.user.user_id);
     } catch (error) {
       // Silently fail prefetch - data will load on client side

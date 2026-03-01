@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { FaFacebook, FaTwitter, FaInstagram, FaLinkedin } from "react-icons/fa6";
 
 
 const quickLinks = [
@@ -155,21 +156,19 @@ const Footer = () => {
               </p>
               
               <div className="-mx-3 flex items-center">
-                {['facebook', 'twitter', 'instagram', 'linkedin'].map((social) => (
+                {[
+                  { id: 'facebook', icon: FaFacebook },
+                  { id: 'twitter', icon: FaTwitter },
+                  { id: 'instagram', icon: FaInstagram },
+                  { id: 'linkedin', icon: FaLinkedin },
+                ].map((social) => (
                   <Link
-                    key={social}
+                    key={social.id}
                     href="#"
-                    aria-label={`${social} link`}
+                    aria-label={`${social.id} link`}
                     className="group px-3 text-white opacity-80 transition-all hover:opacity-100 hover:-translate-y-1"
                   >
-                    <svg
-                      width="22"
-                      height="22"
-                      viewBox="0 0 22 22"
-                      className="fill-current transition-all group-hover:fill-[#518C66]"
-                    >
-                      <use href={`/icons/social.svg#${social}`} />
-                    </svg>
+                    <social.icon size={22} className="transition-all group-hover:text-[#518C66]" />
                   </Link>
                 ))}
               </div>

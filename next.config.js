@@ -41,8 +41,17 @@ const nextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'img.freepik.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'veterinaire-tour-hassan.com',
+        pathname: '/**',
+      },
     ],
-    domains: ["img.freepik.com", "veterinaire-tour-hassan.com"],
   },
   webpack: (config) => {
     config.module.rules.push({

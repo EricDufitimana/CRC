@@ -25,7 +25,7 @@ const Hero = () => {
       >
         <div className="container max-section-sm">
           <div className="flex flex-wrap">
-            <div className="w-full px-4 flex items-start pt-4 gap-14 laptop-lg:pr-12">
+            <div className="w-full px-4 flex items-start pt-4 gap-14 laptop-lg:pr-20">
               <div
                 className="hero-content wow fadeInUp mx-auto max-w-[780px] text-center md:text-center"
                 data-wow-delay=".2s"

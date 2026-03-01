@@ -1,0 +1,43 @@
+
+/* src/components/framer/framer-buttons.css */
+
+.framer-text {
+    font-family: var(--framer-font-family, "Inter", "Inter Placeholder", sans-serif);
+    font-size: var(--framer-font-size, 16px);
+    font-weight: var(--framer-font-weight, 400);
+    line-height: var(--framer-line-height, 1.2em);
+    margin: 0;
+    padding: 0;
+}
+
+.framer-KGu8n.framer-jxmfz4, .framer-51Zpa.framer-1vu6bk6 {
+    cursor: pointer;
+    flex-flow: row;
+    place-content: center;
+    align-items: center;
+    gap: 0;
+    padding: 0;
+    display: flex;
+    position: relative;
+    overflow: visible;
+    border: none;
+    transition: transform 0.1s ease, opacity 0.1s ease;
+}
+
+.framer-KGu8n.framer-jxmfz4:hover, .framer-51Zpa.framer-1vu6bk6:hover {
+    opacity: 0.9;
+    transform: scale(0.98);
+}
+
+.framer-KGu8n.framer-jxmfz4:active, .framer-51Zpa.framer-1vu6bk6:active {
+    transform: scale(0.95);
+}
+
+.framer-1ylka0v, .framer-50scrv {
+    flex: none;
+    width: auto;
+    height: auto;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}

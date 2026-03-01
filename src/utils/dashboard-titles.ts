@@ -14,7 +14,6 @@ export function getDashboardTitle(pathname: string | null, role: 'admin' | 'stud
     else if (pathname.includes("workshops")) return "Workshops | Admin Dashboard";
     else if (pathname.includes("attendance")) return "Attendance | Admin Dashboard";
     else if (pathname.includes("crc-class-groups")) return "CRC Class Groups | Admin Dashboard";
-    else if (pathname.includes("testing")) return "Testing | Admin Dashboard";
     else return "Admin Dashboard | Career Resources Center";
   }
 

@@ -17,7 +17,6 @@ export default async function StudentLayout({ children }: { children: ReactNode 
       // Prefetch fellows and workshops as they're used in multiple dialogs across pages
       prefetch(trpc.studentDashboard.getFellows.queryOptions());
       prefetch(trpc.studentDashboard.getAvailableWorkshops.queryOptions());
-      prefetch(trpc.studentSidebar.getAvatarsWithSignedUrls.queryOptions());
       prefetch(trpc.studentSidebar.getStudentData.queryOptions());
     } catch (error) {
       // Silently fail prefetch - data will load on client side
@@ -26,7 +25,7 @@ export default async function StudentLayout({ children }: { children: ReactNode 
   }
   const headersList = await headers();
   const pathname = headersList.get('x-pathname') || '/';
-  
+
   return (
     <HydrateClient>
       {Head(getDashboardTitle(pathname, 'student'))}

@@ -11,9 +11,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { House, ClipboardText, Briefcase, Folder, SignOut, CaretLeft, Pencil, Camera, Spinner, HouseSimple } from "@phosphor-icons/react";
 import { useAuth } from "@/hooks/useAuth";
 import React from "react";
-import { useTRPC } from "@/trpc/client"; 
-import {useUserData} from "@/hooks/useUserData";
+import { useTRPC } from "@/trpc/client";
+import { useUserData } from "@/hooks/useUserData";
 import { useSuspenseQuery, useMutation, useQueryClient, QueryClientContext } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
 
 
 interface StudentSidebarProps {
@@ -68,7 +69,7 @@ function FileUpload({
 
   const handleDropFiles = useCallback((fileList: FileList) => {
     const newFiles = Array.from(fileList);
-    
+
     if (!multiple && newFiles.length > 0) {
       // Single file mode - replace existing file
       const updatedFiles = [newFiles[0]];
@@ -129,7 +130,10 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
   const pathname = usePathname();
   const isActive = (href: string) => pathname === href;
 
-  const {userId, studentId} = useUserData();
+  const { userId, studentId } = useUserData();
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const [isAvatar, setIsAvatar] = useState<boolean>(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -138,24 +142,43 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
   const [activeTab, setActiveTab] = useState<'upload' | 'existing'>('existing');
   const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null);
   const [selectedAvatarPath, setSelectedAvatarPath] = useState<string | null>(null);
-  const trpc = useTRPC();
-  const queryClient = useQueryClient();
+
+  const [selectedBackground, setSelectedBackground] = useState<string>("#F0EBE3");
+
+  const backgroundPresets = [
+    { name: "Linen", hex: "#F0EBE3" },
+    { name: "Mint", hex: "#E8F0EB" },
+    { name: "Lavender", hex: "#EAE8F0" },
+    { name: "Rose", hex: "#F0E8E8" },
+    { name: "Blue", hex: "#E8EEF0" },
+    { name: "Peach", hex: "#F0EDE8" },
+    { name: "Sage", hex: "#EDF0E8" },
+    { name: "Lilac", hex: "#F0E8F0" },
+  ];
 
 
-  const { 
-    data: avatarResponse, 
-    error: avatarError, 
-    isFetching: isLoadingAvatars, 
-    refetch: refetchAvatars 
-  } = useSuspenseQuery(trpc.studentSidebar.getAvatarsWithSignedUrls.queryOptions());
-  
-  const fetchedAvatars = avatarResponse.avatars;
-  
-  const { data: studentData , isLoading: userDataLoading, error: userDataError} = 
+  // DiceBear avatar grid
+  const fetchedAvatars = [
+    { id: "av-1", src: "https://api.dicebear.com/8.x/adventurer/svg?seed=Eric", name: "Eric" },
+    { id: "av-2", src: "https://api.dicebear.com/8.x/adventurer/svg?seed=Kigali", name: "Kigali" },
+    { id: "av-3", src: "https://api.dicebear.com/8.x/adventurer/svg?seed=CRC", name: "CRC" },
+    { id: "av-4", src: "https://api.dicebear.com/8.x/adventurer/svg?seed=ASYV", name: "ASYV" },
+    { id: "av-5", src: "https://api.dicebear.com/8.x/adventurer/svg?seed=Jordan", name: "Jordan" },
+    { id: "av-6", src: "https://api.dicebear.com/8.x/adventurer/svg?seed=Morgan", name: "Morgan" },
+    { id: "av-7", src: "https://api.dicebear.com/8.x/adventurer/svg?seed=Taylor", name: "Taylor" },
+    { id: "av-8", src: "https://api.dicebear.com/8.x/adventurer/svg?seed=Riley", name: "Riley" },
+    { id: "av-9", src: "https://api.dicebear.com/8.x/adventurer/svg?seed=Sage", name: "Sage" },
+    { id: "av-10", src: "https://api.dicebear.com/8.x/adventurer/svg?seed=Luna", name: "Luna" },
+    { id: "av-11", src: "https://api.dicebear.com/8.x/adventurer/svg?seed=Phoenix", name: "Phoenix" },
+    { id: "av-12", src: "https://api.dicebear.com/8.x/adventurer/svg?seed=River", name: "River" },
+  ];
+  const isLoadingAvatars = false;
+
+  const { data: studentData, isLoading: userDataLoading, error: userDataError } =
     useSuspenseQuery(trpc.studentSidebar.getStudentData.queryOptions());
 
   const { data: profilePictureData } = useSuspenseQuery(
-    trpc.studentSidebar.getProfilePicture.queryOptions({ 
+    trpc.studentSidebar.getProfilePicture.queryOptions({
       profilePicturePath: studentData.profile_picture || '', // Handle null
     })
   );
@@ -163,6 +186,9 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
     if (profilePictureData) {
       setProfileImageUrl(profilePictureData.imageUrl);
       setIsAvatar(profilePictureData.isAvatar || false);
+      if (profilePictureData.profileBackground) {
+        setSelectedBackground(profilePictureData.profileBackground);
+      }
     }
   }, [profilePictureData]);
 
@@ -174,22 +200,28 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
         setProfileImageUrl(result.data.avatarPath);
         setIsAvatar(true);
       }
+      if (result.data?.profileBackground) {
+        setSelectedBackground(result.data.profileBackground);
+      }
       setIsEditDialogOpen(false);
       setUploadedAvatarFile([]);
-      
+
       // Invalidate queries
-      queryClient.invalidateQueries({ 
-        queryKey: [['studentSidebar', 'getStudentData']] 
+      queryClient.invalidateQueries({
+        queryKey: [['studentSidebar', 'getStudentData']]
       });
-      
+
       window.location.reload();
     },
     onError: (error) => {
       console.error('❌ Avatar upload failed:', error);
       alert(error.message || 'Failed to upload avatar. Please try again.');
+    },
+    onSettled: () => {
+      setIsUploadingAvatar(false);
     }
   });
-  
+
   // U
 
 
@@ -198,33 +230,32 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
       alert('Please select a file to upload');
       return;
     }
-    
+
     if (!studentId || !userId) {
       console.error('❌ Missing required IDs for avatar update');
       return;
     }
-    
+
     setIsUploadingAvatar(true);
-    
+
     // Convert file to base64 for TRPC transport
     const file = uploadedAvatarFile[0];
     const reader = new FileReader();
-    
+
     reader.onloadend = () => {
       const base64String = reader.result as string;
-      
+
       updateAvatarMutation.mutate({
         avatarFile: {
           name: file.name,
           type: file.type,
           size: file.size,
           base64: base64String
-        }
+        },
+        profileBackground: selectedBackground
       });
-      
-      setIsUploadingAvatar(false);
     };
-    
+
     reader.readAsDataURL(file);
   };
 
@@ -237,23 +268,23 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
     console.log('🎯 Updating avatar:', avatar.name);
     setIsUploadingAvatar(true);
 
-    const avatarPath = avatar.filePath || 
+    const avatarPath = avatar.filePath ||
       `default/${avatar.folder}/${avatar.name.toLowerCase().replace(/\s+/g, '-')}.png`;
 
     updateAvatarMutation.mutate({
-      avatarPath
+      avatarPath,
+      profileBackground: selectedBackground
     });
-    
-    setIsUploadingAvatar(false);
   };
 
   const handleDialogOpen = (open: boolean) => {
     console.log('🚀 handleDialogOpen called with:', open);
     setIsEditDialogOpen(open);
-    
     if (open) {
       console.log('📂 Dialog opened');
       setSelectedAvatar(profileImageUrl);
+      // Strip background color from DiceBear URL for display in the grid/selection if needed
+      // but we'll manage it via CSS for now.
     } else {
       console.log('📂 Dialog closing - resetting state...');
       setUploadedAvatarFile([]);
@@ -270,33 +301,36 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
       console.error("Error logging out:", error);
     }
   }
-
+  console.log("Is it uploading avatar: ", isUploadingAvatar);
 
   return (
     <aside className={`hidden shrink-0 lg:block w-72 m-0.5 ${className}`}>
       <div className="rounded-xl bg-white shadow-sm ring-1 ring-black/5 h-full overflow-auto flex flex-col items-center">
-   
+
 
         <div className="p-6 pt-2">
           <div className="mt-4 h-short:mt-1 flex flex-col items-center gap-3">
-            <div 
+            <div
               className={`relative group ${!userDataLoading ? 'cursor-pointer' : 'cursor-default'}`}
               onClick={() => !userDataLoading && setIsEditDialogOpen(true)}
             >
-              <Avatar className={`h-40 w-40 h-short:h-30 h-short:w-30 bg-transparent`}>
-                <AvatarImage 
-                  src={profileImageUrl || ""} 
-                  alt={studentData?.full_name || "Student"} 
-                  className={isAvatar ? "object-cover mb-2" : "object-cover"} 
+              <Avatar
+                className={`h-40 w-40 h-short:h-30 h-short:w-30 shadow-md ring-4 ring-neutral-50`}
+                style={{ backgroundColor: selectedBackground }}
+              >
+                <AvatarImage
+                  src={profileImageUrl || ""}
+                  alt={studentData?.full_name || "Student"}
+                  className={isAvatar ? "object-cover p-1" : "object-cover"}
                 />
-                <AvatarFallback className={'bg-gradient-to-br from-gray-100 to-gray-200'}>
-                  {studentData ? 
-                    `${studentData.first_name?.charAt(0) || ''}${studentData.last_name?.charAt(0) || ''}` 
+                <AvatarFallback className={'bg-neutral-100 text-neutral-400'}>
+                  {studentData ?
+                    `${studentData.first_name?.charAt(0) || ''}${studentData.last_name?.charAt(0) || ''}`
                     : '...'
                   }
                 </AvatarFallback>
               </Avatar>
-              
+
               {/* Hover overlay with edit button */}
               <div className={`absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center transition-all duration-200 opacity-0 group-hover:opacity-100 ${!userDataLoading ? 'pointer-events-none' : ''}`}>
                 <div className="flex flex-col items-center gap-1">
@@ -337,11 +371,10 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
             <li>
               <Link
                 href="/dashboard/student"
-                className={`flex items-center justify-start text-left gap-3 rounded-xl px-3 py-2 text-base ${
-                  isActive('/dashboard/student')
+                className={`flex items-center justify-start text-left gap-3 rounded-xl px-3 py-2 text-base ${isActive('/dashboard/student')
                     ? 'bg-neutral-100 text-neutral-900 hover:bg-neutral-200'
                     : 'text-neutral-600 hover:bg-neutral-100'
-                }`} 
+                  }`}
               >
                 <HouseSimple className="h-5 w-5 text-neutral-500 " />
                 Dashboard
@@ -350,11 +383,10 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
             <li>
               <Link
                 href="/dashboard/student/assignments"
-                className={`flex items-center justify-start text-left gap-3 rounded-xl px-3 py-2 text-base ${
-                  isActive('/dashboard/student/assignments')
+                className={`flex items-center justify-start text-left gap-3 rounded-xl px-3 py-2 text-base ${isActive('/dashboard/student/assignments')
                     ? 'bg-neutral-100 text-neutral-900 hover:bg-neutral-200'
                     : 'text-neutral-600 hover:bg-neutral-100'
-                }`} 
+                  }`}
               >
                 <ClipboardText className="h-5 w-5 text-neutral-500" />
                 Assignments
@@ -363,11 +395,10 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
             <li>
               <Link
                 href="/dashboard/student/requests"
-                className={`flex items-center justify-start text-left gap-3 rounded-xl px-3 py-2 text-base ${
-                  isActive('/dashboard/student/requests')
+                className={`flex items-center justify-start text-left gap-3 rounded-xl px-3 py-2 text-base ${isActive('/dashboard/student/requests')
                     ? 'bg-neutral-100 text-neutral-900 hover:bg-neutral-200'
                     : 'text-neutral-600 hover:bg-neutral-100'
-                }`} 
+                  }`}
               >
                 <Briefcase className="h-5 w-5 text-neutral-500" />
                 Requests
@@ -376,11 +407,10 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
             <li>
               <Link
                 href="/dashboard/student/documents"
-                className={`flex items-center justify-start text-left gap-3 rounded-xl px-3 py-2 text-base ${
-                  isActive('/dashboard/student/documents')
+                className={`flex items-center justify-start text-left gap-3 rounded-xl px-3 py-2 text-base ${isActive('/dashboard/student/documents')
                     ? 'bg-neutral-100 text-neutral-900 hover:bg-neutral-200'
                     : 'text-neutral-600 hover:bg-neutral-100'
-                }`} 
+                  }`}
               >
                 <Folder className="h-5 w-5 text-neutral-500" />
                 Documents
@@ -419,244 +449,159 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
 
       {/* Avatar Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={handleDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-center justify-center">
-              <Camera className="h-5 w-5" />
-              Edit Profile Picture
-            </DialogTitle>
-          </DialogHeader>
-          
-          <ScrollArea className="max-h-[60vh]">
-            <div className="space-y-6 pr-4">
-              {/* Avatar Preview */}
-              <div className="flex justify-center">
-                <div className="relative">
-                  <Avatar className="h-28 w-28 ring-4 ring-white/30 shadow-2xl">
-                    <AvatarImage src={selectedAvatar || profileImageUrl || '/images/avatars/avatar-001.png'} />
-                    <AvatarFallback className="text-3xl font-bold bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500 text-white">
-                      {studentData?.first_name?.charAt(0) || 'U'}
-                    </AvatarFallback>
-                  </Avatar>
+        <DialogContent className="max-w-xl p-0 overflow-hidden bg-white shadow-xl rounded-2xl border border-neutral-100">
+          <div className="p-8 space-y-8">
+            <DialogHeader className="space-y-1">
+              <DialogTitle className="text-2xl font-bold tracking-tight text-center text-neutral-900">
+                Customize Profile
+              </DialogTitle>
+              <DialogDescription className="text-center text-neutral-500">
+                Adjust your avatar and pick a background that fits your style.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-6">
+              {/* Preview Section */}
+              <div className="flex flex-col items-center justify-center py-2">
+                <div
+                  className="relative h-28 w-28 rounded-full overflow-hidden shadow-sm ring-4 ring-white transition-all duration-500 ease-in-out"
+                  style={{ backgroundColor: selectedBackground }}
+                >
+                  <img
+                    src={selectedAvatar || profileImageUrl || '/images/avatars/avatar-001.png'}
+                    alt="Preview"
+                    className={`h-full w-full object-cover p-1 transition-opacity duration-300 ${isUploadingAvatar ? 'opacity-50' : 'opacity-100'}`}
+                  />
+                  
                 </div>
               </div>
 
-              {/* Toggle */}
-              <div className="flex justify-center">
-                <div className="inline-flex bg-gray-100 rounded-lg p-1">
-                  <button
-                    onClick={() => setActiveTab('upload')}
-                    className={`px-6 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
-                      activeTab === 'upload'
-                        ? 'bg-white text-gray-900 shadow-sm'
-                        : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    Upload New
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('existing')}
-                    className={`px-6 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
-                      activeTab === 'existing'
-                        ? 'bg-white text-gray-900 shadow-sm'
-                        : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    Choose Avatar
-                  </button>
+              {/* Background Picker */}
+              <div className="space-y-3 px-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold uppercase tracking-widest text-neutral-400">Background</h4>
+                  <span className="text-[10px] font-medium text-neutral-400 uppercase tracking-tighter">Choose base color</span>
+                </div>
+                <div className="flex gap-2 overflow-x-auto pb-2 pt-2 px-1 scrollbar-hide">
+                  {backgroundPresets.map((bg) => (
+                    <button
+                      key={bg.hex}
+                      onClick={() => setSelectedBackground(bg.hex)}
+                      className={`h-8 w-8 shrink-0 rounded-full transition-all duration-300 ${selectedBackground === bg.hex
+                          ? 'ring-2 ring-neutral-900 ring-offset-2 scale-105'
+                          : 'hover:scale-105 border border-neutral-200'
+                        }`}
+                      style={{ backgroundColor: bg.hex }}
+                      title={bg.name}
+                    />
+                  ))}
                 </div>
               </div>
 
-              {/* Content */}
-              <div className="min-h-[200px]">
-                {activeTab === 'upload' ? (
-                  <div className="space-y-4">
-                    <div className="text-center">
-                      <p className="text-sm text-gray-600 mb-4">Upload your own profile picture</p>
-                      <FileUpload
-                        multiple={false}
-                        accept="image/*"
-                        value={uploadedAvatarFile}
-                        onChange={(files) => {
-                          setUploadedAvatarFile(files || []);
-                          if (files && files.length > 0) {
-                            const url = URL.createObjectURL(files[0]);
-                            setSelectedAvatar(url);
-                          }
-                        }}
-                        placeholder="Drop your photo here or click to upload"
-                        helperText="JPEG, PNG, GIF, WebP up to 2MB"
-                        className="max-w-md mx-auto"
-                      />
-                    </div>
+              {/* Tab Toggle */}
+              <div className="flex p-1 bg-neutral-50 rounded-xl border border-neutral-100 mx-2">
+                <button
+                  onClick={() => setActiveTab('existing')}
+                  className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-300 ${activeTab === 'existing'
+                      ? 'bg-white text-neutral-900 shadow-sm'
+                      : 'text-neutral-400 hover:text-neutral-500'
+                    }`}
+                >
+                  Gallery
+                </button>
+                <button
+                  onClick={() => setActiveTab('upload')}
+                  className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-300 ${activeTab === 'upload'
+                      ? 'bg-white text-neutral-900 shadow-sm'
+                      : 'text-neutral-400 hover:text-neutral-500'
+                    }`}
+                >
+                  Custom
+                </button>
+              </div>
+
+              {/* Content Area */}
+              <div className="min-h-[160px] px-2 pb-2">
+                {activeTab === 'existing' ? (
+                  <div className="grid grid-cols-6 gap-2">
+                    {fetchedAvatars.map((avatar) => {
+                      const isSelected = selectedAvatar === avatar.src;
+
+                      return (
+                        <button
+                          key={avatar.id}
+                          onClick={() => {
+                            setSelectedAvatar(avatar.src);
+                            setSelectedAvatarPath(avatar.src);
+                          }}
+                          className={`group relative aspect-square rounded-xl overflow-hidden bg-neutral-50 border transition-all duration-200 ${isSelected
+                              ? 'border-neutral-900 ring-1 ring-neutral-900'
+                              : 'border-transparent hover:border-neutral-200 hover:bg-neutral-100'
+                            }`}
+                        >
+                          <img src={avatar.src} className="h-full w-full object-cover p-1.5 transition-transform duration-300 group-hover:scale-110" alt={avatar.name} />
+                          {isSelected && (
+                            <div className="absolute top-1 right-1">
+                              <div className="bg-neutral-900 rounded-full p-0.5 shadow-sm scale-75">
+                                <svg className="h-2 w-2 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                              </div>
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 ) : (
-                  <div className="space-y-6">
-                    {isLoadingAvatars ? (
-                      <div className="flex flex-col justify-center items-center py-16">
-                        <div className="relative mb-6">
-                          <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin"></div>
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <Camera className="h-6 w-6 text-blue-500 animate-pulse" />
-                          </div>
-                        </div>
-                        <div className="text-center space-y-2">
-                          <h3 className="text-lg font-semibold text-gray-900">Loading Avatars</h3>
-                          <p className="text-sm text-gray-600">Fetching your personalized avatar options...</p>
-                          <div className="flex justify-center space-x-1 mt-4">
-                            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
-                            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                          </div>
-                        </div>
-                      </div>
-                    ) : avatarError ? (
-                      <div className="flex flex-col justify-center items-center py-12">
-                        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-                          <span className="text-red-500 text-2xl">⚠️</span>
-                        </div>
-                        <p className="text-sm text-red-600 text-center">Failed to load avatars</p>
-                        <button 
-                          onClick={() => refetchAvatars()}
-                          className="mt-3 px-4 py-2 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
-                        >
-                          Retry
-                        </button>
-                      </div>
-                    ) : fetchedAvatars.length === 0 ? (
-                      <div className="flex flex-col justify-center items-center py-12">
-                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                          <Camera className="h-8 w-8 text-gray-400" />
-                        </div>
-                        <p className="text-sm text-gray-500 text-center">No avatars available</p>
-                        <p className="text-xs text-gray-400 text-center mt-1">Try uploading your own image instead</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        <h4 className="text-sm font-medium text-gray-900 text-center">Choose Avatar</h4>
-                        
-                        {/* Show folder organization if we have many avatars */}
-                        {fetchedAvatars.length > 8 && (
-                          <div className="text-center">
-                            <p className="text-xs text-gray-500">
-                              {fetchedAvatars.length} available avatars
-                            </p>
-                          </div>
-                        )}
-                        
-                        {/* Avatar Grid - Bigger */}
-                        <div className="grid grid-cols-4 gap-3 max-w-md mx-auto">
-                          {fetchedAvatars.map((avatar, index) => (
-                            <button
-                              key={avatar.id}
-                              onClick={() => {
-                                const filePath = 'filePath' in avatar && avatar.filePath ? avatar.filePath : `default/${avatar.folder}/${avatar.name.toLowerCase().replace(/\s+/g, '-')}.png`;
-                                console.log('🖼️ StudentSidebar: Avatar selected:', { 
-                                  id: avatar.id, 
-                                  src: avatar.src, 
-                                  name: avatar.name,
-                                  folder: avatar.folder,
-                                  filePath: filePath
-                                });
-                                setSelectedAvatar(avatar.src); // For display
-                                setSelectedAvatarPath(filePath); // For storage
-                              }}
-                              className={`relative aspect-square rounded-lg overflow-hidden transition-all duration-200 transform hover:scale-105 ${
-                                selectedAvatar === avatar.src
-                                  ? 'ring-2 ring-blue-500 shadow-lg scale-105'
-                                  : 'hover:ring-2 hover:ring-gray-300 hover:shadow-md'
-                              }`}
-                            >
-                              <Avatar className="h-full w-full">
-                                <AvatarImage 
-                                  src={avatar.src} 
-                                  alt={avatar.name}
-                                  className="object-cover"
-                                  onLoad={() => {
-                                    // Avatar loaded successfully
-                                  }}
-                                  onError={() => {
-                                    // Handle avatar load error
-                                    console.warn('Failed to load avatar:', avatar.src);
-                                  }}
-                                />
-                                <AvatarFallback className="bg-gradient-to-br from-gray-100 to-gray-200 text-gray-600 text-xs font-medium animate-pulse">
-                                  <div className="w-full h-full flex items-center justify-center">
-                                    <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
-                                  </div>
-                                </AvatarFallback>
-                              </Avatar>
-                              
-                              {/* Selection indicator */}
-                              {selectedAvatar === avatar.src && (
-                                <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center">
-                                  <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center shadow-lg">
-                                    <svg className="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                    </svg>
-                                  </div>
-                                </div>
-                              )}
-                              
-                         
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                  <div className="flex flex-col items-center justify-center p-4 bg-neutral-50/50 border border-dashed border-neutral-200 rounded-2xl">
+                    <FileUpload
+                      multiple={false}
+                      accept="image/*"
+                      value={uploadedAvatarFile}
+                      onChange={(files) => {
+                        setUploadedAvatarFile(files || []);
+                        if (files && files.length > 0) {
+                          const url = URL.createObjectURL(files[0]);
+                          setSelectedAvatar(url);
+                        }
+                      }}
+                      className="w-full"
+                    />
                   </div>
                 )}
               </div>
-
-              {/* Action Buttons */}
-              <div className="flex justify-center gap-3 pt-2">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setIsEditDialogOpen(false);
-                    setUploadedAvatarFile([]);
-                    setActiveTab('existing');
-                  }}
-                  disabled={isUploadingAvatar}
-                >
-                  Cancel
-                </Button>
-                
-                {/* Apply Changes Button - always visible but disabled when no selection */}
-                <Button
-                  onClick={() => {
-                    console.log('🎯 StudentSidebar: Apply Changes clicked', {
-                      activeTab,
-                      selectedAvatar,
-                      selectedAvatarPath,
-                      uploadedAvatarFile: uploadedAvatarFile.length
-                    });
-                    
-                    if (activeTab === 'upload') {
-                      handleAvatarUpload();
-                    } else {
-                      handleAvatarSelect({ 
-                        src: selectedAvatar, 
-                        filePath: selectedAvatarPath,
-                        name: 'Selected Avatar'
-                      });
-                    }
-                  }}
-                  disabled={isUploadingAvatar || ((activeTab === 'upload' && uploadedAvatarFile.length === 0) || (activeTab === 'existing' && !selectedAvatar))}
-                  className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isUploadingAvatar ? (
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Applying...
-                    </div>
-                  ) : (
-                    'Apply Changes'
-                  )}
-                </Button>
-              </div>
             </div>
-          </ScrollArea>
+
+            {/* Footer Actions */}
+            <div className="flex justify-between pt-6 border-t border-neutral-100">
+              <Button
+                variant="outline"
+                className="rounded-xl px-8 text-sm text-neutral-600 border-neutral-200 hover:bg-neutral-50"
+                onClick={() => setIsEditDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="bg-neutral-900 hover:bg-neutral-800 flex items-center justify-center gap-2 rounded-xl px-8 text-sm text-white shadow-md transition duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                onClick={() => {
+                  if (activeTab === 'upload') {
+                    handleAvatarUpload();
+                  } else {
+                    handleAvatarSelect({
+                      src: selectedAvatar,
+                      filePath: selectedAvatarPath,
+                      name: 'Selected Avatar'
+                    });
+                  }
+                }}
+                disabled={isUploadingAvatar || ((activeTab === 'upload' && uploadedAvatarFile.length === 0) || (activeTab === 'existing' && !selectedAvatar))}
+              >
+                {isUploadingAvatar && <Loader2 className="h-4 w-4 animate-spin" />}
+                {isUploadingAvatar ? "Saving changes..." : "Save Changes"}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </aside>
