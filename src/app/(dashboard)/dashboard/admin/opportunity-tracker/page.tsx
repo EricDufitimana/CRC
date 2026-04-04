@@ -3,6 +3,7 @@ import { OpportunityTrackerLoading } from "@/components/dashboard/admin/opportun
 import { DashboardErrorBoundary } from "@/components/dashboard/admin/DashboardErrorBoundary";
 import { HydrateClient, prefetch, trpc } from '@/trpc/server';
 import { getServerContext } from '@/trpc/init';
+import { Suspense } from 'react';
 
 export const metadata = {
   title: "Opportunity Tracker | CRC Admin",
@@ -27,7 +28,9 @@ export default async function OpportunityTrackerPage() {
     <HydrateClient>
       <div className="p-4 md:p-8 max-w-[1600px] mx-auto">
         <DashboardErrorBoundary loadingFallback={<OpportunityTrackerLoading />}>
-          <OpportunityTrackerContent />
+          <Suspense fallback={<OpportunityTrackerLoading />}>
+            <OpportunityTrackerContent />
+          </Suspense>
         </DashboardErrorBoundary>
       </div>
     </HydrateClient>

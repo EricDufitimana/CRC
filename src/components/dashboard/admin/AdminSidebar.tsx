@@ -6,6 +6,8 @@ import { Button } from "@/zenith/components/ui/button";
 import { ChevronDown, Settings } from "lucide-react";
 import { AdminHeader } from "./AdminHeader";
 import Image from "next/image";
+import { useTRPC } from "@/trpc/client";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface AdminSidebarProps {
   adminName: string;
@@ -18,6 +20,9 @@ export function AdminSidebar({ adminName, adminEmail }: AdminSidebarProps) {
   const [contentOpen, setContentOpen] = useState(false);
   const [requestsOpen, setRequestsOpen] = useState(false);
   const [classesOpen, setClassesOpen] = useState(false);
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const STALE_TIME = 30 * 1000;
 
   // Function to handle dropdown toggling - ensures only one is open at a time
   const handleDropdownToggle = (dropdownType: 'content' | 'requests' | 'classes') => {
@@ -59,6 +64,16 @@ export function AdminSidebar({ adminName, adminEmail }: AdminSidebarProps) {
         <Button
           variant="ghost"
           onClick={() => router.push('/dashboard/admin/student-management')}
+          onMouseEnter={() => {
+            void queryClient.prefetchQuery({
+              ...trpc.studentManagement.getStudents.queryOptions(undefined),
+              staleTime: STALE_TIME,
+            });
+            void queryClient.prefetchQuery({
+              ...trpc.studentManagement.getCrcClasses.queryOptions(undefined),
+              staleTime: STALE_TIME,
+            });
+          }}
           className={`w-full h-12 px-4 justify-start text-left transition-all duration-300 rounded-xl group relative ${
             pathname === '/dashboard/admin/student-management'
               ? 'bg-gradient-to-r from-orange-400 to-orange-500 text-white shadow-lg shadow-orange-500/25 font-medium hover:text-white'
@@ -72,6 +87,20 @@ export function AdminSidebar({ adminName, adminEmail }: AdminSidebarProps) {
         <Button
           variant="ghost"
           onClick={() => router.push('/dashboard/admin/assignments-management')}
+          onMouseEnter={() => {
+            void queryClient.prefetchQuery({
+              ...trpc.assignmentsManagement.getCrcClasses.queryOptions(undefined),
+              staleTime: STALE_TIME,
+            });
+            void queryClient.prefetchQuery({
+              ...trpc.assignmentsManagement.getWorkshops.queryOptions({ useCase: 'assignment' }),
+              staleTime: STALE_TIME,
+            });
+            void queryClient.prefetchQuery({
+              ...trpc.assignmentsManagement.getAssignmentsForManagement.queryOptions(undefined),
+              staleTime: STALE_TIME,
+            });
+          }}
           className={`w-full h-12 px-4 justify-start text-left transition-all duration-300 rounded-xl group relative ${
             pathname === '/dashboard/admin/assignments-management'
               ? 'bg-gradient-to-r from-orange-400 to-orange-500 text-white shadow-lg shadow-orange-500/25 font-medium hover:text-white'
@@ -100,6 +129,12 @@ export function AdminSidebar({ adminName, adminEmail }: AdminSidebarProps) {
             <Button
               variant="ghost"
               onClick={() => router.push('/dashboard/admin/attendance')}
+              onMouseEnter={() => {
+                void queryClient.prefetchQuery({
+                  ...trpc.attendanceManagement.getAttendanceRecords.queryOptions(undefined),
+                  staleTime: STALE_TIME,
+                });
+              }}
               className={`w-full h-10 px-4 justify-start text-left rounded-lg ${
                 pathname === '/dashboard/admin/attendance'
                   ? 'bg-orange-50 text-orange-700'
@@ -152,6 +187,16 @@ export function AdminSidebar({ adminName, adminEmail }: AdminSidebarProps) {
             <Button
               variant="ghost"
               onClick={() => router.push('/dashboard/admin/workshops')}
+              onMouseEnter={() => {
+                void queryClient.prefetchQuery({
+                  ...trpc.workshopsManagement.getCrcClasses.queryOptions(undefined),
+                  staleTime: STALE_TIME,
+                });
+                void queryClient.prefetchQuery({
+                  ...trpc.workshopsManagement.getWorkshopsByCategory.queryOptions({ category: 'ey' }),
+                  staleTime: STALE_TIME,
+                });
+              }}
               className={`w-full h-10 px-4 justify-start text-left rounded-lg ${
                 pathname === '/dashboard/admin/workshops'
                   ? 'bg-orange-50 text-orange-700'
@@ -163,6 +208,12 @@ export function AdminSidebar({ adminName, adminEmail }: AdminSidebarProps) {
             <Button
               variant="ghost"
               onClick={() => router.push('/dashboard/admin/events-management?category=previous-events')}
+              onMouseEnter={() => {
+                void queryClient.prefetchQuery({
+                  ...trpc.eventsManagement.getEvents.queryOptions({ category: 'previous-events' }),
+                  staleTime: STALE_TIME,
+                });
+              }}
               className={`w-full h-10 px-4 justify-start text-left rounded-lg ${
                 pathname?.startsWith('/dashboard/admin/events-management')
                   ? 'bg-orange-50 text-orange-700'
@@ -204,6 +255,12 @@ export function AdminSidebar({ adminName, adminEmail }: AdminSidebarProps) {
             <Button
               variant="ghost"
               onClick={() => router.push('/dashboard/admin/essay-requests')}
+              onMouseEnter={() => {
+                void queryClient.prefetchQuery({
+                  ...trpc.essayRequestsManagement.getAdmins.queryOptions(undefined),
+                  staleTime: STALE_TIME,
+                });
+              }}
               className={`w-full h-10 px-4 justify-start text-left rounded-lg ${
                 pathname === '/dashboard/admin/essay-requests'
                   ? 'bg-orange-50 text-orange-700'

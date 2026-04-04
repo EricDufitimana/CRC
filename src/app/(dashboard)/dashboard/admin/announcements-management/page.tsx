@@ -3,6 +3,7 @@ import { AnnouncementsLoading } from "@/components/dashboard/admin/announcements
 import { DashboardErrorBoundary } from "@/components/dashboard/admin/DashboardErrorBoundary";
 import { HydrateClient, prefetch, trpc } from '@/trpc/server';
 import { getServerContext } from '@/trpc/init';
+import { Suspense } from 'react';
 
 export const metadata = {
   title: "Announcements Management | CRC Admin",
@@ -25,7 +26,9 @@ export default async function AnnouncementsManagementPage() {
     <HydrateClient>
       <div className="p-4 md:p-8 max-w-[1600px] mx-auto">
         <DashboardErrorBoundary loadingFallback={<AnnouncementsLoading />}>
-          <AnnouncementsContent />
+          <Suspense fallback={<AnnouncementsLoading />}>
+            <AnnouncementsContent />
+          </Suspense>
         </DashboardErrorBoundary>
       </div>
     </HydrateClient>

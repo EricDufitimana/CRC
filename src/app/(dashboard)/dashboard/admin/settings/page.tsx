@@ -3,6 +3,7 @@ import { DashboardErrorBoundary } from "@/components/dashboard/admin/DashboardEr
 import { HydrateClient, prefetch, trpc } from '@/trpc/server';
 import { getServerContext } from '@/trpc/init';
 import { Loader2 } from "lucide-react";
+import { Suspense } from 'react';
 
 export const metadata = {
   title: "Settings | CRC Admin",
@@ -23,17 +24,21 @@ export default async function SettingsPage() {
     }
   }
 
+  const settingsLoader = (
+    <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+    </div>
+  );
+
   return (
     <HydrateClient>
       <div className="p-4 md:p-8 max-w-[1200px] mx-auto">
         <DashboardErrorBoundary 
-            loadingFallback={
-                <div className="flex items-center justify-center min-h-[400px]">
-                    <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
-                </div>
-            }
+            loadingFallback={settingsLoader}
         >
-          <SettingsContent />
+          <Suspense fallback={settingsLoader}>
+            <SettingsContent />
+          </Suspense>
         </DashboardErrorBoundary>
       </div>
     </HydrateClient>

@@ -152,7 +152,7 @@ model students {
   gpa                  String?
   gender               gender?
   crc_class_id         BigInt?
-  profile_background   profile_background?  
+  profile_background   String?  
   academic_report_path String?
   resume_link          String?
   attendance_records   attendance_records[]

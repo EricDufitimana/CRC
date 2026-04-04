@@ -3,6 +3,7 @@ import { ContentManagementLoading } from "@/components/dashboard/admin/content-m
 import { DashboardErrorBoundary } from "@/components/dashboard/admin/DashboardErrorBoundary";
 import { HydrateClient, prefetch, trpc } from '@/trpc/server';
 import { getServerContext } from '@/trpc/init';
+import { Suspense } from 'react';
 
 export default async function ContentManagementPage() {
   const context = await getServerContext();
@@ -23,7 +24,9 @@ export default async function ContentManagementPage() {
   return (
     <HydrateClient>
       <DashboardErrorBoundary loadingFallback={<ContentManagementLoading />}>
-        <ContentManagementContent />
+        <Suspense fallback={<ContentManagementLoading />}>
+          <ContentManagementContent />
+        </Suspense>
       </DashboardErrorBoundary>
     </HydrateClient>
   );

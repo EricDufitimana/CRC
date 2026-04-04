@@ -3,6 +3,7 @@ import { WorkshopsLoading } from "@/components/dashboard/admin/workshops/Worksho
 import { DashboardErrorBoundary } from "@/components/dashboard/admin/DashboardErrorBoundary";
 import { HydrateClient, prefetch, trpc } from '@/trpc/server';
 import { getServerContext } from '@/trpc/init';
+import { Suspense } from 'react';
 
 export default async function WorkshopsPage() {
   const context = await getServerContext();
@@ -20,7 +21,9 @@ export default async function WorkshopsPage() {
   return (
     <HydrateClient>
       <DashboardErrorBoundary loadingFallback={<WorkshopsLoading />}>
-        <WorkshopsContent />
+        <Suspense fallback={<WorkshopsLoading />}>
+          <WorkshopsContent />
+        </Suspense>
       </DashboardErrorBoundary>
     </HydrateClient>
   );

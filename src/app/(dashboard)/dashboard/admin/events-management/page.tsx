@@ -3,6 +3,7 @@ import { EventsLoading } from "@/components/dashboard/admin/events-management/Ev
 import { DashboardErrorBoundary } from "@/components/dashboard/admin/DashboardErrorBoundary";
 import { HydrateClient, prefetch, trpc } from '@/trpc/server';
 import { getServerContext } from '@/trpc/init';
+import { Suspense } from 'react';
 
 export const metadata = {
   title: "Events Management | CRC Admin",
@@ -25,7 +26,9 @@ export default async function EventsManagementPage() {
     <HydrateClient>
       <div className="p-4 md:p-8">
         <DashboardErrorBoundary loadingFallback={<EventsLoading />}>
-          <EventsContent />
+          <Suspense fallback={<EventsLoading />}>
+            <EventsContent />
+          </Suspense>
         </DashboardErrorBoundary>
       </div>
     </HydrateClient>

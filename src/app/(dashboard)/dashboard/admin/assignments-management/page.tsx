@@ -3,6 +3,7 @@ import { AssignmentsManagementLoading } from "@/components/dashboard/admin/assig
 import { DashboardErrorBoundary } from "@/components/dashboard/admin/DashboardErrorBoundary";
 import { HydrateClient, prefetch, trpc } from '@/trpc/server';
 import { getServerContext } from '@/trpc/init';
+import { Suspense } from 'react';
 
 export default async function AssignmentsManagementPage() {
   const context = await getServerContext();
@@ -23,7 +24,9 @@ export default async function AssignmentsManagementPage() {
   return (
     <HydrateClient>
       <DashboardErrorBoundary loadingFallback={<AssignmentsManagementLoading />}>
-        <AssignmentsManagementContent />
+        <Suspense fallback={<AssignmentsManagementLoading />}>
+          <AssignmentsManagementContent />
+        </Suspense>
       </DashboardErrorBoundary>
     </HydrateClient>
   );

@@ -3,6 +3,7 @@ import { StudentRequestsLoading } from "@/components/dashboard/student/StudentRe
 import { DashboardErrorBoundary } from "@/components/dashboard/admin/DashboardErrorBoundary";
 import { HydrateClient, prefetch, trpc } from '@/trpc/server';
 import { getServerContext } from '@/trpc/init';
+import { Suspense } from 'react';
 
 export const metadata = {
   title: "Requests | CRC Student",
@@ -27,7 +28,9 @@ export default async function StudentRequestsPage() {
     <HydrateClient>
       <div className="h-full bg-neutral-100">
         <DashboardErrorBoundary loadingFallback={<StudentRequestsLoading />}>
-          <StudentRequestsContent />
+          <Suspense fallback={<StudentRequestsLoading />}>
+            <StudentRequestsContent />
+          </Suspense>
         </DashboardErrorBoundary>
       </div>
     </HydrateClient>

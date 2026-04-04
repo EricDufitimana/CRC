@@ -5,6 +5,7 @@ import { ToastProvider } from "@/components/dashboard/admin/ToastProvider";
 import { getServerContext } from "@/trpc/init";
 import { getDashboardTitle } from "@/utils/dashboard-titles";
 import { headers } from 'next/headers';
+import { BackgroundPrefetcher } from "@/components/prefetching/BackgroundPrefetcher";
 import "../../../../../zenith/src/index.css";
 import "../../../../../zenith/src/App.css";
 import "../../../../styles/index.css";
@@ -46,6 +47,8 @@ export default async function DashboardAdminLayout({
   children: React.ReactNode
 }) {
   const { adminName, adminEmail } = await getAdminProfile();
+  const context = await getServerContext();
+  const adminId = context.user && context.role === 'admin' ? context.user.id.toString() : null;
   const headersList = await headers();
   const pathname = headersList.get('x-pathname') || '/';
 
@@ -63,6 +66,8 @@ export default async function DashboardAdminLayout({
 
           {/* Bottom navigation for tablet + phone */}
           <AdminBottomNav adminName={adminName} adminEmail={adminEmail} />
+
+          <BackgroundPrefetcher role="admin" adminId={adminId} />
 
           {/* Main content floating above sidebar */}
           <div className="relative z-20 mx-3 mt-3 mb-[calc(env(safe-area-inset-bottom)+88px)] md:mx-6 md:mt-6 md:mb-6 lg:ml-60 lg:mr-6 lg:mt-6 lg:mb-6">

@@ -1,9 +1,11 @@
 import { DashboardContent } from "@/components/dashboard/admin/DashboardContent";
+import { DashboardLoading } from "@/components/dashboard/admin/DashboardLoading";
 import { DashboardErrorBoundary } from "@/components/dashboard/admin/DashboardErrorBoundary";
 import { AdminSidebar } from "@/components/dashboard/admin/AdminSidebar";
 import { ToastProvider } from "@/components/dashboard/admin/ToastProvider";
 import { HydrateClient, prefetch, trpc } from '@/trpc/server';
 import { getServerContext } from '@/trpc/init';
+import { Suspense } from 'react';
 
 // Force dynamic rendering to prevent build-time data fetching
 export const dynamic = 'force-dynamic';
@@ -36,7 +38,9 @@ export default async function DashboardHome() {
   return (
     <HydrateClient>
       <DashboardErrorBoundary>
-        <DashboardContent />
+        <Suspense fallback={<DashboardLoading />}>
+          <DashboardContent />
+        </Suspense>
       </DashboardErrorBoundary>
     </HydrateClient>
   );
