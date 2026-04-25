@@ -15,6 +15,10 @@ export default function AuthCallback() {
 
   useEffect(() => {
     const handleAuthCallback = async () => {
+      // Get the next URL from query params
+      const searchParams = new URLSearchParams(window.location.search);
+      const nextUrl = searchParams.get('next') || '/account-check';
+      console.log(' [Auth Callback Page] Next URL from params:', nextUrl);
       try {
         console.log(' [Auth Callback Page] Page loaded');
         
@@ -124,8 +128,8 @@ export default function AuthCallback() {
               }
             }
           } else {
-            console.log('No pending data found, redirecting to login');
-            router.push('/login?message=google_signup_success');
+            console.log('No pending data found, redirecting to next URL:', nextUrl);
+            router.push(nextUrl);
           }
         }
 

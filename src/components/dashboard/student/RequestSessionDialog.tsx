@@ -25,6 +25,8 @@ function angle(cx: number, cy: number, ex: number, ey: number) {
 export function RequestSessionDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const trpc = useTRPC();
   const [step, setStep] = useState<'select-admin' | 'select-time' | 'booking'>('select-admin');
+  const [isBooking, setIsBooking] = useState(false);
+  const [bookingError, setBookingError] = useState<string | null>(null);
   const [selectedAdmin, setSelectedAdmin] = useState<{ 
     id: string, 
     name: string, 
@@ -45,6 +47,7 @@ export function RequestSessionDialog({ open, onOpenChange }: { open: boolean; on
     setStep('select-admin');
     setSelectedAdmin(null);
     setSelectedTime("");
+    setBookingError(null);
   };
 
   useEffect(() => {
@@ -90,21 +93,30 @@ export function RequestSessionDialog({ open, onOpenChange }: { open: boolean; on
 
     if (!calUserLink || !eventSlug) {
       console.error("Missing cal_link or event slug for admin:", selectedAdmin.name);
-      onOpenChange(false);
+      setBookingError("This fellow hasn't configured their booking calendar yet. Please try again later or contact support.");
       return;
     }
 
-    // Close the dialog immediately when booking is initiated
-    onOpenChange(false);
+    setIsBooking(true);
+    setBookingError(null);
     
-    const cal = await getCalApi({ namespace: eventSlug });
-    cal('modal', { calLink: `${calUserLink}/${eventSlug}`, config: {
-      theme: 'light'
-    } });
+    try {
+      const cal = await getCalApi({ namespace: eventSlug });
+      cal('modal', { calLink: `${calUserLink}/${eventSlug}`, config: {
+        theme: 'light'
+      }});
+      // Reset loading state and close the dialog
+      setIsBooking(false);
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Error initiating Cal.com booking:', error);
+      setBookingError('Failed to open booking calendar. Please try again.');
+      setIsBooking(false);
+    }
   };
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-visible bg-white rounded-2xl shadow-2xl border-0 [&>button]:!hidden">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-visible bg-white rounded-2xl shadow-2xl border-0 [&>button]:!hidden flex flex-col">
         <div className="relative overflow-visible">
           <div ref={anchorRef} className="absolute top-0 right-0 w-4 h-4"></div>
           
@@ -165,7 +177,7 @@ export function RequestSessionDialog({ open, onOpenChange }: { open: boolean; on
           <div className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {fellows?.map((fellow) => (
-                <div key={fellow.id} onClick={() => setSelectedAdmin(fellow)} className={`p-4 border rounded-xl cursor-pointer transition-all duration-200 ${selectedAdmin?.id === fellow.id ? 'border-statColors-2 bg-statColors-2/10 shadow-sm' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm bg-white'}`}>
+                <div key={fellow.id} onClick={() => { setSelectedAdmin(fellow); setBookingError(null); }} className={`p-4 border rounded-xl cursor-pointer transition-all duration-200 ${selectedAdmin?.id === fellow.id ? 'border-statColors-2/60 bg-statColors-2/10 shadow-sm' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm bg-white'}`}>
                   <div className="flex items-center space-x-4">
                     <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0 bg-slate-300 shadow-sm">
                       {fellow.profile_picture ? (
@@ -203,7 +215,7 @@ export function RequestSessionDialog({ open, onOpenChange }: { open: boolean; on
             </div>
             <div className="grid grid-cols-3 gap-3">
               {sessionDurations.map((duration) => (
-                <div key={duration.value} onClick={() => setSelectedTime(duration.value)} className={`p-4 border rounded-xl cursor-pointer transition-all duration-200 ${selectedTime === duration.value ? 'border-statColors-2 bg-statColors-2/10 shadow-sm' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm bg-white'}`}>
+                <div key={duration.value} onClick={() => setSelectedTime(duration.value)} className={`p-4 border rounded-xl cursor-pointer transition-all duration-200 ${selectedTime === duration.value ? 'border-statColors-2/60 bg-statColors-2/10 shadow-sm' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm bg-white'}`}>
                   <div className="text-center">
                     <div className={`text-lg font-semibold mb-1 ${selectedTime === duration.value ? 'text-statColors-2' : 'text-gray-900'}`}>{duration.label}</div>
                     <div className={`text-xs ${selectedTime === duration.value ? 'text-statColors-2' : 'text-gray-500'}`}>{duration.description}</div>
@@ -219,7 +231,12 @@ export function RequestSessionDialog({ open, onOpenChange }: { open: boolean; on
         )}
 
         {step === 'booking' && (
-          <div className="space-y-8">
+          <div className="space-y-6">
+            {bookingError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
+                <p className="text-sm text-red-600 text-center">{bookingError}</p>
+              </div>
+            )}
             <div className="bg-gray-50 rounded-xl p-6">
               <div className="flex items-center space-x-4 mb-4">
                 <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center bg-slate-300 shadow-sm">
@@ -250,7 +267,20 @@ export function RequestSessionDialog({ open, onOpenChange }: { open: boolean; on
               </div>
             </div>
             <div className="text-center">
-              <Button onClick={handleBook} className="w-full bg-statColors-2 hover:bg-statColors-2/80 text-white py-4 px-8 rounded-xl font-semibold text-sm shadow-lg hover:shadow-xl transition-all duration-200">Book Your Session</Button>
+              <Button 
+                onClick={handleBook} 
+                disabled={isBooking} 
+                className="w-full bg-statColors-2 hover:bg-statColors-2/80 text-white py-4 px-8 rounded-xl font-semibold text-sm shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isBooking ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 inline animate-spin" />
+                    Opening calendar...
+                  </>
+                ) : (
+                  'Book Your Session'
+                )}
+              </Button>
               <p className="text-xs text-gray-500 mt-3">You&apos;ll be redirected to Cal.com to select your preferred time</p>
             </div>
             <div className="flex justify-center pt-4">

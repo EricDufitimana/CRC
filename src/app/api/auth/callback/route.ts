@@ -48,51 +48,44 @@ export async function GET(request: Request) {
       console.log('👤 [Auth Callback] Session expires at:', data.session?.expires_at);
 
       // Check if user exists in admin or student tables
+      let userExists = false;
       if (data.user?.id) {
-        console.log('🔍 [Auth Callback] Checking user role...');
-        
+        console.log('🔍 [Auth Callback] Checking if user exists in database...');
+
         // Check admin table using Prisma
         const adminCheck = await prisma.admin.findFirst({
           where: { user_id: data.user.id },
         });
-          
+
         if (adminCheck) {
           console.log('✅ [Auth Callback] User is admin:', adminCheck);
-          console.log('🔐 [Auth Callback] Admin details:', {
-            id: adminCheck.id.toString(),
-            first_name: adminCheck.first_name,
-            last_name: adminCheck.last_name,
-            email: adminCheck.email,
-          });
-        } else {
-          console.log('❌ [Auth Callback] Admin not found');
+          userExists = true;
         }
-        
+
         // Check student table using Prisma
         const studentCheck = await prisma.students.findFirst({
           where: { user_id: data.user.id },
         });
-          
+
         if (studentCheck) {
           console.log('✅ [Auth Callback] User is student:', studentCheck);
-          console.log('🔐 [Auth Callback] Student details:', {
-            id: studentCheck.id.toString(),
-            student_id: studentCheck.student_id,
-            first_name: studentCheck.first_name,
-            last_name: studentCheck.last_name,
-            email: studentCheck.email,
-          });
-        } else {
-          console.log('❌ [Auth Callback] Student not found');
+          userExists = true;
         }
+
+        console.log('� [Auth Callback] User exists in database:', userExists);
       }
 
-      console.log('🔄 [Auth Callback] Redirecting to:', next);
-      console.log('🔄 [Auth Callback] Full redirect URL:', new URL(next, requestUrl.origin).toString());
-      
-      // Redirect to client callback page to handle registration with localStorage access
-      const clientCallbackUrl = new URL('/auth/callback', requestUrl.origin);
-      return NextResponse.redirect(clientCallbackUrl);
+      // If user already exists, redirect directly to next URL (normal sign-in)
+      // If user doesn't exist, redirect to client callback for registration
+      if (userExists) {
+        console.log('🔄 [Auth Callback] User exists, redirecting directly to:', next);
+        return NextResponse.redirect(new URL(next, requestUrl.origin));
+      } else {
+        console.log('🔄 [Auth Callback] User does not exist, redirecting to client callback for registration');
+        const clientCallbackUrl = new URL('/auth/callback', requestUrl.origin);
+        clientCallbackUrl.searchParams.set('next', next);
+        return NextResponse.redirect(clientCallbackUrl);
+      }
     } catch (error) {
       console.error('❌ [Auth Callback] Unexpected error:', error);
       console.error('❌ [Auth Callback] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
