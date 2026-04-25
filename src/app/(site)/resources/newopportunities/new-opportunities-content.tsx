@@ -12,7 +12,7 @@ type Opportunity = {
   image_address?: string | null;
   title: string;
   description: string;
-  url?: string;
+  ury?: string;
   opportunity_deadline?: string | null;
 };
 

@@ -1,7 +1,7 @@
 import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
-import { createClient as createServiceRoleClient } from '@/utils/supabase/service-role';
 import { prisma } from '@/lib/prisma';
+import { createClient as createServiceRoleClient } from '@/utils/supabase/service-role';
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
@@ -50,53 +50,49 @@ export async function GET(request: Request) {
       // Check if user exists in admin or student tables
       if (data.user?.id) {
         console.log('🔍 [Auth Callback] Checking user role...');
-        const adminClient = createServiceRoleClient();
         
-        // Check admin table
-        const { data: adminCheck, error: adminError } = await adminClient
-          .from('admin')
-          .select('*')
-          .eq('user_id', data.user.id)
-          .single();
+        // Check admin table using Prisma
+        const adminCheck = await prisma.admin.findFirst({
+          where: { user_id: data.user.id },
+        });
           
-        if (!adminError && adminCheck) {
+        if (adminCheck) {
           console.log('✅ [Auth Callback] User is admin:', adminCheck);
           console.log('🔐 [Auth Callback] Admin details:', {
-            id: adminCheck.id,
+            id: adminCheck.id.toString(),
             first_name: adminCheck.first_name,
             last_name: adminCheck.last_name,
             email: adminCheck.email,
           });
         } else {
-          console.log('❌ [Auth Callback] Admin check failed:', adminError);
+          console.log('❌ [Auth Callback] Admin not found');
         }
         
-        // Check student table
-        const { data: studentCheck, error: studentError } = await adminClient
-          .from('students')
-          .select('*')
-          .eq('user_id', data.user.id)
-          .single();
+        // Check student table using Prisma
+        const studentCheck = await prisma.students.findFirst({
+          where: { user_id: data.user.id },
+        });
           
-        if (!studentError && studentCheck) {
+        if (studentCheck) {
           console.log('✅ [Auth Callback] User is student:', studentCheck);
           console.log('🔐 [Auth Callback] Student details:', {
-            id: studentCheck.id,
+            id: studentCheck.id.toString(),
             student_id: studentCheck.student_id,
             first_name: studentCheck.first_name,
             last_name: studentCheck.last_name,
             email: studentCheck.email,
           });
         } else {
-          console.log('❌ [Auth Callback] Student check failed:', studentError);
+          console.log('❌ [Auth Callback] Student not found');
         }
       }
 
       console.log('🔄 [Auth Callback] Redirecting to:', next);
       console.log('🔄 [Auth Callback] Full redirect URL:', new URL(next, requestUrl.origin).toString());
       
-      // Redirect to the next page (account-check, admin dashboard, etc.)
-      return NextResponse.redirect(new URL(next, requestUrl.origin));
+      // Redirect to client callback page to handle registration with localStorage access
+      const clientCallbackUrl = new URL('/auth/callback', requestUrl.origin);
+      return NextResponse.redirect(clientCallbackUrl);
     } catch (error) {
       console.error('❌ [Auth Callback] Unexpected error:', error);
       console.error('❌ [Auth Callback] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
@@ -112,23 +108,24 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  console.log('🛡️ [Auth Callback POST] POST request received');
   try {
     const body = await request.json();
     const { user_id, student_code, admin_data, email } = body;
 
-    console.log('🔐 [Auth Callback POST] Processing registration request:', { 
+    console.log('�️ [Auth Callback POST] Processing registration request:', { 
       user_id, 
       student_code: student_code ? 'present' : 'absent', 
       admin_data: admin_data ? 'present' : 'absent',
       email 
     });
+    console.log('🛡️ [Auth Callback POST] Full admin_data:', admin_data);
 
     if (!user_id) {
       console.error('❌ [Auth Callback POST] Missing user_id');
       return NextResponse.json({ error: 'Missing user_id' }, { status: 400 });
     }
 
-    const supabase = createServiceRoleClient();
     let registrationEmail = email;
     let fullName = '';
 
@@ -136,17 +133,15 @@ export async function POST(request: Request) {
     if (student_code) {
       console.log('🎓 [Auth Callback POST] Executing student registration flow');
       
-      // Find the student by student_code
-      const { data: student, error: studentError } = await supabase
-        .from('students')
-        .select('*')
-        .eq('student_id', student_code)
-        .single();
+      // Find the student by student_code using Prisma
+      const student = await prisma.students.findFirst({
+        where: { student_id: student_code },
+      });
 
-      if (studentError || !student) {
-        console.error('❌ [Auth Callback POST] Student record not found:', studentError);
+      if (!student) {
+        console.error('❌ [Auth Callback POST] Student record not found');
         return NextResponse.json(
-          { error: 'Student not found', details: studentError?.message || 'Student record not found' },
+          { error: 'Student not found', details: 'Student record not found' },
           { status: 404 }
         );
       }
@@ -162,15 +157,18 @@ export async function POST(request: Request) {
       registrationEmail = email || student.email;
       fullName = `${student.first_name} ${student.last_name}`;
 
-      // Link student to user_id
-      const { error: updateError } = await supabase
-        .from('students')
-        .update({ user_id, email: registrationEmail })
-        .eq('id', student.id);
-
-      if (updateError) {
+      // Link student to user_id using Prisma
+      try {
+        await prisma.students.update({
+          where: { id: student.id },
+          data: { user_id, email: registrationEmail },
+        });
+      } catch (updateError) {
         console.error('❌ [Auth Callback POST] Failed to link student:', updateError);
-        return NextResponse.json({ error: 'Link failed', details: updateError.message }, { status: 500 });
+        return NextResponse.json({ 
+          error: 'Link failed', 
+          details: updateError instanceof Error ? updateError.message : 'Unknown error' 
+        }, { status: 500 });
       }
 
       // Create profile
@@ -194,14 +192,27 @@ export async function POST(request: Request) {
     // --- ADMIN REGISTRATION FLOW ---
     else if (admin_data) {
       console.log('🛡️ [Auth Callback POST] Executing admin registration flow');
+      console.log('🛡️ [Auth Callback POST] Admin data details:', admin_data);
       
-      const { honorific, firstName, lastName, role } = admin_data;
+      const { honorific, firstName, lastName, role, token } = admin_data;
       registrationEmail = email; // For admins, email always comes from session
       fullName = `${firstName} ${lastName}`;
+      
+      console.log('🛡️ [Auth Callback POST] Registration details:', {
+        user_id,
+        honorific,
+        firstName,
+        lastName,
+        role,
+        registrationEmail,
+        fullName,
+        token: token ? `${token.substring(0, 8)}...` : 'none',
+      });
 
       try {
+        console.log('🛡️ [Auth Callback POST] Creating admin record in Prisma...');
         // Create admin record using Prisma
-        await prisma.admin.create({
+        const adminRecord = await prisma.admin.create({
           data: {
             user_id,
             honorific,
@@ -211,9 +222,11 @@ export async function POST(request: Request) {
             email: registrationEmail,
           },
         });
+        console.log('✅ [Auth Callback POST] Admin record created:', { id: adminRecord.id.toString() });
 
+        console.log('🛡️ [Auth Callback POST] Creating profile record...');
         // Create profile
-        await prisma.profiles.create({
+        const profileRecord = await prisma.profiles.create({
           data: {
             user_id,
             email: registrationEmail,
@@ -223,12 +236,35 @@ export async function POST(request: Request) {
             Names: fullName,
           },
         });
+        console.log('✅ [Auth Callback POST] Profile record created:', { id: profileRecord.id.toString() });
+
+        // Mark invite as used if token is present
+        if (token) {
+          console.log('🛡️ [Auth Callback POST] Marking invite as used, token:', `${token.substring(0, 8)}...`);
+          try {
+            const updatedInvite = await prisma.admin_invites.update({
+              where: { token },
+              data: { used_at: new Date() },
+            });
+            console.log('✅ [Auth Callback POST] Invite marked as used:', { id: updatedInvite.id.toString() });
+          } catch (inviteErr) {
+            console.error('⚠️ [Auth Callback POST] Failed to mark invite as used:', inviteErr);
+            console.error('⚠️ [Auth Callback POST] Invite error details:', inviteErr instanceof Error ? inviteErr.message : 'Unknown');
+            // Don't fail the registration if invite marking fails
+          }
+        }
       } catch (adminErr) {
         console.error('❌ [Auth Callback POST] Admin creation error:', adminErr);
+        console.error('❌ [Auth Callback POST] Error details:', {
+          message: adminErr instanceof Error ? adminErr.message : 'Unknown',
+          code: (adminErr as any).code,
+          meta: (adminErr as any).meta,
+        });
+        console.error('❌ [Auth Callback POST] Error stack:', adminErr instanceof Error ? adminErr.stack : 'No stack');
         return NextResponse.json({ error: 'Admin creation failed', details: adminErr instanceof Error ? adminErr.message : 'Unknown' }, { status: 500 });
       }
 
-      console.log('✅ [Auth Callback POST] Admin registration completed');
+      console.log('✅ [Auth Callback POST] Admin registration completed successfully');
     } else {
       console.error('❌ [Auth Callback POST] Neither student_code nor admin_data provided');
       return NextResponse.json({ error: 'Missing registration details' }, { status: 400 });
@@ -238,6 +274,7 @@ export async function POST(request: Request) {
     if (registrationEmail) {
       try {
         console.log('📧 [Auth Callback POST] Invoking welcome email function for:', registrationEmail);
+        const supabase = createServiceRoleClient();
         const { error: functionError } = await supabase.functions.invoke('send_welcome_email', {
           body: { email: registrationEmail },
         });

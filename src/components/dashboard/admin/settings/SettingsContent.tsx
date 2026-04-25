@@ -9,8 +9,22 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/zenith/components/ui/avat
 import { User, Link as LinkIcon, Calendar, Upload, Save, Loader2, Settings as SettingsIcon } from "lucide-react";
 import { useTRPC } from "@/trpc/client";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { showToastSuccess, showToastError } from "@/components/toasts";
+import { showToastSuccess, showToastError, showToastPromise } from "@/components/toasts";
 import { SettingsHeader } from "./SettingsHeader";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/zenith/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/zenith/components/ui/table";
 
 interface SettingsContentProps {}
 
@@ -70,6 +84,9 @@ export function SettingsContent() {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [adminInvitesOpen, setAdminInvitesOpen] = useState(false);
+  const [inviteEmailsRaw, setInviteEmailsRaw] = useState("");
+
   // Use queryOptions with empty object to satisfy tRPC proxy if needed
   const { data: rawSettings, isLoading, refetch } = useQuery(
     trpc.adminSettings.getSettings.queryOptions()
@@ -120,6 +137,49 @@ export function SettingsContent() {
       setIsSaving(false);
     }
   });
+
+  const { data: adminInvites = [], isFetching: isFetchingAdminInvites, refetch: refetchAdminInvites } = useQuery(
+    trpc.adminInvites.listInvites.queryOptions()
+  );
+
+  const createInvitesMutation = useMutation({
+    ...trpc.adminInvites.createInvites.mutationOptions(),
+    onSuccess: () => {
+      setInviteEmailsRaw("");
+      refetchAdminInvites();
+    },
+  });
+
+  const parseEmails = (raw: string) => {
+    const normalized = raw
+      .split(/[,\n]/g)
+      .map((e) => e.trim())
+      .filter(Boolean);
+    return Array.from(new Set(normalized));
+  };
+
+  const handleSendInvites = () => {
+    const emails = parseEmails(inviteEmailsRaw);
+    if (emails.length === 0) {
+      showToastError({
+        headerText: "No emails",
+        paragraphText: "Please enter at least one email address.",
+        direction: "right",
+      });
+      return;
+    }
+
+    const promise = createInvitesMutation.mutateAsync({ emails });
+    showToastPromise({
+      promise,
+      loadingText: "Sending invites...",
+      successText: "Invites were created successfully.",
+      successHeaderText: "Invites Sent",
+      errorText: "We couldn't send invites. Please try again.",
+      errorHeaderText: "Failed To Send Invites",
+      direction: "right",
+    });
+  };
 
   const getProfileImageUrl = (path: string | null) => {
     if (!path) return null;
@@ -184,6 +244,19 @@ export function SettingsContent() {
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <SettingsHeader />
+
+      <div className="flex justify-end">
+        <Button
+          variant="outline"
+          className="rounded-xl border-gray-200 hover:bg-gray-100 px-6"
+          onClick={() => {
+            setAdminInvitesOpen(true);
+            refetchAdminInvites();
+          }}
+        >
+          Send Admin Invites
+        </Button>
+      </div>
 
       <div className="grid gap-8">
         {/* Profile Section */}
@@ -340,6 +413,105 @@ export function SettingsContent() {
             </Button>
         </div>
       </div>
+
+      <Dialog open={adminInvitesOpen} onOpenChange={setAdminInvitesOpen}>
+        <DialogContent className="max-w-4xl rounded-3xl">
+          <DialogHeader>
+            <DialogTitle>Admin Invites</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="border rounded-2xl overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead>Expires</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isFetchingAdminInvites ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center text-sm text-gray-500">
+                        Loading invites...
+                      </TableCell>
+                    </TableRow>
+                  ) : adminInvites.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center text-sm text-gray-500">
+                        No invites sent yet.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    adminInvites.map((invite: any) => {
+                      const used = Boolean(invite.used_at);
+                      const expired = new Date(invite.expires_at).getTime() < Date.now();
+                      const status = used ? "Used" : expired ? "Expired" : "Pending";
+                      return (
+                        <TableRow key={invite.id}>
+                          <TableCell className="font-medium">{invite.email}</TableCell>
+                          <TableCell>{new Date(invite.created_at).toLocaleString()}</TableCell>
+                          <TableCell>{new Date(invite.expires_at).toLocaleString()}</TableCell>
+                          <TableCell>
+                            <span
+                              className={
+                                status === "Used"
+                                  ? "text-green-600"
+                                  : status === "Expired"
+                                    ? "text-red-600"
+                                    : "text-orange-600"
+                              }
+                            >
+                              {status}
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="border rounded-2xl p-4 space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="admin-invite-emails" className="text-sm font-medium text-gray-700">
+                  Send invite(s)
+                </Label>
+                <Input
+                  id="admin-invite-emails"
+                  placeholder="email1@example.com, email2@example.com"
+                  value={inviteEmailsRaw}
+                  onChange={(e) => setInviteEmailsRaw(e.target.value)}
+                  className="rounded-xl border-gray-200 h-11 bg-white"
+                />
+                <p className="text-[11px] text-gray-400">
+                  Separate multiple emails with commas or new lines.
+                </p>
+              </div>
+
+              <div className="flex justify-end">
+                <Button
+                  onClick={handleSendInvites}
+                  disabled={createInvitesMutation.isPending}
+                  className="bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-6"
+                >
+                  {createInvitesMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    "Send Invite"
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

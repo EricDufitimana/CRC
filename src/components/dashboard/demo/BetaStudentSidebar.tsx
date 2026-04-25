@@ -45,10 +45,15 @@ export function BetaStudentSidebar({ studentName, studentEmail }: BetaStudentSid
       setProfileImageUrl(saved);
       setSelectedAvatar(saved);
     } else {
-      setProfileImageUrl(ACTUAL_DASHBOARD_AVATARS[0].src);
-      setSelectedAvatar(ACTUAL_DASHBOARD_AVATARS[0].src);
+      const defaultAvatar = ACTUAL_DASHBOARD_AVATARS[0].src;
+      setProfileImageUrl(defaultAvatar);
+      setSelectedAvatar(defaultAvatar);
     }
   }, []);
+
+  const getFallbackAvatar = (seed: string) => {
+    return `https://api.dicebear.com/8.x/adventurer/svg?seed=${encodeURIComponent(seed)}`;
+  };
 
   const handleSignOut = () => {
     router.push('/');
@@ -81,6 +86,12 @@ export function BetaStudentSidebar({ studentName, studentEmail }: BetaStudentSid
                   src={profileImageUrl} 
                   alt={studentName} 
                   className="object-cover" 
+                  onError={() => {
+                    const fallback = getFallbackAvatar(studentEmail || studentName);
+                    if (profileImageUrl !== fallback) {
+                      setProfileImageUrl(fallback);
+                    }
+                  }}
                 />
                 <AvatarFallback className="bg-gradient-to-br from-gray-100 to-gray-200">
                   {studentName.charAt(0)}
@@ -208,7 +219,17 @@ export function BetaStudentSidebar({ studentName, studentEmail }: BetaStudentSid
                       : "hover:scale-105 hover:shadow-md"
                   }`}
                 >
-                  <img src={avatar.src} alt={avatar.name} className="w-full h-full object-cover" />
+                  <img 
+                    src={avatar.src} 
+                    alt={avatar.name} 
+                    className="w-full h-full object-cover" 
+                    onError={(e) => {
+                      const fallback = getFallbackAvatar(studentEmail || studentName);
+                      if (e.currentTarget.src !== fallback) {
+                        e.currentTarget.src = fallback;
+                      }
+                    }}
+                  />
                   {selectedAvatar === avatar.src && (
                     <div className="absolute inset-0 bg-blue-500/10 flex items-center justify-center">
                       <div className="bg-blue-500 text-white rounded-full p-1 shadow-md">

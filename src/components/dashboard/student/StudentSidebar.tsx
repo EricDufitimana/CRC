@@ -174,6 +174,11 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
   ];
   const isLoadingAvatars = false;
 
+  const getFallbackAvatar = useCallback((seed: string) => {
+    // adventurer is a friendly style for students
+    return `https://api.dicebear.com/8.x/adventurer/svg?seed=${encodeURIComponent(seed)}`;
+  }, []);
+
   const { data: studentData, isLoading: userDataLoading, error: userDataError } =
     useSuspenseQuery(trpc.studentSidebar.getStudentData.queryOptions());
 
@@ -184,13 +189,19 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
   );
   useEffect(() => {
     if (profilePictureData) {
-      setProfileImageUrl(profilePictureData.imageUrl);
-      setIsAvatar(profilePictureData.isAvatar || false);
+      if (!profilePictureData.imageUrl) {
+        setProfileImageUrl(getFallbackAvatar(studentData?.email || studentData?.full_name || 'CRC'));
+        setIsAvatar(true);
+      } else {
+        setProfileImageUrl(profilePictureData.imageUrl);
+        setIsAvatar(profilePictureData.isAvatar || false);
+      }
+
       if (profilePictureData.profileBackground) {
         setSelectedBackground(profilePictureData.profileBackground);
       }
     }
-  }, [profilePictureData]);
+  }, [profilePictureData, studentData?.email, getFallbackAvatar]);
 
   const updateAvatarMutation = useMutation({
     ...trpc.studentSidebar.updateAvatar.mutationOptions(),
@@ -322,6 +333,14 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
                   src={profileImageUrl || ""}
                   alt={studentData?.full_name || "Student"}
                   className={isAvatar ? "object-cover p-1" : "object-cover"}
+                  onError={() => {
+                    const seed = studentData?.email || studentData?.full_name || 'CRC';
+                    const fallback = getFallbackAvatar(seed);
+                    if (profileImageUrl !== fallback) {
+                      setProfileImageUrl(fallback);
+                      setIsAvatar(true);
+                    }
+                  }}
                 />
                 <AvatarFallback className={'bg-neutral-100 text-neutral-400'}>
                   {studentData ?
@@ -372,8 +391,8 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
               <Link
                 href="/dashboard/student"
                 className={`flex items-center justify-start text-left gap-3 rounded-xl px-3 py-2 text-base ${isActive('/dashboard/student')
-                    ? 'bg-neutral-100 text-neutral-900 hover:bg-neutral-200'
-                    : 'text-neutral-600 hover:bg-neutral-100'
+                  ? 'bg-neutral-100 text-neutral-900 hover:bg-neutral-200'
+                  : 'text-neutral-600 hover:bg-neutral-100'
                   }`}
               >
                 <HouseSimple className="h-5 w-5 text-neutral-500 " />
@@ -384,8 +403,8 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
               <Link
                 href="/dashboard/student/assignments"
                 className={`flex items-center justify-start text-left gap-3 rounded-xl px-3 py-2 text-base ${isActive('/dashboard/student/assignments')
-                    ? 'bg-neutral-100 text-neutral-900 hover:bg-neutral-200'
-                    : 'text-neutral-600 hover:bg-neutral-100'
+                  ? 'bg-neutral-100 text-neutral-900 hover:bg-neutral-200'
+                  : 'text-neutral-600 hover:bg-neutral-100'
                   }`}
               >
                 <ClipboardText className="h-5 w-5 text-neutral-500" />
@@ -396,8 +415,8 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
               <Link
                 href="/dashboard/student/requests"
                 className={`flex items-center justify-start text-left gap-3 rounded-xl px-3 py-2 text-base ${isActive('/dashboard/student/requests')
-                    ? 'bg-neutral-100 text-neutral-900 hover:bg-neutral-200'
-                    : 'text-neutral-600 hover:bg-neutral-100'
+                  ? 'bg-neutral-100 text-neutral-900 hover:bg-neutral-200'
+                  : 'text-neutral-600 hover:bg-neutral-100'
                   }`}
               >
                 <Briefcase className="h-5 w-5 text-neutral-500" />
@@ -408,8 +427,8 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
               <Link
                 href="/dashboard/student/documents"
                 className={`flex items-center justify-start text-left gap-3 rounded-xl px-3 py-2 text-base ${isActive('/dashboard/student/documents')
-                    ? 'bg-neutral-100 text-neutral-900 hover:bg-neutral-200'
-                    : 'text-neutral-600 hover:bg-neutral-100'
+                  ? 'bg-neutral-100 text-neutral-900 hover:bg-neutral-200'
+                  : 'text-neutral-600 hover:bg-neutral-100'
                   }`}
               >
                 <Folder className="h-5 w-5 text-neutral-500" />
@@ -468,9 +487,16 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
                   style={{ backgroundColor: selectedBackground }}
                 >
                   <img
-                    src={selectedAvatar || profileImageUrl || '/images/avatars/avatar-001.png'}
+                    src={selectedAvatar || profileImageUrl || getFallbackAvatar(studentData?.email || studentData?.full_name || 'CRC')}
                     alt="Preview"
                     className={`h-full w-full object-cover p-1 transition-opacity duration-300 ${isUploadingAvatar ? 'opacity-50' : 'opacity-100'}`}
+                    onError={(e) => {
+                      const seed = studentData?.email || studentData?.full_name || 'CRC';
+                      const fallback = getFallbackAvatar(seed);
+                      if (e.currentTarget.src !== fallback) {
+                        e.currentTarget.src = fallback;
+                      }
+                    }}
                   />
                 </div>
               </div>
@@ -487,8 +513,8 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
                       key={bg.hex}
                       onClick={() => setSelectedBackground(bg.hex)}
                       className={`h-8 w-8 shrink-0 rounded-full transition-all duration-300 ${selectedBackground === bg.hex
-                          ? 'ring-2 ring-neutral-900 ring-offset-2 scale-105'
-                          : 'hover:scale-105 border border-neutral-200'
+                        ? 'ring-2 ring-neutral-900 ring-offset-2 scale-105'
+                        : 'hover:scale-105 border border-neutral-200'
                         }`}
                       style={{ backgroundColor: bg.hex }}
                       title={bg.name}
@@ -502,8 +528,8 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
                 <button
                   onClick={() => setActiveTab('existing')}
                   className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-300 ${activeTab === 'existing'
-                      ? 'bg-white text-neutral-900 shadow-sm'
-                      : 'text-neutral-400 hover:text-neutral-500'
+                    ? 'bg-white text-neutral-900 shadow-sm'
+                    : 'text-neutral-400 hover:text-neutral-500'
                     }`}
                 >
                   Gallery
@@ -511,8 +537,8 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
                 <button
                   onClick={() => setActiveTab('upload')}
                   className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-300 ${activeTab === 'upload'
-                      ? 'bg-white text-neutral-900 shadow-sm'
-                      : 'text-neutral-400 hover:text-neutral-500'
+                    ? 'bg-white text-neutral-900 shadow-sm'
+                    : 'text-neutral-400 hover:text-neutral-500'
                     }`}
                 >
                   Custom
@@ -534,8 +560,8 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
                             setSelectedAvatarPath(avatar.src);
                           }}
                           className={`group relative aspect-square rounded-xl overflow-hidden bg-neutral-50 border transition-all duration-200 ${isSelected
-                              ? 'border-neutral-900 ring-1 ring-neutral-900'
-                              : 'border-transparent hover:border-neutral-200 hover:bg-neutral-100'
+                            ? 'border-neutral-900 ring-1 ring-neutral-900'
+                            : 'border-transparent hover:border-neutral-200 hover:bg-neutral-100'
                             }`}
                         >
                           <img src={avatar.src} className="h-full w-full object-cover p-1.5 transition-transform duration-300 group-hover:scale-110" alt={avatar.name} />

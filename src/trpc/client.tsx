@@ -29,6 +29,7 @@ function getUrl() {
   })();
   return `${base}/api/trpc`;
 }
+
 export function TRPCReactProvider(
   props: Readonly<{
     children: React.ReactNode;
@@ -56,4 +57,31 @@ export function TRPCReactProvider(
       </TRPCProvider>
     </QueryClientProvider>
   );
+}
+
+// Export a function to get the vanilla client for direct calls outside React hooks
+let vanillaClient: ReturnType<typeof createTRPCClient<AppRouter>> | null = null;
+
+export function getVanillaClient() {
+  if (typeof window === 'undefined') {
+    return createTRPCClient<AppRouter>({
+      links: [
+        httpBatchLink({
+          transformer: superjson,
+          url: getUrl(),
+        }),
+      ],
+    });
+  }
+  if (!vanillaClient) {
+    vanillaClient = createTRPCClient<AppRouter>({
+      links: [
+        httpBatchLink({
+          transformer: superjson,
+          url: getUrl(),
+        }),
+      ],
+    });
+  }
+  return vanillaClient;
 }

@@ -44,6 +44,7 @@ export default function StudentSignInForm() {
         provider: "google",
         redirectTo: "/account-check",
         role: "student",
+        origin: typeof window !== 'undefined' ? window.location.origin : undefined,
       });
     } catch (error) {
       // Error is handled in onError callback

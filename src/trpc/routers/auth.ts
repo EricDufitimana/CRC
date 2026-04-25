@@ -13,6 +13,7 @@ export const authRouter = createTRPCRouter({
         provider: z.enum(['google', 'github']),
         redirectTo: z.string(),
         role: z.enum(['admin', 'student']).optional(),
+        origin: z.string().optional(),
       }),
     )
     .mutation(async ({ input }) => {
@@ -21,12 +22,19 @@ export const authRouter = createTRPCRouter({
         provider: input.provider,
         redirectTo: input.redirectTo,
         role: input.role,
+        origin: input.origin,
       });
 
       const supabase = await createClient();
       
-      // Get the base URL - try multiple sources for reliability
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
+      // Get the base URL - use client-provided origin first, then environment variable
+      console.log('🔐 [tRPC Auth] getOAuthUrl: Origin received from client:', input.origin);
+      console.log('🔐 [tRPC Auth] getOAuthUrl: Environment variable NEXT_PUBLIC_APP_URL:', process.env.NEXT_PUBLIC_APP_URL);
+      
+      const baseUrl = input.origin || process.env.NEXT_PUBLIC_APP_URL;
+      
+      console.log('🔐 [tRPC Auth] getOAuthUrl: Base URL source:', input.origin ? 'client-provided' : 'environment variable');
+      console.log('🔐 [tRPC Auth] getOAuthUrl: Final baseUrl:', baseUrl);
       
       // Redirect to auth callback route, which will then redirect to the final destination
       const callbackUrl = `${baseUrl}/api/auth/callback?next=${encodeURIComponent(input.redirectTo)}`;
@@ -162,6 +170,202 @@ export const authRouter = createTRPCRouter({
 
     return { session };
   }),
+
+  // Register student (link student_id to user_id)
+  registerStudent: baseProcedure
+    .input(
+      z.object({
+        userId: z.string(),
+        studentCode: z.string(),
+        email: z.string().email().optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      console.log('🎓 [tRPC Auth] registerStudent: Starting student registration');
+      
+      const supabase = createServiceRoleClient();
+      let registrationEmail = input.email;
+      let fullName = '';
+
+      // Find the student by student_code
+      const { data: student, error: studentError } = await supabase
+        .from('students')
+        .select('*')
+        .eq('student_id', input.studentCode)
+        .single();
+
+      if (studentError || !student) {
+        console.error('❌ [tRPC Auth] registerStudent: Student record not found:', studentError);
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Student not found',
+        });
+      }
+
+      if (student.user_id) {
+        console.log('⚠️ [tRPC Auth] registerStudent: Student already registered');
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message: 'Already registered',
+        });
+      }
+
+      registrationEmail = input.email || student.email;
+      fullName = `${student.first_name} ${student.last_name}`;
+
+      // Link student to user_id
+      const { error: updateError } = await supabase
+        .from('students')
+        .update({ user_id: input.userId, email: registrationEmail })
+        .eq('id', student.id);
+
+      if (updateError) {
+        console.error('❌ [tRPC Auth] registerStudent: Failed to link student:', updateError);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Link failed',
+        });
+      }
+
+      // Create profile
+      try {
+        await prisma.profiles.create({
+          data: {
+            user_id: input.userId,
+            email: registrationEmail,
+            role: 'student',
+            is_new_user: true,
+            has_setup: false,
+            Names: fullName,
+          },
+        });
+      } catch (pErr) {
+        console.error('❌ [tRPC Auth] registerStudent: Profile creation error:', pErr);
+      }
+
+      console.log('✅ [tRPC Auth] registerStudent: Student registration completed');
+      return { success: true, email: registrationEmail };
+    }),
+
+  // Register admin (create admin record with optional invite token)
+  registerAdmin: baseProcedure
+    .input(
+      z.object({
+        userId: z.string(),
+        email: z.string().email(),
+        honorific: z.string().optional(),
+        firstName: z.string(),
+        lastName: z.string(),
+        role: z.string(),
+        token: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      console.log('🛡️ [tRPC Auth] registerAdmin: Starting admin registration');
+
+      const fullName = `${input.firstName} ${input.lastName}`;
+
+      // Validate token if provided
+      if (input.token) {
+        const invite = await prisma.admin_invites.findUnique({
+          where: { token: input.token },
+        });
+
+        if (!invite) {
+          console.error('❌ [tRPC Auth] registerAdmin: Invalid token');
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'Invalid invite link',
+          });
+        }
+
+        if (invite.used_at) {
+          console.error('❌ [tRPC Auth] registerAdmin: Token already used');
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'This link has already been used',
+          });
+        }
+      }
+
+      try {
+        // Create admin record using Prisma
+        await prisma.admin.create({
+          data: {
+            user_id: input.userId,
+            honorific: input.honorific,
+            first_name: input.firstName,
+            last_name: input.lastName,
+            role: input.role,
+            email: input.email,
+          },
+        });
+
+        // Create profile
+        await prisma.profiles.create({
+          data: {
+            user_id: input.userId,
+            email: input.email,
+            role: 'admin',
+            is_new_user: true,
+            has_setup: false,
+            Names: fullName,
+          },
+        });
+
+        // Mark invite as used if token is present
+        if (input.token) {
+          console.log('🛡️ [tRPC Auth] registerAdmin: Marking invite as used');
+          try {
+            await prisma.admin_invites.update({
+              where: { token: input.token },
+              data: { used_at: new Date() },
+            });
+            console.log('✅ [tRPC Auth] registerAdmin: Invite marked as used');
+          } catch (inviteErr) {
+            console.error('⚠️ [tRPC Auth] registerAdmin: Failed to mark invite as used:', inviteErr);
+            // Don't fail the registration if invite marking fails
+          }
+        }
+      } catch (adminErr) {
+        console.error('❌ [tRPC Auth] registerAdmin: Admin creation error:', adminErr);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: adminErr instanceof Error ? adminErr.message : 'Admin creation failed',
+        });
+      }
+
+      console.log('✅ [tRPC Auth] registerAdmin: Admin registration completed');
+      return { success: true, email: input.email };
+    }),
+
+  // Send welcome email
+  sendWelcomeEmail: baseProcedure
+    .input(
+      z.object({
+        email: z.string().email(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      console.log('📧 [tRPC Auth] sendWelcomeEmail: Sending welcome email to:', input.email);
+      
+      const supabase = createServiceRoleClient();
+      
+      const { error: functionError } = await supabase.functions.invoke('send_welcome_email', {
+        body: { email: input.email },
+      });
+
+      if (functionError) {
+        console.error('⚠️ [tRPC Auth] sendWelcomeEmail: Welcome email function failed:', functionError);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to send welcome email',
+        });
+      }
+
+      console.log('✅ [tRPC Auth] sendWelcomeEmail: Welcome email sent successfully');
+      return { success: true };
+    }),
 
   // Get current user with admin/student IDs
   getUser: baseProcedure.query(async ({ ctx }) => {

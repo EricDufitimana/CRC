@@ -1,14 +1,18 @@
 "use client";
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from "next/link";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../zenith/src/components/ui/select";
 import { Input } from "../../../../zenith/src/components/ui/input";
 import { showToastSuccess, showToastError } from "@/components/toasts";
-import { Shield, ChevronLeft } from "lucide-react";
+import { handleApiError } from "@/utils/errorHandler";
+import { Shield, ChevronLeft, AlertCircle, Loader2 } from "lucide-react";
 import Label from "@/components/form/Label";
-import { supabase } from '@/lib/supabase';
+import { useTRPC } from "@/trpc/client";
+import { useQuery } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
+
 
 const honorifics = [
   "Mr.", "Mrs.", "Ms.", "Dr.", "Prof.", "Rev.", "Sir", "Dame"
@@ -20,17 +24,49 @@ const roles = [
 ];
 
 export default function CreateAdmin() {
+  console.log('🛡️ [Create Admin] Component mounted');
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token");
+  console.log('🛡️ [Create Admin] Token from URL:', token ? `${token.substring(0, 8)}...` : 'none');
+  const trpc = useTRPC();
+  
   const [isGoogleSignUpLoading, setIsGoogleSignUpLoading] = useState(false);
   const [formData, setFormData] = useState({
     honorific: "",
     firstName: "",
     lastName: "",
-    role: "admin"
+    role: ""
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const router = useRouter();
 
+  const { data: tokenValidation, isLoading: isValidatingToken, error: tokenError } = useQuery({
+    ...trpc.adminInvites.validateToken.queryOptions({ token: token || '' }),
+    enabled: !!token,
+    onSuccess: (data) => {
+      console.log('✅ [Create Admin] Token validation successful:', data);
+    },
+    onError: (error) => {
+      console.error('❌ [Create Admin] Token validation error:', error);
+      console.error('❌ [Create Admin] Error details:', {
+        message: error.message,
+        shape: error.shape,
+        data: error.data,
+      });
+      const { headerText, paragraphText } = handleApiError(error, {
+        defaultMessage: "Failed to validate invite token"
+      });
+      showToastError({ headerText, paragraphText });
+    }
+  });
+
+  const isValidToken = tokenValidation?.valid ?? false;
+  const inviteEmail = tokenValidation?.email ?? null;
+  const invalidReason = tokenValidation?.reason ?? null;
+  console.log('🛡️ [Create Admin] Validation state:', { isValidToken, inviteEmail, invalidReason, isLoading: isValidatingToken });
+
   const handleInputChange = (field: string, value: string) => {
+    console.log('🛡️ [Create Admin] Form input changed:', { field, value });
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: "" }));
@@ -38,50 +74,77 @@ export default function CreateAdmin() {
   };
 
   const validateForm = () => {
+    console.log('🛡️ [Create Admin] Validating form:', formData);
     const newErrors: Record<string, string> = {};
 
     if (!formData.firstName.trim()) newErrors.firstName = "First name is required";
     if (!formData.lastName.trim()) newErrors.lastName = "Last name is required";
     if (!formData.role) newErrors.role = "Role is required";
 
+    console.log('🛡️ [Create Admin] Form validation result:', Object.keys(newErrors).length === 0 ? 'valid' : 'invalid', newErrors);
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+  const oauthMutation = useMutation({
+    ...trpc.auth.getOAuthUrl.mutationOptions(),
+    onSuccess: (result) => {
+      console.log('✅ [Create Admin] OAuth URL generated successfully');
+      if (result.url) {
+        // Store admin data and token in localStorage for the callback to access
+        const pendingData = {
+          ...formData,
+          token,
+        };
+        console.log('🛡️ [Create Admin] Storing data in localStorage:', pendingData);
+        localStorage.setItem('pendingAdminData', JSON.stringify(pendingData));
+        console.log('🛡️ [Create Admin] Redirecting to Google OAuth');
+        window.location.href = result.url;
+      } else {
+        throw new Error("No OAuth URL returned");
+      }
+    },
+    onError: (error) => {
+      console.error('❌ [Create Admin] OAuth URL generation error:', error);
+      const { headerText, paragraphText } = handleApiError(error, {
+        defaultMessage: "Failed to initiate Google sign-in"
+      });
+      showToastError({ headerText, paragraphText });
+      setIsGoogleSignUpLoading(false);
+    },
+  });
+
   const handleGoogleSignUp = async () => {
-    if (!validateForm()) return;
+    console.log('🛡️ [Create Admin] Google signup button clicked');
+    if (!validateForm()) {
+      console.log('❌ [Create Admin] Form validation failed');
+      return;
+    }
+    if (!token) {
+      console.log('❌ [Create Admin] No token found');
+      showToastError({
+        headerText: "Invalid Invite",
+        paragraphText: "No invite token found"
+      });
+      return;
+    }
     
     try {
       setIsGoogleSignUpLoading(true);
-      console.log('Initiating Google OAuth for admin creation with data:', formData);
+      console.log('🛡️ [Create Admin] Initiating Google OAuth for admin creation');
+      console.log('🛡️ [Create Admin] Form data:', formData);
+      console.log('🛡️ [Create Admin] Token:', `${token.substring(0, 8)}...`);
       
-      // Store admin data in localStorage for the callback to access
-      localStorage.setItem('pendingAdminData', JSON.stringify(formData));
-      
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      // Use tRPC mutation to get OAuth URL (same pattern as student registration)
+      await oauthMutation.mutateAsync({
         provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          }
-        }
+        redirectTo: "/auth/callback",
+        role: "admin",
+        origin: typeof window !== 'undefined' ? window.location.origin : undefined,
       });
-      
-      if (error) {
-        console.error("Google OAuth error:", error);
-        showToastError({
-          headerText: "Google Signup Error",
-          paragraphText: error.message
-        });
-        setIsGoogleSignUpLoading(false);
-      } else {
-        console.log("Google OAuth initiated successfully");
-        // The user will be redirected to Google for authentication
-      }
     } catch (error) {
-      console.error("Google OAuth failed:", error);
+      console.error('❌ [Create Admin] Google OAuth failed (unexpected error):', error);
+      console.error('❌ [Create Admin] Error stack:', error instanceof Error ? error.stack : 'No stack');
       showToastError({
         headerText: "Google OAuth Failed",
         paragraphText: error instanceof Error ? error.message : "An unexpected error occurred"
@@ -90,6 +153,55 @@ export default function CreateAdmin() {
     }
   };
 
+
+  // Show loading state while validating token
+  if (isValidatingToken && token) {
+    return (
+      <div className="flex flex-col flex-1 w-full overflow-y-auto lg:w-1/2 no-scrollbar py-4">
+        <div className="flex flex-col justify-center flex-1 w-full max-w-md mx-auto">
+          <div className="text-center">
+            <Loader2 className="mx-auto h-12 w-12 animate-spin text-gray-400" />
+            <h2 className="mt-4 font-semibold text-gray-800 text-little-md dark:text-white/90 sm:text-title-md">
+              Validating Invite...
+            </h2>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if token is invalid
+  if (!isValidToken) {
+    return (
+      <div className="flex flex-col flex-1 w-full overflow-y-auto lg:w-1/2 no-scrollbar py-4">
+        <div className="w-full max-w-md mx-auto mb-5 sm:pt-10">
+          <Link
+            href="/"
+            className="inline-flex items-center text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+          >
+            <ChevronLeft className="size-5" />
+            Back to Landing Page
+          </Link>
+        </div>
+        <div className="flex flex-col justify-center flex-1 w-full max-w-md mx-auto">
+          <div className="text-center">
+            <div className="mb-6 flex justify-center">
+              <div className="rounded-full bg-red-100 p-4 dark:bg-red-900/20">
+                <AlertCircle className="h-12 w-12 text-red-600 dark:text-red-400" />
+              </div>
+            </div>
+            <h1 className="mb-2 text-2xl font-bold text-gray-800 dark:text-white/90">
+              Invalid Invite
+            </h1>
+            <p className="mb-6 text-gray-500 dark:text-gray-400">
+              {invalidReason === "Token already used" ? "This link has already been used" :
+               tokenError?.message || (!token ? "No invite token provided" : "This invite link is not valid.")}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col flex-1 w-full overflow-y-auto lg:w-1/2 no-scrollbar py-4">
@@ -111,13 +223,20 @@ export default function CreateAdmin() {
             <p className="text-sm text-gray-500 dark:text-gray-400">
               Fill in the admin details and sign up with Google
             </p>
+            {inviteEmail && (
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                Invite sent to: <span className="font-medium">{inviteEmail}</span>
+              </p>
+            )}
           </div>
           
           <div className="space-y-5">
             {/* Honorific and Role */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Honorific</Label>
+                <Label>Honorific (optional)</Label>
+
+
                 <Select
                   value={formData.honorific}
                   onValueChange={(value: string) => handleInputChange('honorific', value)}
@@ -223,7 +342,7 @@ export default function CreateAdmin() {
                         fill="#EB4335"
                       />
                     </svg>
-                    <span>Create Admin with Google</span>
+                    <span>Continue with Google</span>
                   </>
                 )}
               </button>

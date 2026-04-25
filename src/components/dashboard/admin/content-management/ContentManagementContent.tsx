@@ -9,6 +9,7 @@ import {
   Dialog,
   DialogContent,
 } from "@/zenith/components/ui/dialog";
+import { X } from "@phosphor-icons/react";
 import { showToastPromise } from "@/components/toasts";
 import { ContentManagementHeader } from "./ContentManagementHeader";
 import { ContentCategorySidebar } from "./ContentCategorySidebar";
@@ -254,8 +255,18 @@ export function ContentManagementContent() {
 
       {/* Add Resource Dialog */}
       <Dialog open={isAddResourceOpen} onOpenChange={setIsAddResourceOpen}>
-        <DialogContent className="max-w-3xl rounded-3xl border-none shadow-2xl">
+        <DialogContent
+          className="max-w-3xl rounded-[40px] sm:rounded-[40px] overflow-hidden border-none shadow-2xl p-8
+          "
+          closeButton={
+            <button className="text-gray-400 hover:text-gray-600 transition-colors">
+              <X size={20} />
+              <span className="sr-only">Close</span>
+            </button>
+          }
+        >
           <AddResourceDialog
+            key={`${selectedCategory}-${isAddResourceOpen ? "open" : "closed"}`}
             selectedCategory={selectedCategory}
             canAddResource={canAddResource}
             onClose={() => setIsAddResourceOpen(false)}
