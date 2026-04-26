@@ -1,21 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "@/zenith/components/ui/button";
-import { Input } from "@/zenith/components/ui/input";
-import { Label } from "@/zenith/components/ui/label";
-import { Textarea } from "@/zenith/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/zenith/components/ui/dialog";
+import { useEffect, useRef, useState } from "react";
+import { Dialog, DialogContent } from "@/zenith/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/zenith/components/ui/select";
-import { Plus, Loader2, Image as ImageIcon } from "lucide-react";
+import { Loader2, X as CloseIcon } from "lucide-react";
 import Image from "next/image";
-import { FileUpload as FileUploadBase, getFileIconType, getReadableFileSize } from "@/components/application/file-upload/file-upload-base";
+import { FileUpload as FileUploadBase } from "@/components/application/file-upload/file-upload-base";
 import MDEditor from '@uiw/react-md-editor';
 import { z } from "zod";
 import imageCompression from "browser-image-compression";
 import { addEvent } from "@/lib/action";
 import { showToastPromise } from "@/components/toasts";
 import { useQueryClient } from "@tanstack/react-query";
+import { StableGrainient } from "../content-management/StableGrainient";
 
 const eventCategories = [
   "conference",
@@ -38,7 +35,6 @@ const eventSchema = z.object({
   event_organizer_image: z.string().url("Must be a valid URL").optional().or(z.literal("")),
 });
 
-// FileUpload wrapper component to match setup page API
 interface FileUploadProps {
   multiple?: boolean;
   accept?: string;
@@ -58,7 +54,6 @@ function FileUpload({
   value = [],
   onChange,
   disabled = false,
-  placeholder = "Drop files here or click to upload",
   helperText,
   className,
 }: FileUploadProps) {
@@ -71,8 +66,17 @@ function FileUpload({
     }))
   );
 
-  const handleDropFiles = (files: FileList) => {
-    const fileArray = Array.from(files);
+  useEffect(() => {
+    setFiles(value.map((file, index) => ({
+      id: `${file.name}-${index}`,
+      file,
+      progress: 100,
+      failed: false,
+    })));
+  }, [value]);
+
+  const handleDropFiles = (filesList: FileList) => {
+    const fileArray = Array.from(filesList);
     const updatedFiles = multiple ? [...value, ...fileArray].slice(0, maxFiles) : fileArray.slice(0, 1);
     onChange(updatedFiles);
   };
@@ -92,7 +96,7 @@ function FileUpload({
       />
       {files.length > 0 && (
         <FileUploadBase.Root className="mt-4">
-          <FileUploadBase.List>
+          <FileUploadBase.List className="!grid !grid-cols-2 !gap-2">
             {files.map((fileItem) => (
               <FileUploadBase.ListItem
                 key={fileItem.id}
@@ -100,7 +104,7 @@ function FileUpload({
                 size={fileItem.file.size}
                 progress={fileItem.progress}
                 onDelete={() => handleRemoveFile(fileItem.id)}
-                className="!p-2.5 !gap-2 [&_p]:!text-sm [&_hr]:!h-2.5 [&>svg]:!size-8 [&>div>div>div>div>svg]:!size-3"
+                className="!p-2 !gap-1.5 [&_p]:!text-xs [&_hr]:!h-2 [&>svg]:!size-6 [&>div>div>div>div>svg]:!size-2.5 min-w-0"
               />
             ))}
           </FileUploadBase.List>
@@ -119,9 +123,11 @@ interface AddEventDialogProps {
 export function AddEventDialog({ open, onOpenChange }: AddEventDialogProps) {
   const queryClient = useQueryClient();
   const [currentStep, setCurrentStep] = useState(1);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const leftColumnRef = useRef<HTMLDivElement | null>(null);
+  const [grainientHeight, setGrainientHeight] = useState(420);
   const [isCreatingEvent, setIsCreatingEvent] = useState(false);
-  const [formError, setFormError] = useState("");
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [validationErrors, setValidationErrors] = useState<Record<string, string[]>>({});
   
   const [formData, setFormData] = useState({
     type: "previous_events",
@@ -155,7 +161,6 @@ export function AddEventDialog({ open, onOpenChange }: AddEventDialogProps) {
     setSelectedImages([]);
     setImagePreviewUrls([]);
     setSelectedHeroImage(0);
-    setFormError("");
     setValidationErrors({});
   };
 
@@ -185,15 +190,39 @@ export function AddEventDialog({ open, onOpenChange }: AddEventDialogProps) {
     }
   }
 
-  const handleNextStep = () => {
-    if (currentStep === 1) {
-      if (!formData.type || !formData.category || !formData.title || !formData.description || !formData.date || !formData.location) {
-        setFormError("Please fill in all required fields before proceeding.");
-        return;
-      }
-      setFormError("");
-      setCurrentStep(2);
+  const validateStep = (step: number) => {
+    const errors: Record<string, string[]> = {};
+    if (step === 1) {
+      if (!formData.title) errors.title = ["Title is required"];
+      if (!formData.description) errors.description = ["Description is required"];
+      if (!formData.type) errors.type = ["Event type is required"];
+      if (!formData.category) errors.category = ["Category is required"];
+    } else if (step === 2) {
+      if (!formData.date) errors.date = ["Date is required"];
+      if (!formData.location) errors.location = ["Location is required"];
     }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleNext = () => {
+    if (!validateStep(currentStep)) return;
+
+    setIsTransitioning(true);
+    setTimeout(() => {
+      if (currentStep < 3) setCurrentStep(currentStep + 1);
+      else handleCreateEvent();
+      setIsTransitioning(false);
+    }, 300);
+  };
+
+  const handlePrevious = () => {
+    setIsTransitioning(true);
+    setTimeout(() => {
+      if (currentStep > 1) setCurrentStep(currentStep - 1);
+      setIsTransitioning(false);
+    }, 300);
   };
 
   const handleCreateEvent = async () => {
@@ -225,11 +254,12 @@ export function AddEventDialog({ open, onOpenChange }: AddEventDialogProps) {
         }
       } catch (error) {
         if (error instanceof z.ZodError) {
-          const errors: Record<string, string> = {};
+          const errors: Record<string, string[]> = {};
           error.errors.forEach((err) => {
-            if (err.path) errors[err.path[0] as string] = err.message;
+            if (err.path) errors[err.path[0] as string] = [err.message];
           });
           setValidationErrors(errors);
+          setCurrentStep(1); // go back to step 1 to show errors, or keep current
           throw new Error("Validation failed. Please check the form fields.");
         }
         throw error;
@@ -249,190 +279,293 @@ export function AddEventDialog({ open, onOpenChange }: AddEventDialogProps) {
     });
   };
 
+  useEffect(() => {
+    if (!open) return;
+    const el = leftColumnRef.current;
+    if (!el) return;
+
+    const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
+
+    const ro = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      const next = clamp(Math.ceil(entry.contentRect.height), 360, 640);
+      setGrainientHeight((prev) => (prev === next ? prev : next));
+    });
+
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [open, currentStep]);
+
   return (
     <Dialog open={open} onOpenChange={(val) => {
       if (!val) resetForm();
       onOpenChange(val);
     }}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col rounded-3xl border-none shadow-2xl">
-        <DialogHeader>
-          <DialogTitle>Add New Event</DialogTitle>
-          <DialogDescription>Create a new event for the platform</DialogDescription>
-        </DialogHeader>
-
-        <div className="flex items-center justify-center p-4">
-          <div className="flex items-center space-x-4">
-            <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${currentStep >= 1 ? 'bg-primary border-primary text-white' : 'bg-gray-100 border-gray-300 text-gray-500'}`}>
-              <span className="text-sm font-medium">1</span>
-            </div>
-            <div className={`w-16 h-0.5 ${currentStep >= 2 ? 'bg-primary' : 'bg-gray-300'}`}></div>
-            <div className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${currentStep >= 2 ? 'bg-primary border-primary text-white' : 'bg-gray-100 border-gray-300 text-gray-500'}`}>
-              <span className="text-sm font-medium">2</span>
-            </div>
+      <DialogContent 
+        className="max-w-3xl rounded-[40px] sm:rounded-[40px] overflow-hidden border-none shadow-2xl p-8"
+        closeButton={
+          <button className="text-gray-400 hover:text-gray-600 transition-colors">
+            <CloseIcon size={20} />
+            <span className="sr-only">Close</span>
+          </button>
+        }
+      >
+        <div className="w-full">
+          {/* Step indicator */}
+          <div className="w-[154px] h-[5px] flex gap-0.5 items-center">
+            <div className={`h-[5px] rounded-[27px] transition-all duration-500 ease-out ${currentStep === 1 ? 'w-[43px] bg-[#222]' :
+                'w-[30px] bg-[rgba(212,212,212,0.5)]'
+              }`} />
+            <div className={`h-[5px] rounded-[27px] transition-all duration-500 ease-out ${currentStep === 2 ? 'w-[43px] bg-[#222]' :
+                'w-[30px] bg-[rgba(212,212,212,0.5)]'
+              }`} />
+            <div className={`h-[5px] rounded-[27px] transition-all duration-500 ease-out ${currentStep === 3 ? 'w-[43px] bg-[#222]' :
+                'w-[30px] bg-[rgba(212,212,212,0.5)]'
+              }`} />
           </div>
-        </div>
 
-        <div className="flex-1 overflow-y-auto px-2">
-          {formError && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
-              {formError}
-            </div>
-          )}
-
-          {currentStep === 1 ? (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Event Type</Label>
-                  <Select value={formData.type} onValueChange={(val) => handleFormDataChange('type', val)}>
-                    <SelectTrigger className="rounded-xl focus:ring-0 focus:ring-offset-0">
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="previous_events">Previous Events</SelectItem>
-                      <SelectItem value="upcoming_events">Upcoming Events</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Category</Label>
-                  <Select value={formData.category} onValueChange={(val) => handleFormDataChange('category', val)}>
-                    <SelectTrigger className="rounded-xl focus:ring-0 focus:ring-offset-0">
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {eventCategories.map(cat => (
-                        <SelectItem key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (currentStep === 3) handleCreateEvent();
+              else handleNext();
+            }}
+            className="flex gap-6 pt-7 items-stretch"
+          >
+            {/* Left Column */}
+            <div ref={leftColumnRef} className="flex-1 flex flex-col min-h-0 max-h-[65vh]">
+              {/* Step heading block */}
+              <div className={`mb-7 shrink-0 transition-all duration-300 ${isTransitioning ? 'opacity-0 transform -translate-x-2' : 'opacity-100 transform translate-x-0'}`}>
+                <h2 className="text-[17px] font-bold text-[rgb(34,34,34)] leading-snug mb-2">
+                  {currentStep === 1 && "Basic details"}
+                  {currentStep === 2 && "Event logistics"}
+                  {currentStep === 3 && "Media & review"}
+                </h2>
+                <p className="text-[13px] font-light text-[rgba(96,115,142,0.88)] leading-relaxed">
+                  {currentStep === 1 && "Enter the primary details for the new event"}
+                  {currentStep === 2 && "Where and when is this happening?"}
+                  {currentStep === 3 && "Upload event photos and submit"}
+                </p>
               </div>
 
-              <div className="space-y-2">
-                <Label>Event Title</Label>
-                  <Input
-                    value={formData.title}
-                    onChange={(e) => handleFormDataChange('title', e.target.value)}
-                    placeholder="Enter event title"
-                    className="rounded-xl focus-visible:ring-0 focus-visible:ring-offset-0"
-                    maxLength={60}
-                  />
-              </div>
+              <div className={`flex-1 flex flex-col gap-5 transition-all duration-300 overflow-y-auto overflow-x-hidden pr-3 -mr-3 pb-2 ${isTransitioning ? 'opacity-0 transform -translate-x-2' : 'opacity-100 transform translate-x-0'}`}>
+                {currentStep === 1 && (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex flex-col gap-2">
+                        <label className="text-[12px] font-medium text-[rgb(136,136,136)] tracking-wide">
+                          Event Type*
+                        </label>
+                        <Select value={formData.type} onValueChange={(val) => handleFormDataChange('type', val)}>
+                          <SelectTrigger className={`w-full h-10 px-3.5 rounded-[10px] border bg-[rgba(187,187,187,0.26)] text-[14px] text-gray-800 outline-none focus:ring-0 focus:ring-offset-0 ${validationErrors.type ? 'border-red-500' : 'border-[rgba(136,136,136,0.2)]'}`}>
+                            <SelectValue placeholder="Select type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="previous_events">Previous Events</SelectItem>
+                            <SelectItem value="upcoming_events">Upcoming Events</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {validationErrors.type && <span className="text-red-500 text-xs mt-1">{validationErrors.type[0]}</span>}
+                      </div>
 
-              <div className="space-y-2" data-color-mode="light">
-                <Label>Description</Label>
-                <MDEditor
-                  value={formData.description}
-                  onChange={(val) => handleFormDataChange('description', val || '')}
-                  preview="live"
-                  height={200}
-                  textareaProps={{
-                    placeholder: "Description with markdown support...",
-                    maxLength: 460,
-                  }}
-                />
-              </div>
+                      <div className="flex flex-col gap-2">
+                        <label className="text-[12px] font-medium text-[rgb(136,136,136)] tracking-wide">
+                          Category*
+                        </label>
+                        <Select value={formData.category} onValueChange={(val) => handleFormDataChange('category', val)}>
+                          <SelectTrigger className={`w-full h-10 px-3.5 rounded-[10px] border bg-[rgba(187,187,187,0.26)] text-[14px] text-gray-800 outline-none focus:ring-0 focus:ring-offset-0 ${validationErrors.category ? 'border-red-500' : 'border-[rgba(136,136,136,0.2)]'}`}>
+                            <SelectValue placeholder="Select category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {eventCategories.map(cat => (
+                              <SelectItem key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {validationErrors.category && <span className="text-red-500 text-xs mt-1">{validationErrors.category[0]}</span>}
+                      </div>
+                    </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Date</Label>
-                  <Input
-                    type="date"
-                    value={formData.date}
-                    onChange={(e) => handleFormDataChange('date', e.target.value)}
-                    className="rounded-xl focus-visible:ring-0 focus-visible:ring-offset-0"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Location</Label>
-                  <Input
-                    value={formData.location}
-                    onChange={(e) => handleFormDataChange('location', e.target.value)}
-                    placeholder="Event location"
-                    className="rounded-xl focus-visible:ring-0 focus-visible:ring-offset-0"
-                  />
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Organizer Name</Label>
-                  <Input
-                    value={formData.event_organizer_name}
-                    onChange={(e) => handleFormDataChange('event_organizer_name', e.target.value)}
-                    placeholder="Name"
-                    className="rounded-xl focus-visible:ring-0 focus-visible:ring-offset-0"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Organizer Role</Label>
-                  <Input
-                    value={formData.event_organizer_role}
-                    onChange={(e) => handleFormDataChange('event_organizer_role', e.target.value)}
-                    placeholder="Role"
-                    className="rounded-xl focus-visible:ring-0 focus-visible:ring-offset-0"
-                  />
-                </div>
-              </div>
+                    <div className="flex flex-col gap-2">
+                      <label className="text-[12px] font-medium text-[rgb(136,136,136)] tracking-wide">
+                        Event Title*
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Enter event title"
+                        value={formData.title}
+                        onChange={(e) => handleFormDataChange('title', e.target.value)}
+                        maxLength={60}
+                        className={`w-full h-10 px-3.5 rounded-[10px] border bg-[rgba(187,187,187,0.26)] text-[14px] text-gray-800 outline-none focus:border-[rgba(136,136,136,0.4)] transition-colors ${validationErrors.title ? 'border-red-500' : 'border-[rgba(136,136,136,0.2)]'}`}
+                      />
+                      {validationErrors.title && <span className="text-red-500 text-xs mt-1">{validationErrors.title[0]}</span>}
+                    </div>
 
-              <div className="space-y-4">
-                <Label>Event Images</Label>
-                <FileUpload
-                  multiple={formData.type === "previous_events"}
-                  maxFiles={formData.type === "upcoming_events" ? 1 : 10}
-                  value={selectedImages}
-                  onChange={async (files: File[]) => {
-                    if (!files) return;
-                    const compressed = await Promise.all(files.map((f: File) => compressImage(f)));
-                    const filtered = compressed.filter(Boolean) as File[];
-                    setSelectedImages(filtered);
-                    setImagePreviewUrls(filtered.map((f: File) => URL.createObjectURL(f)));
-                    if (filtered.length > 0) setSelectedHeroImage(0);
-                  }}
-                />
+                    <div className="flex flex-col gap-2" data-color-mode="light">
+                      <label className="text-[12px] font-medium text-[rgb(136,136,136)] tracking-wide">
+                        Description*
+                      </label>
+                      <div className={`rounded-[10px] overflow-hidden border ${validationErrors.description ? 'border-red-500' : 'border-[rgba(136,136,136,0.2)]'}`}>
+                        <MDEditor
+                          value={formData.description}
+                          onChange={(val) => handleFormDataChange('description', val || '')}
+                          preview="edit"
+                          height={180}
+                          textareaProps={{
+                            placeholder: "Description with markdown support...",
+                            maxLength: 460,
+                          }}
+                          className="bg-[rgba(187,187,187,0.26)]"
+                        />
+                      </div>
+                      {validationErrors.description && <span className="text-red-500 text-xs mt-1">{validationErrors.description[0]}</span>}
+                    </div>
+                  </>
+                )}
 
-                {imagePreviewUrls.length > 0 && (
-                  <div className="grid grid-cols-3 gap-3">
-                    {imagePreviewUrls.map((url, idx) => (
-                      <div key={idx} className="relative aspect-video rounded-lg overflow-hidden border">
-                        <Image src={url} alt="Preview" fill className="object-cover" />
-                        <div className="absolute top-1 left-1">
+                {currentStep === 2 && (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex flex-col gap-2">
+                        <label className="text-[12px] font-medium text-[rgb(136,136,136)] tracking-wide">
+                          Date*
+                        </label>
+                        <input
+                          type="date"
+                          value={formData.date}
+                          onChange={(e) => handleFormDataChange('date', e.target.value)}
+                          className={`w-full h-10 px-3.5 rounded-[10px] border bg-[rgba(187,187,187,0.26)] text-[14px] text-gray-800 outline-none focus:border-[rgba(136,136,136,0.4)] transition-colors ${validationErrors.date ? 'border-red-500' : 'border-[rgba(136,136,136,0.2)]'}`}
+                        />
+                        {validationErrors.date && <span className="text-red-500 text-xs mt-1">{validationErrors.date[0]}</span>}
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        <label className="text-[12px] font-medium text-[rgb(136,136,136)] tracking-wide">
+                          Location*
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Event location"
+                          value={formData.location}
+                          onChange={(e) => handleFormDataChange('location', e.target.value)}
+                          className={`w-full h-10 px-3.5 rounded-[10px] border bg-[rgba(187,187,187,0.26)] text-[14px] text-gray-800 outline-none focus:border-[rgba(136,136,136,0.4)] transition-colors ${validationErrors.location ? 'border-red-500' : 'border-[rgba(136,136,136,0.2)]'}`}
+                        />
+                        {validationErrors.location && <span className="text-red-500 text-xs mt-1">{validationErrors.location[0]}</span>}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2 mt-2">
+                      <h3 className="text-sm font-medium text-gray-800 mb-1 border-b border-gray-100 pb-2">Organizer Information (Optional)</h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-2">
+                          <label className="text-[12px] font-medium text-[rgb(136,136,136)] tracking-wide">
+                            Name
+                          </label>
                           <input
-                            type="radio"
-                            checked={selectedHeroImage === idx}
-                            onChange={() => setSelectedHeroImage(idx)}
-                            className="h-4 w-4 accent-primary"
+                            type="text"
+                            placeholder="Organizer name"
+                            value={formData.event_organizer_name}
+                            onChange={(e) => handleFormDataChange('event_organizer_name', e.target.value)}
+                            className="w-full h-10 px-3.5 rounded-[10px] border border-[rgba(136,136,136,0.2)] bg-[rgba(187,187,187,0.26)] text-[14px] text-gray-800 outline-none focus:border-[rgba(136,136,136,0.4)] transition-colors"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <label className="text-[12px] font-medium text-[rgb(136,136,136)] tracking-wide">
+                            Role
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Organizer role"
+                            value={formData.event_organizer_role}
+                            onChange={(e) => handleFormDataChange('event_organizer_role', e.target.value)}
+                            className="w-full h-10 px-3.5 rounded-[10px] border border-[rgba(136,136,136,0.2)] bg-[rgba(187,187,187,0.26)] text-[14px] text-gray-800 outline-none focus:border-[rgba(136,136,136,0.4)] transition-colors"
                           />
                         </div>
                       </div>
-                    ))}
+                    </div>
+                  </>
+                )}
+
+                {currentStep === 3 && (
+                  <div className="flex flex-col h-full space-y-4">
+                    <div className="flex flex-col gap-2">
+                      <label className="text-[12px] font-medium text-[rgb(136,136,136)] tracking-wide">
+                        Event Images
+                      </label>
+                      <FileUpload
+                        multiple={formData.type === "previous_events"}
+                        maxFiles={formData.type === "upcoming_events" ? 1 : 10}
+                        value={selectedImages}
+                        onChange={async (files: File[]) => {
+                          if (!files) return;
+                          const compressed = await Promise.all(files.map((f: File) => compressImage(f)));
+                          const filtered = compressed.filter(Boolean) as File[];
+                          setSelectedImages(filtered);
+                          setImagePreviewUrls(filtered.map((f: File) => URL.createObjectURL(f)));
+                          if (filtered.length > 0) setSelectedHeroImage(0);
+                        }}
+                      />
+
+                      {imagePreviewUrls.length > 0 && (
+                        <div className="grid grid-cols-4 gap-2 mt-3 max-h-[160px] overflow-y-auto pr-1">
+                          {imagePreviewUrls.map((url, idx) => (
+                            <div key={idx} className="relative aspect-video rounded-md overflow-hidden border border-gray-200">
+                              <Image src={url} alt="Preview" fill className="object-cover" />
+                              <div className="absolute top-1 left-1 bg-white/80 rounded-full p-0.5">
+                                <input
+                                  type="radio"
+                                  checked={selectedHeroImage === idx}
+                                  onChange={() => setSelectedHeroImage(idx)}
+                                  className="h-3 w-3 accent-black"
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
-            </div>
-          )}
-        </div>
 
-        <div className="flex justify-between pt-6 border-t mt-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl">Cancel</Button>
-          <div className="flex gap-2">
-            {currentStep === 2 && <Button variant="outline" onClick={() => setCurrentStep(1)} className="rounded-xl">Back</Button>}
-            {currentStep === 1 ? (
-              <Button onClick={handleNextStep} className="rounded-xl bg-black text-white px-8">Next</Button>
-            ) : (
-              <Button 
-                onClick={handleCreateEvent} 
-                className="rounded-xl bg-primary text-white px-8" 
-                disabled={isCreatingEvent}
-              >
-                {isCreatingEvent ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Create Event
-              </Button>
-            )}
-          </div>
+              <div className={`shrink-0 flex gap-3 mt-4 pt-4 border-t border-[rgba(34,34,34,0.06)] transition-all duration-300 ${isTransitioning ? 'opacity-50' : 'opacity-100'}`}>
+                {currentStep > 1 && (
+                  <button
+                    type="button"
+                    onClick={handlePrevious}
+                    disabled={isTransitioning}
+                    className="flex-1 h-10 rounded-[10px] border border-[rgba(34,34,34,0.15)] bg-white text-[13px] font-semibold text-[rgb(34,34,34)] cursor-pointer transition-all duration-150 hover:bg-[rgba(34,34,34,0.04)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Back
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  disabled={isTransitioning || isCreatingEvent}
+                  className="flex-1 h-10 rounded-[10px] bg-[rgb(34,34,34)] text-[13px] font-semibold text-white cursor-pointer transition-all duration-150 hover:bg-[rgb(51,51,51)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isCreatingEvent ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Creating...</span>
+                    </div>
+                  ) : (
+                    currentStep === 3 ? "Submit" : "Next"
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Right Column - Grainient */}
+            <div
+              className="w-2/5 rounded-[28px] overflow-hidden relative border border-slate-300 hidden md:block"
+              style={{ height: grainientHeight }}
+            >
+              <StableGrainient color1="#1F6F5F" color2="#6FCF97" color3="#2FA084" />
+            </div>
+          </form>
         </div>
       </DialogContent>
     </Dialog>

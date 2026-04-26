@@ -123,7 +123,7 @@ export default function UpcomingEventsPage() {
         {/* Extended Bleed Effect */}
         <div className="absolute inset-0 bg-gradient-to-b from-orange-100/20 via-orange-50/10 to-orange-200/30"></div>
         <div className="container mx-auto px-4 relative z-10">
-          <Card className="mx-4 p-8 bg-white/90 backdrop-blur-sm shadow-lg border-0">
+          <Card className="mx-4 p-8 bg-white/90 backdrop-blur-sm shadow-none border border-gray-200">
             {/* Section Header */}
             <div className="mb-16">
               <SectionTitle

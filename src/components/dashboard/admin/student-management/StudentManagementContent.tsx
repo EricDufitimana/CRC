@@ -10,7 +10,7 @@ import { StudentTable } from "./StudentTable";
 import { StudentPagination } from "./StudentPagination";
 import { showToastError } from "@/components/toasts/ToastError";
 
-export function StudentManagementContent() {
+export function StudentManagementContent({ adminEmail }: { adminEmail?: string | null }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   
@@ -24,8 +24,8 @@ export function StudentManagementContent() {
 
   // State management
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedStudents, setSelectedStudents] = useState<Array<{id: string, email: string}>>([]);
-  const [savedSelections, setSavedSelections] = useState<Array<{id: string, email: string}>>([]);
+  const [selectedStudents, setSelectedStudents] = useState<Array<{id: string, email: string | null}>>([]);
+  const [savedSelections, setSavedSelections] = useState<Array<{id: string, email: string | null}>>([]);
   const [filters, setFilters] = useState({ 
     grade: [] as string[], 
     major: [] as string[], 
@@ -142,39 +142,26 @@ export function StudentManagementContent() {
 
   // Student selection handlers
   const handleSelectStudent = (studentId: string, studentEmail: string | null) => {
-    console.log('=== SELECT STUDENT DEBUG ===');
-    console.log('studentId:', studentId);
-    console.log('studentEmail:', studentEmail);
-    console.log('current selectedStudents:', selectedStudents);
-    
-    if (!studentEmail) return; // Don't select students without emails
-    
     setSelectedStudents(prev => {
       const isSelected = prev.some(student => student.id === studentId);
-      console.log('isSelected:', isSelected);
       
       const newSelection = isSelected 
         ? prev.filter(student => student.id !== studentId)
         : [...prev, { id: studentId, email: studentEmail }];
-      
-      console.log('newSelection:', newSelection);
-      console.log('============================');
       
       return newSelection;
     });
   };
 
   const handleSelectAll = () => {
-    if (filteredStudents.length === selectedStudents.length) {
+    const allSelected = filteredStudents.every(s =>
+      selectedStudents.some(sel => sel.id === s.id)
+    );
+
+    if (allSelected) {
       setSelectedStudents([]);
     } else {
-      const newSelection = filteredStudents
-        .filter(student => student.email)
-        .map(student => ({ 
-          id: student.id, 
-          email: student.email! 
-        }));
-      setSelectedStudents(newSelection);
+      setSelectedStudents(filteredStudents.map(s => ({ id: s.id, email: s.email })));
     }
   };
 
@@ -194,6 +181,24 @@ export function StudentManagementContent() {
   const handleClearSavedSelections = () => {
     setSavedSelections([]);
   };
+
+  const handleClearSelection = () => {
+    setSelectedStudents([]);
+    setFilters({
+      grade: [],
+      major: [],
+      gpa: [],
+      crcClass: [],
+      gender: []
+    });
+  };
+
+  const hasActiveFilters = 
+    filters.grade.length > 0 ||
+    filters.major.length > 0 ||
+    filters.gpa.length > 0 ||
+    filters.crcClass.length > 0 ||
+    filters.gender.length > 0;
 
   const totalSelections = selectedStudents.length + savedSelections.length;
 
@@ -305,12 +310,22 @@ export function StudentManagementContent() {
             selectedCount={selectedStudents.length}
             savedCount={savedSelections.length}
             onSaveSelection={handleSaveSelection}
-            onClearSelection={() => setSelectedStudents([])}
+            onClearSelection={handleClearSelection}
             onClearSaved={handleClearSavedSelections}
+            hasActiveFilters={hasActiveFilters}
+            onClearFilters={() => {
+              setFilters({
+                grade: [],
+                major: [],
+                gpa: [],
+                crcClass: [],
+                gender: []
+              });
+            }}
           />
           
           <StudentFilters
-            filters={filters}
+            filters={filtersWithClassNames}
             students={students}
             crcClasses={crcClasses}
             onGradeToggle={handleGradeToggle}
@@ -327,6 +342,7 @@ export function StudentManagementContent() {
             selectedStudents={selectedStudents}
             savedSelections={savedSelections}
             onEmailSent={handleEmailSent}
+            adminEmail={adminEmail}
           />
         </div>
         

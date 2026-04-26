@@ -13,6 +13,8 @@ interface StudentSearchBarProps {
   onSaveSelection: () => void;
   onClearSelection: () => void;
   onClearSaved: () => void;
+  hasActiveFilters: boolean;
+  onClearFilters: () => void;
 }
 
 export function StudentSearchBar({
@@ -23,6 +25,8 @@ export function StudentSearchBar({
   onSaveSelection,
   onClearSelection,
   onClearSaved,
+  hasActiveFilters,
+  onClearFilters,
 }: StudentSearchBarProps) {
   return (
     <div className="flex gap-3 items-center">
@@ -43,6 +47,17 @@ export function StudentSearchBar({
           </button>
         )}
       </div>
+      
+      {/* Subtle Clear Filters Link */}
+      {hasActiveFilters && (
+        <button
+          onClick={onClearFilters}
+          className="text-xs text-gray-700 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors duration-200 flex items-center gap-1"
+        >
+          <X className="h-3 w-3" />
+          Clear filters
+        </button>
+      )}
       
       {/* Save and Clear Buttons */}
       <div className="flex gap-1.5">

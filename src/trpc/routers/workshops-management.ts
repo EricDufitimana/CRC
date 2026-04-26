@@ -10,7 +10,7 @@ const workshopSchema = z.object({
   presentation_url: z.string().url().optional().or(z.literal("")),
   google_slide_url: z.string().url().optional().or(z.literal("")),
   workshop_date: z.string().min(1),
-  workshop_group: z.string().min(1),
+  workshop_groups: z.array(z.string()).min(1),
 });
 
 const assignmentSchema = z.object({
@@ -59,7 +59,8 @@ export const workshopsManagementRouter = createTRPCRouter({
           has_assignment: w.assignments.length > 0,
           crc_classes: w.workshop_to_crc.map(wtc => ({
             id: wtc.crc_class.id.toString(),
-            name: wtc.crc_class.name
+            name: wtc.crc_class.name,
+            grade_group: wtc.crc_class.grade_group
           }))
         }));
       }
@@ -110,7 +111,8 @@ export const workshopsManagementRouter = createTRPCRouter({
         has_assignment: w.assignments.length > 0,
         crc_classes: w.workshop_to_crc.map(wtc => ({
           id: wtc.crc_class.id.toString(),
-          name: wtc.crc_class.name
+          name: wtc.crc_class.name,
+          grade_group: wtc.crc_class.grade_group
         }))
       }));
     }),
@@ -129,25 +131,30 @@ export const workshopsManagementRouter = createTRPCRouter({
   createWorkshop: adminProcedure
     .input(workshopSchema)
     .mutation(async ({ input }) => {
-      const { title, description, presentation_url, google_slide_url, workshop_date, workshop_group } = input;
+      const { title, description, presentation_url, google_slide_url, workshop_date, workshop_groups } = input;
 
       // Determine CRC classes
       let crcClassIds: bigint[] = [];
 
-      if (workshop_group.startsWith('class:')) {
-        crcClassIds = [BigInt(workshop_group.replace('class:', ''))];
-      } else {
-        const classes = await prisma.crc_class.findMany({
-          where: { grade_group: workshop_group as any },
-          select: { id: true }
-        });
-        crcClassIds = classes.map(c => c.id);
+      for (const group of workshop_groups) {
+        if (group.startsWith('class:')) {
+          crcClassIds.push(BigInt(group.replace('class:', '')));
+        } else {
+          const classes = await prisma.crc_class.findMany({
+            where: { grade_group: group as any },
+            select: { id: true }
+          });
+          crcClassIds.push(...classes.map(c => c.id));
+        }
       }
+
+      // De-duplicate IDs
+      crcClassIds = Array.from(new Set(crcClassIds));
 
       if (crcClassIds.length === 0) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
-          message: 'No matching CRC classes found for group'
+          message: 'No matching CRC classes found for selected groups'
         });
       }
 
@@ -191,18 +198,23 @@ export const workshopsManagementRouter = createTRPCRouter({
   updateWorkshop: adminProcedure
     .input(workshopSchema.extend({ id: z.string() }))
     .mutation(async ({ input }) => {
-      const { id, title, description, presentation_url, google_slide_url, workshop_date, workshop_group } = input;
+      const { id, title, description, presentation_url, google_slide_url, workshop_date, workshop_groups } = input;
 
       let crcClassIds: bigint[] = [];
-      if (workshop_group.startsWith('class:')) {
-        crcClassIds = [BigInt(workshop_group.replace('class:', ''))];
-      } else {
-        const classes = await prisma.crc_class.findMany({
-          where: { grade_group: workshop_group as any },
-          select: { id: true }
-        });
-        crcClassIds = classes.map(c => c.id);
+      for (const group of workshop_groups) {
+        if (group.startsWith('class:')) {
+          crcClassIds.push(BigInt(group.replace('class:', '')));
+        } else {
+          const classes = await prisma.crc_class.findMany({
+            where: { grade_group: group as any },
+            select: { id: true }
+          });
+          crcClassIds.push(...classes.map(c => c.id));
+        }
       }
+
+      // De-duplicate IDs
+      crcClassIds = Array.from(new Set(crcClassIds));
 
       await prisma.$transaction([
         prisma.workshop_to_crc_class.deleteMany({

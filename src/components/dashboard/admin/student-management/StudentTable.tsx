@@ -20,9 +20,9 @@ interface Student {
 interface StudentTableProps {
   students: Student[];
   loading: boolean;
-  selectedStudents: Array<{ id: string; email: string }>;
+  selectedStudents: Array<{ id: string; email: string | null }>;
   loadingReportId: string | null;
-  onSelectStudent: (studentId: string, studentEmail: string) => void;
+  onSelectStudent: (studentId: string, studentEmail: string | null) => void;
   onSelectAll: () => void;
   onViewReport: (studentId: string, studentName: string) => void;
   onViewResume: (studentId: string, studentName: string) => void;
@@ -42,7 +42,8 @@ export function StudentTable({
   getGradeColor,
   getGPAColor,
 }: StudentTableProps) {
-  const allSelected = students.length > 0 && selectedStudents.length === students.length;
+  const allSelected = students.length > 0 && 
+    students.every(s => selectedStudents.some(sel => sel.id === s.id));
 
   return (
     <div className="border border-gray-300/80 rounded-lg bg-white/80 backdrop-blur-sm dark:border-gray-600/80 dark:bg-gray-800/80">
@@ -51,10 +52,10 @@ export function StudentTable({
           <TableRow>
             <TableHead className="w-10 bg-white/80 dark:bg-gray-800/80 rounded-lg text-xs py-3">
               <div className="flex items-center justify-center">
-                <Checkbox 
-                  checked={allSelected} 
-                  onCheckedChange={onSelectAll} 
-                  className="h-3.5 w-3.5 border-gray-400/50 data-[state=checked]:text-white data-[state=checked]:border-white dark:border-gray-400"
+                <Checkbox
+                  checked={allSelected}
+                  onCheckedChange={onSelectAll}
+                  className="h-3.5 w-3.5 border-gray-400/50 data-[state=checked]:bg-primary data-[state=checked]:text-white data-[state=checked]:border-primary dark:border-gray-400 dark:data-[state=checked]:bg-primary dark:data-[state=checked]:text-white dark:data-[state=checked]:border-primary"
                 />
               </div>
             </TableHead>
@@ -102,10 +103,10 @@ export function StudentTable({
               <TableRow key={student.id}>
                 <TableCell className="bg-white/80 dark:bg-gray-800/80 rounded-lg py-3">
                   <div className="flex items-center justify-center">
-                    <Checkbox 
-                      checked={selectedStudents.some(s => s.id === student.id)} 
-                      onCheckedChange={() => onSelectStudent(student.id, student.email || '')} 
-                      className="h-3.5 w-3.5 border-gray-400/50 data-[state=checked]:text-white data-[state=checked]:border-white dark:border-gray-400"
+                    <Checkbox
+                      checked={selectedStudents.some(s => s.id === student.id)}
+                      onCheckedChange={() => onSelectStudent(student.id, student.email || '')}
+                      className="h-3.5 w-3.5 border-gray-400/50 data-[state=checked]:bg-primary data-[state=checked]:text-white data-[state=checked]:border-primary dark:border-gray-400 dark:data-[state=checked]:bg-white dark:data-[state=checked]:text-black dark:data-[state=checked]:border-white"
                     />
                   </div>
                 </TableCell>

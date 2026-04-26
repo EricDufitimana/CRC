@@ -30,8 +30,8 @@ const dummyCrcClasses = [
 
 export function BetaStudentManagementContent() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedStudents, setSelectedStudents] = useState<Array<{id: string, email: string}>>([]);
-  const [savedSelections, setSavedSelections] = useState<Array<{id: string, email: string}>>([]);
+  const [selectedStudents, setSelectedStudents] = useState<Array<{id: string, email: string | null}>>([]);
+  const [savedSelections, setSavedSelections] = useState<Array<{id: string, email: string | null}>>([]);
   const [filters, setFilters] = useState({ 
     grade: [] as string[], 
     major: [] as string[], 
@@ -96,7 +96,7 @@ export function BetaStudentManagementContent() {
     setFilters(prev => ({ ...prev, gender: prev.gender.includes(gender) ? prev.gender.filter(g => g !== gender) : [...prev.gender, gender] }));
   };
 
-  const handleSelectStudent = (studentId: string, studentEmail: string) => {
+  const handleSelectStudent = (studentId: string, studentEmail: string | null) => {
     setSelectedStudents(prev => {
       const isSelected = prev.some(student => student.id === studentId);
       return isSelected 
@@ -109,7 +109,7 @@ export function BetaStudentManagementContent() {
     if (filteredStudents.length === selectedStudents.length) {
       setSelectedStudents([]);
     } else {
-      setSelectedStudents(filteredStudents.map(student => ({ id: student.id, email: student.email })));
+      setSelectedStudents(filteredStudents.map(student => ({ id: student.id, email: student.email || null })));
     }
   };
 
@@ -143,6 +143,24 @@ export function BetaStudentManagementContent() {
     return "bg-gray-200 text-gray-700";
   };
 
+  const hasActiveFilters = searchTerm !== "" || 
+    filters.grade.length > 0 || 
+    filters.major.length > 0 || 
+    filters.gpa.length > 0 || 
+    filters.crcClass.length > 0 || 
+    filters.gender.length > 0;
+
+  const handleClearFilters = () => {
+    setSearchTerm("");
+    setFilters({ 
+      grade: [], 
+      major: [], 
+      gpa: [], 
+      crcClass: [],
+      gender: []
+    });
+  };
+
   const handleAction = () => {
     showToastError({
       headerText: "Demo Action",
@@ -165,6 +183,8 @@ export function BetaStudentManagementContent() {
             onSaveSelection={handleSaveSelection}
             onClearSelection={() => setSelectedStudents([])}
             onClearSaved={() => setSavedSelections([])}
+            hasActiveFilters={hasActiveFilters}
+            onClearFilters={handleClearFilters}
           />
           
           <StudentFilters

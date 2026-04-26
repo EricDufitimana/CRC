@@ -18,23 +18,14 @@ export default async function Home() {
     <HydrationBoundary state={dehydrate(queryClient)}>
     <main>
       <ScrollUp />
-      <ConditionalHeader 
-        title="English Language Learning" 
-        description="Access resources and tools to help improve your English language skills and communication abilities."
-        image="/images/banners/english.svg"
-        bottomPaddingClass="pb-8"
-      />
-      <div className="space-y-8">
+      <div className="py-40 max-w-[1280px] mx-auto space-y-8">
           <MultipleAnnouncementsBanner
             page="english_language_learning"
             containerWidth="w-[1120px]"
             maxAnnouncements={3}
           />
-        <div className="flex justify-center pb-12">
-          <div className="content border border-gray-700 rounded-md p-8 w-[1100px] max-w-[90%] mx-auto">
-
-            <ContentWrapper />
-          </div>
+        <div className="flex justify-center">
+          <ELLContent />
         </div>
       </div>
     </main>

@@ -276,7 +276,15 @@ export function ContentManagementContent() {
 
       {/* Edit Resource Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="max-w-2xl rounded-3xl border-none shadow-2xl">
+        <DialogContent
+          className="max-w-3xl rounded-[40px] sm:rounded-[40px] overflow-hidden border-none shadow-2xl p-8"
+          closeButton={
+            <button className="text-gray-400 hover:text-gray-600 transition-colors">
+              <X size={20} />
+              <span className="sr-only">Close</span>
+            </button>
+          }
+        >
           <EditResourceDialog
             resource={resourceToEdit}
             onClose={handleEditClose}
@@ -289,10 +297,13 @@ export function ContentManagementContent() {
         open={deleteConfirmationOpen}
         onOpenChange={setDeleteConfirmationOpen}
         onConfirm={handleDeleteConfirm}
-        onCancel={handleDeleteCancel}
+        onCancel={() => {
+          setDeleteConfirmationOpen(false);
+          setResourceIdToDelete(null);
+        }}
         deleteType={deleteType}
+        isLoading={deleteType === 'deactivate' ? deactivateResourceMutation.isPending : deleteResourceMutation.isPending}
       />
     </div>
   );
 }
-

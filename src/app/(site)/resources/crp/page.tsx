@@ -51,7 +51,7 @@ export default function Home() {
         <ResourcesNotificationBanner page="crp" />
         <div className="pt-12 mx-auto w-[89%]">
         <div className="mb-12  lg:mb-0">
-                <h2 className="mb-5 text-3xl font-bold text-center leading-tight text-dark dark:text-white sm:text-[40px] sm:leading-[1.2]">
+                <h2 className="mb-5 text-2xl font-bold text-center leading-tight text-dark dark:text-white sm:text-[40px] sm:leading-[1.2]">
                   What is the College Readiness Program
                 </h2>
                 <p className="mb-10 text-base leading-relaxed text-body-color dark:text-dark-6">
@@ -61,7 +61,7 @@ export default function Home() {
                 </p>
         </div>
         <div className="mb-12  lg:mb-0">
-                <h2 className="mb-5 text-3xl font-bold text-center leading-tight text-dark dark:text-white sm:text-[40px] sm:leading-[1.2]">
+                <h2 className="mb-5 text-2xl font-bold text-center leading-tight text-dark dark:text-white sm:text-[40px] sm:leading-[1.2]">
                   Requirements
                 </h2>
                 <p className="mb-2 text-base leading-relaxed text-body-color ">

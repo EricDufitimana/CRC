@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from "next/link";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../zenith/src/components/ui/select";
@@ -43,22 +43,28 @@ export default function CreateAdmin() {
   const { data: tokenValidation, isLoading: isValidatingToken, error: tokenError } = useQuery({
     ...trpc.adminInvites.validateToken.queryOptions({ token: token || '' }),
     enabled: !!token,
-    onSuccess: (data) => {
-      console.log('✅ [Create Admin] Token validation successful:', data);
-    },
-    onError: (error) => {
-      console.error('❌ [Create Admin] Token validation error:', error);
+  });
+
+  useEffect(() => {
+    if (tokenValidation) {
+      console.log('✅ [Create Admin] Token validation successful:', tokenValidation);
+    }
+  }, [tokenValidation]);
+
+  useEffect(() => {
+    if (tokenError) {
+      console.error('❌ [Create Admin] Token validation error:', tokenError);
       console.error('❌ [Create Admin] Error details:', {
-        message: error.message,
-        shape: error.shape,
-        data: error.data,
+        message: tokenError.message,
+        shape: tokenError.shape,
+        data: tokenError.data,
       });
-      const { headerText, paragraphText } = handleApiError(error, {
+      const { headerText, paragraphText } = handleApiError(tokenError, {
         defaultMessage: "Failed to validate invite token"
       });
       showToastError({ headerText, paragraphText });
     }
-  });
+  }, [tokenError]);
 
   const isValidToken = tokenValidation?.valid ?? false;
   const inviteEmail = tokenValidation?.email ?? null;

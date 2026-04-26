@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/zenith/components/ui/dialog";
+import { Loader2 } from "lucide-react";
 
 interface DeleteConfirmationDialogProps {
   open: boolean;
@@ -14,6 +15,7 @@ interface DeleteConfirmationDialogProps {
   onConfirm: () => void;
   onCancel: () => void;
   deleteType: 'deactivate' | 'delete';
+  isLoading?: boolean;
 }
 
 export function DeleteConfirmationDialog({
@@ -22,6 +24,7 @@ export function DeleteConfirmationDialog({
   onConfirm,
   onCancel,
   deleteType,
+  isLoading = false,
 }: DeleteConfirmationDialogProps) {
   const isDelete = deleteType === 'delete';
   
@@ -44,8 +47,15 @@ export function DeleteConfirmationDialog({
           <Button variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button variant="destructive" onClick={onConfirm}>
-            {isDelete ? 'Delete Permanently' : 'Deactivate'}
+          <Button variant="destructive" onClick={onConfirm} disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                {isDelete ? 'Deleting...' : 'Deactivating...'}
+              </>
+            ) : (
+              isDelete ? 'Delete Permanently' : 'Deactivate'
+            )}
           </Button>
         </div>
       </DialogContent>

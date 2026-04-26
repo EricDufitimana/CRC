@@ -116,7 +116,7 @@ export function EventsGrid({
       {events.map((event) => {
         const eventImage = getEventImage(event);
         return (
-          <Card key={event.id} className="group flex flex-col bg-white border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 rounded-2xl overflow-hidden">
+          <Card key={event.id} className="group flex flex-col bg-white border border-gray-200 shadow-none hover:shadow-sm transition-all duration-200 rounded-2xl overflow-hidden">
             <div className="relative h-48 w-full border-b border-gray-100 bg-gray-50">
               {eventImage ? (
                 <Image

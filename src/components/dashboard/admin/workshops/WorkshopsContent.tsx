@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
 import { Card, CardContent } from "@/zenith/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/zenith/components/ui/dialog";
+import { X } from "@phosphor-icons/react";
 import { WorkshopsHeader } from "./WorkshopsHeader";
 import { WorkshopsNavigation } from "./WorkshopsNavigation";
 import { WorkshopsTable } from "./WorkshopsTable";
@@ -84,19 +85,29 @@ export function WorkshopsContent() {
 
       {/* Dialogs */}
       <Dialog open={isAddWorkshopOpen} onOpenChange={setIsAddWorkshopOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Add New Workshop</DialogTitle>
-          </DialogHeader>
+        <DialogContent
+          className="max-w-3xl rounded-[40px] sm:rounded-[40px] overflow-hidden border-none shadow-2xl p-8"
+          closeButton={
+            <button className="text-gray-400 hover:text-gray-600 transition-colors">
+              <X size={20} />
+              <span className="sr-only">Close</span>
+            </button>
+          }
+        >
           <AddWorkshopDialog onClose={() => setIsAddWorkshopOpen(false)} />
         </DialogContent>
       </Dialog>
 
       <Dialog open={isEditWorkshopOpen} onOpenChange={setIsEditWorkshopOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Edit Workshop</DialogTitle>
-          </DialogHeader>
+        <DialogContent
+          className="max-w-3xl rounded-[40px] sm:rounded-[40px] overflow-hidden border-none shadow-2xl p-8"
+          closeButton={
+            <button className="text-gray-400 hover:text-gray-600 transition-colors">
+              <X size={20} />
+              <span className="sr-only">Close</span>
+            </button>
+          }
+        >
           {selectedWorkshop && (
             <EditWorkshopDialog
               workshop={selectedWorkshop as any}
@@ -115,12 +126,15 @@ export function WorkshopsContent() {
       />
 
       <Dialog open={isAssignmentOpen} onOpenChange={setIsAssignmentOpen}>
-        <DialogContent className="max-w-2xl text-black">
-          <DialogHeader>
-            <DialogTitle>
-              {assignmentMode === "add" ? "Create Assignment" : assignmentMode === "edit" ? "Edit Assignment" : "Assignment Details"}
-            </DialogTitle>
-          </DialogHeader>
+        <DialogContent
+          className="max-w-3xl text-black rounded-[40px] sm:rounded-[40px] overflow-hidden border-none shadow-2xl p-8"
+          closeButton={
+            <button className="text-gray-400 hover:text-gray-600 transition-colors">
+              <X size={20} />
+              <span className="sr-only">Close</span>
+            </button>
+          }
+        >
           <AssignmentDialog
             workshop={selectedWorkshop}
             mode={assignmentMode}

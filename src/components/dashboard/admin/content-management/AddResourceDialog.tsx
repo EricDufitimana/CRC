@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState, memo } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
-import Grainient from "@/components/setup/Grainient";
+import { StableGrainient } from "./StableGrainient";
 import { showToastSuccess, showToastError, showToastPromise } from "@/components/toasts";
 
 const TITLE_MAX = 40;
@@ -11,23 +11,6 @@ const DESC_MAX = 420;
 
 // Common text color for all inputs
 const INPUT_TEXT_COLOR = "text-gray-800";
-
-// memo + stable props = Grainient never re-renders due to parent state changes
-const StableGrainient = memo(function StableGrainient() {
-  return (
-    <Grainient
-      color1="#F0B07A"
-      color2="#F87171"
-      color3="#FEF3C7"
-      timeSpeed={0.3}
-      warpStrength={0.8}
-      grainAmount={0.05}
-      zoom={1.2}
-      blendAngle={45}
-      className="w-full h-full opacity-100"
-    />
-  );
-});
 
 interface AddResourceDialogProps {
   selectedCategory: string;
@@ -80,11 +63,6 @@ export function AddResourceDialog({
   const createResourceMutation = useMutation({
     ...trpc.resources.create.mutationOptions(),
     onSuccess: () => {
-      showToastSuccess({
-        headerText: 'Resource Added Successfully',
-        paragraphText: 'The resource is now visible on the website',
-        direction: 'right'
-      });
       // Reset form and close dialog
       setFormData({
         title: "",

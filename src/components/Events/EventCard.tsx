@@ -82,7 +82,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onViewDetails }) =>
   };
 
   return (
-    <Card className="transition-all duration-300 border border-neutral-200 flex flex-col h-full">
+    <Card className="transition-all duration-300 border border-neutral-200 border border-gray-200 shadow-none flex flex-col h-full">
       
       {/* Event Image */}
       <div className="p-4">
@@ -117,7 +117,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onViewDetails }) =>
         <div>
           <Button 
             variant="outline" 
-            className="w-full border-dark text-dark hover:bg-dark hover:border-dark hover:text-white transition-all duration-300 group"
+            className="w-full border-dark/20 text-dark hover:bg-dark hover:border-dark hover:text-white transition-all duration-300 group"
             onClick={handleViewDetails}
           >
             View Details

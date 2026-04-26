@@ -101,10 +101,12 @@ export default function AuthCallback() {
               console.log('Student account created/updated successfully');
               
               // Send welcome email
-              try {
-                await trpc.auth.sendWelcomeEmail.mutate({ email: result.email });
-              } catch (emailErr) {
-                console.error('Failed to send welcome email:', emailErr);
+              if (result.email) {
+                try {
+                  await trpc.auth.sendWelcomeEmail.mutate({ email: result.email });
+                } catch (emailErr) {
+                  console.error('Failed to send welcome email:', emailErr);
+                }
               }
               
               router.push('/login?message=google_signup_success');

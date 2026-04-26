@@ -1,23 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Mail, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { Mail, Loader2, X } from "lucide-react";
 import { Button } from "@/zenith/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/zenith/components/ui/dialog";
-import { Input } from "@/zenith/components/ui/input";
-import { Label } from "@/zenith/components/ui/label";
-import MDEditor from '@uiw/react-md-editor';
-import { useTRPC } from "@/trpc/client";
-import { useMutation } from "@tanstack/react-query";
-import { showToastPromise } from "@/components/toasts/ToastPromise";
 import { showToastError } from "@/components/toasts/ToastError";
 
 interface EmailDialogProps {
   totalSelections: number;
-  selectedStudents: Array<{ id: string; email: string }>;
-  savedSelections: Array<{ id: string; email: string }>;
+  selectedStudents: Array<{ id: string; email: string | null }>;
+  savedSelections: Array<{ id: string; email: string | null }>;
   students: any[];
   onEmailSent: () => void;
+  adminEmail?: string | null;
 }
 
 export function EmailDialog({
@@ -26,194 +20,105 @@ export function EmailDialog({
   savedSelections,
   students,
   onEmailSent,
+  adminEmail,
 }: EmailDialogProps) {
-  const trpc = useTRPC();
-  const [isOpen, setIsOpen] = useState(false);
-  const [emailSubject, setEmailSubject] = useState("");
-  const [emailContent, setEmailContent] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [studentsWithoutEmails, setStudentsWithoutEmails] = useState<Array<{ id: string; full_name: string }>>([]);
+  const [showWarning, setShowWarning] = useState(true);
 
-  const sendEmailMutation = useMutation({
-    ...trpc.studentManagement.sendBulkEmails.mutationOptions(),
-    onSuccess: (result) => {
-      if (result.success) {
-        onEmailSent();
-      }
-    },
-  });
-
-  const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    
+  const handleMailtoClick = () => {
     const recipientEmails = [...selectedStudents, ...savedSelections]
       .map(student => student.email)
-      .filter(email => email && email.trim() !== '');
-    
-    const subject = emailSubject.trim();
-    const content = emailContent.trim();
+      .filter((email): email is string => !!email && email.trim() !== '');
 
-    if (!subject || !content) {
-      showToastError({
-        headerText: "Validation Error",
-        paragraphText: "Subject and content are required",
-        direction: 'right'
-      });
-      return;
-    }
-
-    const emailPromise = sendEmailMutation.mutateAsync({
-      recipientEmails,
-      subject,
-      content,
-    });
-    
-    showToastPromise({
-      promise: emailPromise,
-      loadingText: "Sending emails...",
-      successText: "Emails sent successfully!",
-      errorText: "Failed to send emails. Please try again.",
-      direction: 'right'
-    });
-  };
-
-  useEffect(() => {
-    if (sendEmailMutation.isSuccess && sendEmailMutation.data?.success) {
-      setEmailSubject("");
-      setEmailContent("");
-      setIsOpen(false);
-      document.body.style.overflow = '';
-    }
-  }, [sendEmailMutation.isSuccess, sendEmailMutation.data]);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setTimeout(() => {
-        document.body.style.overflow = '';
-      }, 100);
-    }
-  }, [isOpen]);
-
-  const handleOpenChange = (open: boolean) => {
-    setIsOpen(open);
-    if (!open) {
-      setTimeout(() => {
-        document.body.style.overflow = '';
-      }, 100);
-    }
-  };
-
-  const handleOpenClick = () => {
-    const studentsWithoutEmails = selectedStudents.filter(
-      student => !student.email || student.email.trim() === ''
-    );
-    
-    if (studentsWithoutEmails.length > 0) {
-      const studentNames = studentsWithoutEmails.map(student => {
+    // Track students without emails for display
+    const allSelected = [...selectedStudents, ...savedSelections];
+    const withoutEmails = allSelected
+      .filter(student => !student.email || student.email.trim() === '')
+      .map(student => {
         const fullStudent = students.find(s => s.id === student.id);
-        return fullStudent?.full_name || `Student ${student.id}`;
-      }).join(', ');
-      
+        return {
+          id: student.id,
+          full_name: fullStudent?.full_name || `Student ${student.id}`
+        };
+      });
+    
+    setStudentsWithoutEmails(withoutEmails);
+    setShowWarning(true); // Show warning when new students are detected
+
+    if (recipientEmails.length === 0) {
       showToastError({
-        headerText: "Selected students missing emails",
-        paragraphText: `${studentNames}`,
+        headerText: "No recipients",
+        paragraphText: "Please select at least one student with an email.",
         direction: 'right'
       });
       return;
     }
-    
-    setIsOpen(true);
+
+    setIsLoading(true);
+
+    // Show warning toast before opening Gmail
+    if (adminEmail) {
+      showToastError({
+        headerText: "Opening Gmail",
+        paragraphText: `Make sure you're signed in as ${adminEmail}`,
+        direction: 'right'
+      });
+    }
+
+    // Small delay to allow toast to show
+    setTimeout(() => {
+      const mailto = `https://mail.google.com/mail/?authuser=${encodeURIComponent(adminEmail ?? '')}&view=cm&to=${encodeURIComponent(recipientEmails.join(','))}`;
+      window.open(mailto, '_blank');
+      setIsLoading(false);
+      onEmailSent();
+    }, 500);
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button 
-          variant="outline" 
-          size="sm"
-          className="w-full h-11 gap-1.5 text-xs bg-white/80 border-gray-300/80 dark:bg-gray-800/80 dark:border-gray-600/80" 
-          disabled={totalSelections === 0 || sendEmailMutation.isPending}
-          onClick={handleOpenClick}
-        >
-          {sendEmailMutation.isPending ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Mail className="h-3.5 w-3.5" />
-          )}
-          <span className="hidden sm:inline">
-            {sendEmailMutation.isPending ? "Sending..." : `Email (${totalSelections})`}
-          </span>
-          <span className="sm:hidden">
-            {sendEmailMutation.isPending ? "Sending..." : "Email"}
-          </span>
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Email Selected Students</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleFormSubmit}>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="subject">Subject</Label>
-              <Input 
-                id="subject" 
-                name="subject"
-                value={emailSubject} 
-                onChange={e => setEmailSubject(e.target.value)} 
-                placeholder="Enter email subject" 
-                className="rounded-xl"
-                required
-              />
-            </div>
-            <div data-color-mode="light">
-              <Label htmlFor="email-content">Description</Label>
-              <input 
-                type="hidden" 
-                name="content" 
-                value={emailContent} 
-              />
-              <MDEditor 
-                value={emailContent} 
-                onChange={(value) => setEmailContent(value || "")}
-                preview="live"
-                height={300}
-                id='email-content' 
-                textareaProps={{
-                  placeholder: "Enter email content...",
-                }}
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button 
-                variant="outline" 
-                type="button" 
-                onClick={() => {
-                  setIsOpen(false);
-                  setEmailSubject("");
-                  setEmailContent("");
-                }}
-                className="rounded-xl"
-              >
-                Cancel
-              </Button>
-              <Button 
-                type="submit"
-                disabled={!emailSubject || !emailContent || sendEmailMutation.isPending}
-                className="text-white shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] rounded-xl transition duration-200"
-              >
-                {sendEmailMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Sending...
-                  </>
-                ) : (
-                  "Send Email"
-                )}
-              </Button>
-            </div>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <>
+      <Button 
+        variant="outline" 
+        size="sm"
+        className="w-full h-11 gap-1.5 text-xs bg-white/80 border-gray-300/80 dark:bg-gray-800/80 dark:border-gray-600/80" 
+        disabled={totalSelections === 0 || isLoading}
+        onClick={handleMailtoClick}
+      >
+        {isLoading ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <Mail className="h-3.5 w-3.5" />
+        )}
+        <span className="hidden sm:inline">
+          {isLoading ? "Opening..." : `Email (${totalSelections})`}
+        </span>
+        <span className="sm:hidden">
+          {isLoading ? "Opening..." : "Email"}
+        </span>
+      </Button>
+      
+      {studentsWithoutEmails.length > 0 && showWarning && (
+        <div className="col-span-full p-3 bg-amber-50 border border-amber-200 rounded-lg relative">
+          <button
+            onClick={() => setShowWarning(false)}
+            className="absolute top-2 right-2 text-amber-600 hover:text-amber-800 transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+          <p className="text-sm font-medium text-amber-800 mb-2 pr-6">
+            The following students don't have email addresses in the database:
+          </p>
+          <p className="text-sm text-amber-700">
+            {studentsWithoutEmails.map((student, index) => (
+              <span key={student.id}>
+                {student.full_name}
+                {index < studentsWithoutEmails.length - 1 ? ', ' : ''}
+              </span>
+            ))}
+          </p>
+        </div>
+      )}
+    </>
   );
 }
 

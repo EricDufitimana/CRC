@@ -3,7 +3,7 @@
 import { Button } from "@/zenith/components/ui/button";
 import { Badge } from "@/zenith/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/zenith/components/ui/popover";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 import { EmailDialog } from "./EmailDialog";
 
 interface Filters {
@@ -30,9 +30,10 @@ interface StudentFiltersProps {
   onClearGender: () => void;
   // Email dialog props
   totalSelections: number;
-  selectedStudents: Array<{ id: string; email: string }>;
-  savedSelections: Array<{ id: string; email: string }>;
+  selectedStudents: Array<{ id: string; email: string | null }>;
+  savedSelections: Array<{ id: string; email: string | null }>;
   onEmailSent: () => void;
+  adminEmail?: string | null;
 }
 
 export function StudentFilters({
@@ -53,6 +54,7 @@ export function StudentFilters({
   selectedStudents,
   savedSelections,
   onEmailSent,
+  adminEmail,
 }: StudentFiltersProps) {
   const grades = ["Enrichment Year", "Senior 4", "Senior 5", "Senior 6"];
   const majors = ["MPC", "HGL", "PCB", "MCE", "MEG", "Ey_Dove", "Ey_Falcon", "Ey_Eagle", "Ey_Sparrow", "MPCB", "MPGE_A", "HGLP_A", "MPGE_B", "HGLP_B"];
@@ -331,6 +333,7 @@ export function StudentFilters({
         savedSelections={savedSelections}
         students={students}
         onEmailSent={onEmailSent}
+        adminEmail={adminEmail}
       />
     </div>
   );

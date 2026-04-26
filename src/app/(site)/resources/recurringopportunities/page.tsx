@@ -13,23 +13,15 @@ export default async function RecurringOpportunities() {
     <HydrationBoundary state={dehydrate(queryClient)}>
     <main>
       <ScrollUp />
-      <ConditionalHeader 
-        title="Recurring Opportunities" 
-        description="Explore ongoing and recurring opportunities available through the Career Resources Center."
-        image="/images/banners/recurring-opportunities.svg"
-        bottomPaddingClass="pb-8"
-      />
-      <div className="space-y-8">
+      <div className="py-40 max-w-[1280px] mx-auto space-y-8">
         <MultipleAnnouncementsBanner 
           page="recurring_opportunities" 
           theme="blue" 
           maxAnnouncements={5} 
           containerWidth="w-[1120px]"
         />
-        <div className="flex justify-center pb-12">
-          <div className="content border border-gray-700 rounded-md p-8 w-[1100px] max-w-[90%] mx-auto">
-              <RecurringOpportunitiesContent />
-          </div>
+        <div className="flex justify-center">
+          <RecurringOpportunitiesContent />
         </div>
       </div>
     </main>
