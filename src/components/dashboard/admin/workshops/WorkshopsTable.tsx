@@ -185,44 +185,13 @@ export function WorkshopsTable({
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuSeparator />
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <DropdownMenuItem 
-                          className="text-red-600 focus:text-red-600"
-                          onSelect={(e) => {
-                            e.preventDefault();
-                            onDelete(workshop.id);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Workshop</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to delete the workshop &quot;{workshop.title}&quot;? This action cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => onDelete(workshop.id)}
-                            disabled={deletingWorkshopId === workshop.id}
-                            className="bg-red-600 hover:bg-red-700 text-white"
-                          >
-                            {deletingWorkshopId === workshop.id ? (
-                              <div className="flex items-center justify-center">
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              </div>
-                            ) : (
-                              'Delete Workshop'
-                            )}
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                    <DropdownMenuItem 
+                      className="text-red-600 focus:text-red-600"
+                      onClick={() => onDelete(workshop.id)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TableCell>

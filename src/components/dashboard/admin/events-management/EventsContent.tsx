@@ -9,6 +9,7 @@ import { EventsCategorySidebar } from "./EventsCategorySidebar";
 import { showToastSuccess, showToastError } from "@/components/toasts";
 import { AddEventDialog } from "./AddEventDialog";
 import { EditEventDialog } from "./EditEventDialog";
+import { DeleteEventDialog } from "./DeleteEventDialog";
 
 export function EventsContent() {
   const trpc = useTRPC();
@@ -16,30 +17,13 @@ export function EventsContent() {
   const [selectedCategory, setSelectedCategory] = useState("previous-events");
   const [isAddEventOpen, setIsAddEventOpen] = useState(false);
   const [isEditEventOpen, setIsEditEventOpen] = useState(false);
+  const [isDeleteEventOpen, setIsDeleteEventOpen] = useState(false);
   const [eventToEdit, setEventToEdit] = useState<any>(null);
+  const [eventIdToDelete, setEventIdToDelete] = useState<string | null>(null);
 
   const { data: events = [], isFetching } = useQuery({
     ...trpc.eventsManagement.getEvents.queryOptions({ category: selectedCategory }),
     refetchOnWindowFocus: false,
-  });
-
-  const deleteMutation = useMutation({
-    ...trpc.eventsManagement.deleteEvent.mutationOptions(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [["eventsManagement", "getEvents"]] });
-      showToastSuccess({
-        headerText: "Event Deleted",
-        paragraphText: "The event has been removed successfully.",
-        direction: "right"
-      });
-    },
-    onError: (error) => {
-      showToastError({
-        headerText: "Delete Failed",
-        paragraphText: error.message,
-        direction: "right"
-      });
-    }
   });
 
   const handleEdit = (event: any) => {
@@ -48,9 +32,8 @@ export function EventsContent() {
   };
 
   const handleDelete = (eventId: string) => {
-    if (window.confirm("Are you sure you want to delete this event?")) {
-      deleteMutation.mutate({ id: eventId });
-    }
+    setEventIdToDelete(eventId);
+    setIsDeleteEventOpen(true);
   };
 
   return (
@@ -87,6 +70,14 @@ export function EventsContent() {
         open={isEditEventOpen}
         onOpenChange={setIsEditEventOpen}
         event={eventToEdit}
+      />
+
+      <DeleteEventDialog
+        eventId={eventIdToDelete}
+        onClose={() => {
+          setIsDeleteEventOpen(false);
+          setEventIdToDelete(null);
+        }}
       />
     </div>
   );

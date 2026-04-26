@@ -7,43 +7,43 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { showToastSuccess, showToastError } from "@/components/toasts";
 import { Loader2, AlertTriangle } from "lucide-react";
 
-interface DeleteWorkshopDialogProps {
-  workshopId: string | null;
+interface DeleteEventDialogProps {
+  eventId: string | null;
   onClose: () => void;
 }
 
-export function DeleteWorkshopDialog({ workshopId, onClose }: DeleteWorkshopDialogProps) {
+export function DeleteEventDialog({ eventId, onClose }: DeleteEventDialogProps) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
 
-  const deleteWorkshopMutation = useMutation({
-    ...trpc.workshopsManagement.deleteWorkshop.mutationOptions(),
+  const deleteMutation = useMutation({
+    ...trpc.eventsManagement.deleteEvent.mutationOptions(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [['workshopsManagement', 'getWorkshopsByCategory']] });
+      queryClient.invalidateQueries({ queryKey: [["eventsManagement", "getEvents"]] });
       showToastSuccess({
-        headerText: 'Workshop Deleted',
-        paragraphText: 'The workshop has been removed successfully',
-        direction: 'right'
+        headerText: "Event Deleted",
+        paragraphText: "The event has been removed successfully.",
+        direction: "right"
       });
       onClose();
     },
     onError: (error) => {
       showToastError({
-        headerText: 'Delete Failed',
+        headerText: "Delete Failed",
         paragraphText: error.message,
-        direction: 'right'
+        direction: "right"
       });
     }
   });
 
   const handleDelete = () => {
-    if (workshopId) {
-      deleteWorkshopMutation.mutate({ id: workshopId });
+    if (eventId) {
+      deleteMutation.mutate({ id: eventId });
     }
   };
 
   return (
-    <Dialog open={!!workshopId} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={!!eventId} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[480px] rounded-[33px] p-8 border-none shadow-[0_8px_40px_rgba(0,0,0,0.08)] bg-white">
         <DialogHeader className="mb-4">
           <div className="flex flex-col items-center text-center gap-4">
@@ -53,7 +53,7 @@ export function DeleteWorkshopDialog({ workshopId, onClose }: DeleteWorkshopDial
             <div className="space-y-2">
               <DialogTitle className="text-2xl font-bold text-gray-900">Confirm Deletion</DialogTitle>
               <DialogDescription className="text-[15px] text-gray-500 max-w-[320px] mx-auto leading-relaxed">
-                Are you sure you want to delete this workshop? This action is permanent and cannot be undone.
+                Are you sure you want to delete this event? This action is permanent and cannot be undone.
               </DialogDescription>
             </div>
           </div>
@@ -70,11 +70,11 @@ export function DeleteWorkshopDialog({ workshopId, onClose }: DeleteWorkshopDial
           <button
             type="button"
             onClick={handleDelete}
-            disabled={deleteWorkshopMutation.isPending}
+            disabled={deleteMutation.isPending}
             className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 flex-1 h-10 px-4 py-2 rounded-xl active:scale-95 text-white bg-red-600 hover:bg-red-700 shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(220,38,38,0.4)]"
           >
-            {deleteWorkshopMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-            Delete Workshop
+            {deleteMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+            Delete Event
           </button>
         </div>
       </DialogContent>

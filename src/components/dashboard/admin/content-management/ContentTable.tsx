@@ -162,81 +162,39 @@ export function ContentTable({
                     </DropdownMenuItem>
                     {resource.status === 'active' ? (
                       <>
-                        <DropdownMenuItem onClick={() => onDeactivate(resource.id.toString())} className="text-orange-600 focus:text-orange-600">
+                        <DropdownMenuItem 
+                          onClick={() => onDeactivate(resource.id.toString())} 
+                          className="text-orange-600 focus:text-orange-600"
+                        >
                           <PowerOff className="h-4 w-4 mr-2" />
                           Deactivate
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <DropdownMenuItem 
-                              className="text-red-600 focus:text-red-600"
-                              onSelect={(e) => {
-                                e.preventDefault();
-                                onDelete(resource.id.toString());
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Resource</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Are you sure you want to delete the resource &quot;{resource.title}&quot;? This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => onDelete(resource.id.toString())}
-                                className="bg-red-600 hover:bg-red-700 text-white"
-                              >
-                                Delete Resource
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        <DropdownMenuItem 
+                          className="text-red-600 focus:text-red-600"
+                          onClick={() => onDelete(resource.id.toString())}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
                       </>
                     ) : (
                       <>
-                        <DropdownMenuItem onClick={() => onReactivate(resource.id.toString())} className="text-green-600 focus:text-green-600">
+                        <DropdownMenuItem 
+                          onClick={() => onReactivate(resource.id.toString())} 
+                          className="text-green-600 focus:text-green-600"
+                        >
                           <PowerOff className="h-4 w-4 mr-2" />
                           Activate
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <DropdownMenuItem 
-                              className="text-red-600 focus:text-red-600"
-                              onSelect={(e) => {
-                                e.preventDefault();
-                                onDelete(resource.id.toString());
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Resource</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Are you sure you want to delete the resource &quot;{resource.title}&quot;? This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => onDelete(resource.id.toString())}
-                                className="bg-red-600 hover:bg-red-700 text-white"
-                              >
-                                Delete Resource
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        <DropdownMenuItem 
+                          className="text-red-600 focus:text-red-600"
+                          onClick={() => onDelete(resource.id.toString())}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
                       </>
                     )}
                   </DropdownMenuContent>

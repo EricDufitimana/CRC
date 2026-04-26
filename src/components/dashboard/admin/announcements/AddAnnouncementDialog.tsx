@@ -27,7 +27,8 @@ import { Textarea } from "@/zenith/components/ui/textarea";
 import { useTRPC } from "@/trpc/client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { showToastSuccess, showToastError } from "@/components/toasts";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertTriangle } from "lucide-react";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandList } from "@/zenith/components/ui/command";
 import dynamic from 'next/dynamic';
 import '@uiw/react-md-editor/markdown-editor.css';
 import '@uiw/react-markdown-preview/markdown.css';
@@ -116,109 +117,127 @@ export function AddAnnouncementDialog({ open, onOpenChange }: AddAnnouncementDia
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl rounded-3xl p-0 overflow-hidden border-none shadow-2xl">
-          <div className="p-6 ">
-            <h2 className="text-dark text-lg font-bold font-cal-sans">Create Announcement</h2>
-            <p className="text-gray-500 mt-1 text-sm">
-              Share important updates with students across different platform sections.
-            </p>
+      <DialogContent className="max-w-4xl rounded-[40px] sm:rounded-[40px] p-8 overflow-hidden border-none shadow-2xl bg-white">
+        <div className="flex gap-8 items-stretch">
+          {/* Left Column */}
+          <div className="flex-1 flex flex-col min-h-0">
+            <DialogHeader className="mb-6">
+              <DialogTitle className="text-2xl font-bold text-gray-900 font-cal-sans">Create Announcement</DialogTitle>
+              <DialogDescription className="text-gray-500 mt-1 text-[15px]">
+                Share important updates with students across different platform sections.
+              </DialogDescription>
+            </DialogHeader>
+
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <FormField
+                  control={form.control}
+                  name="message"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Message</FormLabel>
+                      <div data-color-mode="light" className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
+                        <MDEditor
+                          value={field.value}
+                          onChange={field.onChange}
+                          preview="live"
+                          height={180}
+                        />
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="page"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Target Page</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="rounded-xl border-gray-100 bg-gray-50/50 focus:ring-0 h-11 text-[14px]">
+                              <SelectValue placeholder="Select a page" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="rounded-xl border-gray-100 shadow-xl">
+                            <Command className="max-h-[300px]">
+                              <CommandInput placeholder="Search pages..." className="h-9" />
+                              <CommandList>
+                                <CommandEmpty>No page found.</CommandEmpty>
+                                <CommandGroup>
+                                  {availablePages.map(page => (
+                                    <SelectItem key={page} value={page} className="rounded-lg cursor-pointer">
+                                      {formatPageLabel(page)}
+                                    </SelectItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="end_time"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Expires At (Optional)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="datetime-local"
+                            className="rounded-xl border-gray-100 bg-gray-50/50 focus:ring-0 h-11 text-[14px]"
+                            {...field}
+                            value={field.value || ""}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-6 border-t border-gray-50">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => onOpenChange(false)}
+                    className="flex-1 h-11 rounded-xl font-semibold text-gray-500 border-gray-100 hover:bg-gray-50 transition-all"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={mutation.isPending}
+                    className="flex-[2] h-11 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-semibold shadow-lg shadow-orange-100 transition-all"
+                  >
+                    {mutation.isPending ? (
+                      <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                    ) : (
+                      "Publish Announcement"
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </Form>
           </div>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="px-8 pb-8 space-y-6">
-            <FormField
-              control={form.control}
-              name="message"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-gray-700 font-semibold">Message</FormLabel>
-                  <div data-color-mode="light" className="rounded-xl overflow-hidden border border-gray-200">
-                    <MDEditor
-                      value={field.value}
-                      onChange={field.onChange}
-                      preview="live"
-                      height={200}
-                    />
-                  </div>
-                  <FormDescription>Supports Markdown formatting.</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                control={form.control}
-                name="page"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-gray-700 font-semibold">Target Page</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="rounded-xl border-gray-200 focus:ring-0 focus:border-green-500 h-11">
-                          <SelectValue placeholder="Select a page" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent className="rounded-xl">
-                        {availablePages.map(page => (
-                          <SelectItem key={page} value={page} className="rounded-lg">
-                            {formatPageLabel(page)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="end_time"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-gray-700 font-semibold">Expires At (Optional)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="datetime-local"
-                        className="rounded-xl border-gray-200 focus:ring-0 focus:border-green-500 h-11"
-                        {...field}
-                        value={field.value || ""}
-                      />
-                    </FormControl>
-                    <FormDescription>Leave empty for indefinite duration.</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+          {/* Right Column - Grainient */}
+          <div className="hidden md:block w-1/3 rounded-[32px] overflow-hidden relative border border-gray-100">
+            <div className="absolute inset-0 bg-gradient-to-br from-orange-400/20 to-amber-400/20 mix-blend-overlay z-10" />
+            <div className="absolute inset-0 bg-white/10 backdrop-blur-[1px] z-20" />
+            <div className="w-full h-full transform scale-110">
+              {/* Using a simple CSS gradient for now if StableGrainient isn't imported or needs specific colors */}
+              <div className="w-full h-full bg-gradient-to-br from-orange-400 via-amber-400 to-yellow-400 animate-pulse-slow" />
             </div>
-
-            <DialogFooter className="pt-4 mt-6 border-t border-gray-100 flex gap-3">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => onOpenChange(false)}
-                className="rounded-xl font-medium text-gray-500"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={mutation.isPending}
-                className="bg-orange-500 hover:bg-orange-600 text-white px-8 rounded-xl font-semibold shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition duration-200 focus:ring-0"
-              >
-                {mutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Publishing...
-                  </>
-                ) : (
-                  "Publish Announcement"
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );

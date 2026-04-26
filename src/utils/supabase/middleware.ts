@@ -51,7 +51,7 @@ export async function updateSession(request: NextRequest) {
   const isAdminRoute = request.nextUrl.pathname.startsWith('/dashboard/admin');
   const isStudentRoute = request.nextUrl.pathname.startsWith('/dashboard/student');
   const isCreateAdminRoute = request.nextUrl.pathname === '/create-admin';
-  const isProtectedRoute = isAdminRoute || isStudentRoute || isCreateAdminRoute;
+  const isProtectedRoute = isAdminRoute || isStudentRoute;
   const isSetupRoute = request.nextUrl.pathname.startsWith('/setup');
 
   console.log(' [Middleware] Route analysis:', {
@@ -81,26 +81,7 @@ export async function updateSession(request: NextRequest) {
     );
 
     try {
-      // Check admin creation access for create-admin route
-      if (isCreateAdminRoute) {
-        console.log(' [Middleware] Checking create-admin access...');
-        const ALLOWED_USER_ID = process.env.ALLOWED_USER_ID_1! || process.env.ALLOWED_USER_ID_2! || process.env.ALLOWED_USER_ID_3!;
-        if (!ALLOWED_USER_ID) {
-          throw new Error('ALLOWED_USER_ID is not set');
-        }
 
-        console.log(' [Middleware] Allowed user ID:', ALLOWED_USER_ID);
-        console.log(' [Middleware] Current user ID:', user.id);
-        console.log(' [Middleware] Access granted:', user.id === ALLOWED_USER_ID);
-
-        if (user.id !== ALLOWED_USER_ID) {
-          // User is not authorized to create admins, redirect to unauthorized page
-          console.log(' [Middleware] User not authorized for create-admin, redirecting to unauthorized');
-          const url = request.nextUrl.clone()
-          url.pathname = '/unauthorized'
-          return NextResponse.redirect(url)
-        }
-      }
 
       if (isAdminRoute) {
         console.log(' [Middleware] Checking admin access...');

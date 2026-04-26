@@ -44,27 +44,37 @@ export function DeleteAnnouncementDialog({ announcement, onClose }: DeleteAnnoun
 
   return (
     <Dialog open={!!announcement} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <div className="flex items-center gap-3 text-red-600 mb-2">
-            <DialogTitle>Confirm Delete</DialogTitle>
+      <DialogContent className="sm:max-w-[480px] rounded-[32px] p-8 border-none shadow-2xl bg-white">
+        <DialogHeader className="mb-4">
+          <div className="flex flex-col items-center text-center gap-4">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-50 text-red-600 transition-transform duration-300 hover:scale-110">
+              <AlertTriangle className="h-8 w-8" />
+            </div>
+            <div className="space-y-2">
+              <DialogTitle className="text-2xl font-bold text-gray-900">Confirm Deletion</DialogTitle>
+              <DialogDescription className="text-[15px] text-gray-500 max-w-[320px] mx-auto leading-relaxed">
+                Are you sure you want to delete this announcement? This action is permanent and cannot be undone.
+              </DialogDescription>
+            </div>
           </div>
-          <DialogDescription>
-            Are you sure you want to delete this announcement? This action cannot be undone.
-          </DialogDescription>
         </DialogHeader>
-        <div className="flex justify-end gap-3 mt-4">
-          <Button variant="outline" onClick={onClose} className="rounded-xl">
+
+        <div className="flex flex-col sm:flex-row gap-3 mt-6">
+          <Button 
+            variant="outline" 
+            onClick={onClose} 
+            className="flex-1 h-12 rounded-2xl border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 transition-all duration-200"
+          >
             Cancel
           </Button>
           <Button 
             variant="destructive" 
             onClick={handleDelete}
             disabled={deleteAnnouncementMutation.isPending}
-            className="rounded-xl bg-red-600 hover:bg-red-700 shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(220,38,38,0.4)]"
+            className="flex-1 h-12 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-semibold shadow-lg shadow-red-200 transition-all duration-200 disabled:opacity-70"
           >
             {deleteAnnouncementMutation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              <Loader2 className="h-5 w-5 animate-spin mr-2" />
             ) : null}
             Delete Announcement
           </Button>
