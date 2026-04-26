@@ -290,7 +290,7 @@ export default function TestingPage({ selectedCategory = "general" }: TestingPag
                           }`}
                           />
                           <div className="flex justify-between text-xs mt-1">
-                            <span className={formData.description.length === DESC_MAX ? "text-red-500" : "text-gray-400">
+                            <span className={formData.description.length === DESC_MAX ? "text-red-500" : "text-gray-400"}>
                               {DESC_MAX - formData.description.length} characters left
                             </span>
                             {fieldErrors.description && fieldErrors.description.length > 0 && (
