@@ -85,7 +85,15 @@ export async function updateSession(request: NextRequest) {
 
       if (isAdminRoute) {
         console.log(' [Middleware] Checking admin access...');
-        // Check if user is an admin
+        
+        // Check if user is super admin first
+        const superAdminId = process.env.SUPER_ADMIN_USER_ID;
+        if (superAdminId && user.id === superAdminId) {
+          console.log(' [Middleware] Super admin detected, granting access');
+          return supabaseResponse;
+        }
+
+        // Check if user is an admin in the database
         const { data: admin, error: adminError } = await adminClient
           .from('admin')
           .select('id, first_name, last_name, email')

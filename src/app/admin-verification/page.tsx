@@ -74,13 +74,13 @@ export default function AdminVerificationPage() {
         );
 
         if (superAdminResult.success) {
-          console.log('✅ [Admin Verification] Super admin detected, redirecting...');
-          setDebugInfo(`Authorized super admin user detected (ID: ${userId}), redirecting...`);
+          console.log('✅ [Admin Verification] Super admin detected, redirecting to login...');
+          setDebugInfo(`Authorized super admin user detected (ID: ${userId}), redirecting to login...`);
           setRedirecting(true);
           setIsLoading(false);
 
           setTimeout(() => {
-            window.location.href = "/dashboard/admin";
+            window.location.href = "/login";
           }, 800);
           return;
         }
@@ -97,13 +97,13 @@ export default function AdminVerificationPage() {
         console.log('📊 [Admin Verification] Admin exists:', adminExists);
 
         if (adminExists) {
-          console.log('✅ [Admin Verification] Admin user detected, redirecting...');
-          setDebugInfo(`Admin user detected (ID: ${userId}), redirecting...`);
+          console.log('✅ [Admin Verification] Admin user detected, redirecting to login...');
+          setDebugInfo(`Admin user detected (ID: ${userId}), redirecting to login...`);
           setRedirecting(true);
           setIsLoading(false);
 
           setTimeout(() => {
-            window.location.href = "/dashboard/admin";
+            window.location.href = "/login";
           }, 800);
         } else {
           console.log('❌ [Admin Verification] No admin account found in database');
