@@ -68,23 +68,6 @@ export default function AdminVerificationPage() {
         const userId = user.id;
         console.log('👤 [Admin Verification] User ID:', userId);
 
-        // First check if user is super admin
-        const superAdminResult = await queryClient.fetchQuery(
-          trpc.auth.checkSuperAdmin.queryOptions({ userId })
-        );
-
-        if (superAdminResult.success) {
-          console.log('✅ [Admin Verification] Super admin detected, redirecting to login...');
-          setDebugInfo(`Authorized super admin user detected (ID: ${userId}), redirecting to login...`);
-          setRedirecting(true);
-          setIsLoading(false);
-
-          setTimeout(() => {
-            window.location.href = "/login";
-          }, 800);
-          return;
-        }
-
         // Check if user exists in admins table
         const adminData = await queryClient.fetchQuery(
           trpc.auth.checkUserExists.queryOptions({
@@ -97,13 +80,13 @@ export default function AdminVerificationPage() {
         console.log('📊 [Admin Verification] Admin exists:', adminExists);
 
         if (adminExists) {
-          console.log('✅ [Admin Verification] Admin user detected, redirecting to login...');
-          setDebugInfo(`Admin user detected (ID: ${userId}), redirecting to login...`);
+          console.log('✅ [Admin Verification] Admin user detected, redirecting...');
+          setDebugInfo(`Admin user detected (ID: ${userId}), redirecting...`);
           setRedirecting(true);
           setIsLoading(false);
 
           setTimeout(() => {
-            window.location.href = "/login";
+            window.location.href = "/dashboard/admin";
           }, 800);
         } else {
           console.log('❌ [Admin Verification] No admin account found in database');

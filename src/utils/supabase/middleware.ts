@@ -95,22 +95,35 @@ export async function updateSession(request: NextRequest) {
 
         // Check if user is an admin in the database
         const { data: admin, error: adminError } = await adminClient
-          .from('admin')
+          .from('admins')
           .select('id, first_name, last_name, email')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
 
-        console.log(' [Middleware] Admin check result:', { admin, error: adminError });
+        console.log(' [Middleware] Admin check result:', { 
+          userId: user.id,
+          hasAdmin: !!admin, 
+          error: adminError?.message 
+        });
 
         if (adminError || !admin) {
-          // User is not an admin, redirect to admin-verification page
-          console.log(' [Middleware] User is not admin, redirecting to admin-verification');
-          const url = request.nextUrl.clone()
-          url.pathname = '/admin-verification'
-          return NextResponse.redirect(url)
+          // If plural check fails, try singular just in case
+          const { data: adminSingular } = await adminClient
+            .from('admin')
+            .select('id')
+            .eq('user_id', user.id)
+            .maybeSingle();
+          
+          if (!adminSingular) {
+            console.log(' [Middleware] User is not admin in either table, redirecting to admin-verification');
+            const url = request.nextUrl.clone()
+            url.pathname = '/admin-verification'
+            return NextResponse.redirect(url)
+          }
+          console.log(' [Middleware] Admin found in singular table');
         }
 
-        console.log(' [Middleware] Admin access confirmed:', admin);
+        console.log(' [Middleware] Admin access confirmed');
       }
 
       if (isStudentRoute) {
