@@ -8,7 +8,6 @@ import { EventCard, EventDetailsModal } from "@/components/Events";
 import { useState } from "react";
 import EventsNotificationBanner from "@/components/Banner/EventsNotificationBanner";
 import MultipleAnnouncementsBanner from "@/components/Banner/MultipleAnnouncementsBanner";
-import SectionTitle from "@/components/Common/SectionTitle";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTRPC } from "@/trpc/client";
 import { useSuspenseQuery } from "@tanstack/react-query";
@@ -125,12 +124,13 @@ export default function UpcomingEventsPage() {
         <div className="container mx-auto px-4 relative z-10">
           <Card className="mx-4 p-8 bg-white/90 backdrop-blur-sm shadow-none border border-gray-200">
             {/* Section Header */}
-            <div className="mb-16">
-              <SectionTitle
-                title="Featured Upcoming Events"
-                paragraph="Get ready for our most exciting gatherings—discover what's coming up and mark your calendar."
-                center={true}
-              />
+            <div className="mb-12 text-center">
+              <h1 className="mb-4 text-xl font-bold text-dark sm:text-4xl md:text-[40px] md:leading-[1.2]">
+                Featured Upcoming Events
+              </h1>
+              <p className="mx-auto max-w-[700px] text-base text-gray-500 md:text-lg">
+                Get ready for our most exciting gatherings—discover what&apos;s coming up and mark your calendar.
+              </p>
             </div>
             
             <MultipleAnnouncementsBanner page="upcoming_events" theme="orange" maxAnnouncements={3} />

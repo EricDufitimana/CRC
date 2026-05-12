@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import Label from "@/components/form/Label";
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/utils/supabase/client'
 import { Input } from "../../../../zenith/src/components/ui/input";
 import { Search, Check, ChevronsUpDown } from "lucide-react";
 import { Button } from "../../../../zenith/src/components/ui/button";
@@ -88,6 +88,7 @@ export default function SignUpForm() {
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     try{
+      const supabase = createClient();
       const {data, error} = await supabase.auth.signUp({
         email,
         password,
@@ -165,14 +166,18 @@ export default function SignUpForm() {
     
     try{
       setIsGoogleSignUpLoading(true);
-      console.log('Initiating Google OAuth with student code:', studentCode);
-      // Store student code in localStorage for the caleback to access
+      console.log('[Register] Initiating Google OAuth with student code:', studentCode);
+      console.log('[Register] selectedStudentId:', selectedStudentId);
+      // Store student code in localStorage for the callback to access
       localStorage.setItem('pendingStudentCode', studentCode);
-      
+      console.log('[Register] Set pendingStudentCode in localStorage:', localStorage.getItem('pendingStudentCode'));
+      console.log('[Register] OAuth redirectTo:', `${window.location.origin}/api/auth/callback`);
+
+      const supabase = createClient();
       const {data, error} = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${window.location.origin}/api/auth/callback`,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
@@ -181,12 +186,12 @@ export default function SignUpForm() {
       })
       
       if(error){
-        console.error("Google OAuth error:", error);
+        console.error('[Register] Google OAuth error:', error);
         alert(`Google OAuth error: ${error.message}`);
         setIsGoogleSignUpLoading(false);
       }else{
-        console.log("Google OAuth initiated successfully");
-        console.log("OAuth data:", data);
+        console.log('[Register] Google OAuth initiated successfully. Redirecting to Google...');
+        console.log('[Register] OAuth response data:', data);
         // The user will be redirected to Google for authentication
         // Note: Loading state will be cleared when redirect happens
       }

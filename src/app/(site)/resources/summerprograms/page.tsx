@@ -38,25 +38,23 @@ export default function SummerPrograms() {
   return (
     <main>
       <ScrollUp />
-      <div className="py-40 max-w-[1280px] mx-auto space-y-8">
-        <div className="flex justify-center">
-          <div className="w-full">
-            <ResourceHeader 
-              title="Summer Programs" 
-              description="Explore summer programs, pre-college courses, and leadership opportunities curated for your growth during the holiday." 
-              count={data.length}
-            />
-            <div className="flex flex-col gap-4">
-              {data.map((item) => (
-                <ResourceCard
-                  key={item.id}
-                  title={item.title}
-                  description={item.description}
-                  image={item.image}
-                  url={item.links[0]?.href}
-                />
-              ))}
-            </div>
+      <div className="py-24 md:py-32 lg:py-40 max-w-[1100px] mx-auto space-y-8 px-4 sm:px-6">
+        <div className="w-full">
+          <ResourceHeader 
+            title="Summer Programs" 
+            description="Explore summer programs, pre-college courses, and leadership opportunities curated for your growth during the holiday." 
+            count={data.length}
+          />
+          <div className="flex flex-col gap-4">
+            {data.map((item) => (
+              <ResourceCard
+                key={item.id}
+                title={item.title}
+                description={item.description}
+                image={item.image}
+                url={item.links[0]?.href}
+              />
+            ))}
           </div>
         </div>
       </div>

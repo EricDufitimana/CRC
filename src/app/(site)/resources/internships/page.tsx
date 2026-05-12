@@ -13,14 +13,14 @@ export default async function Internships() {
     <HydrationBoundary state={dehydrate(queryClient)}>
     <main>
       <ScrollUp />
-      <div className="py-40 max-w-[1280px] mx-auto space-y-8">
+      <div className="py-24 md:py-32 lg:py-40 max-w-[1100px] mx-auto space-y-8 px-4 sm:px-6">
         <MultipleAnnouncementsBanner 
           page="internships" 
           theme="green" 
           maxAnnouncements={3} 
-          containerWidth="w-[1120px]" 
+          containerWidth="w-full" 
         />
-        <div className="flex justify-center">
+        <div className="w-full">
           <InternshipsContent />
         </div>
       </div>

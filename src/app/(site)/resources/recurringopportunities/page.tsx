@@ -13,14 +13,14 @@ export default async function RecurringOpportunities() {
     <HydrationBoundary state={dehydrate(queryClient)}>
     <main>
       <ScrollUp />
-      <div className="py-40 max-w-[1280px] mx-auto space-y-8">
+      <div className="py-24 md:py-32 lg:py-40 max-w-[1100px] mx-auto space-y-8 px-4 sm:px-6">
         <MultipleAnnouncementsBanner 
           page="recurring_opportunities" 
           theme="blue" 
           maxAnnouncements={5} 
-          containerWidth="w-[1120px]"
+          containerWidth="w-full"
         />
-        <div className="flex justify-center">
+        <div className="w-full">
           <RecurringOpportunitiesContent />
         </div>
       </div>

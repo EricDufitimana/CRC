@@ -49,12 +49,14 @@ export function ResourceCard({
             {title}
           </h3>
           {isUrgent ? (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 text-[11px] font-medium tracking-wide">
-              URGENT
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-100 text-[10px] font-bold tracking-wider uppercase shadow-sm">
+              <span className="w-1 h-1 rounded-full bg-rose-500 mr-1.5 animate-pulse"></span>
+              Urgent
             </span>
           ) : isNew ? (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-medium tracking-wide">
-              NEW
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 text-[10px] font-bold tracking-wider uppercase shadow-sm">
+              <span className="w-1 h-1 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>
+              New
             </span>
           ) : null}
         </div>

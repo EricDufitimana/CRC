@@ -18,28 +18,60 @@ export default function AuthCallback() {
       // Get the next URL from query params
       const searchParams = new URLSearchParams(window.location.search);
       const nextUrl = searchParams.get('next') || '/account-check';
-      console.log(' [Auth Callback Page] Next URL from params:', nextUrl);
+
+      // --- DIAGNOSTIC LOGS: full context at page load ---
+      console.log('[Auth Callback] ===== PAGE LOADED =====');
+      console.log('[Auth Callback] Full URL:', window.location.href);
+      console.log('[Auth Callback] Search params:', window.location.search);
+      console.log('[Auth Callback] Next URL param:', nextUrl);
+      console.log('[Auth Callback] All URL params:', Object.fromEntries(searchParams.entries()));
+      console.log('[Auth Callback] Referrer:', document.referrer);
+      console.log('[Auth Callback] localStorage keys:', Object.keys(localStorage));
+      console.log('[Auth Callback] pendingStudentCode:', localStorage.getItem('pendingStudentCode'));
+      console.log('[Auth Callback] pendingAdminData:', localStorage.getItem('pendingAdminData'));
+      // Log all cookies visible to JS (httpOnly ones won't show)
+      console.log('[Auth Callback] document.cookie (non-httpOnly):', document.cookie || '(empty)');
+
       try {
-        console.log(' [Auth Callback Page] Page loaded');
-        
+        console.log('[Auth Callback] Calling supabase.auth.getSession()...');
+
         // Get the session - OAuth should have already established it via cookies
         let { data, error } = await supabase.auth.getSession();
-        
+
+        console.log('[Auth Callback] getSession() result:', {
+          hasSession: !!data.session,
+          sessionUserId: data.session?.user?.id,
+          sessionUserEmail: data.session?.user?.email,
+          sessionExpiresAt: data.session?.expires_at,
+          accessTokenPresent: !!data.session?.access_token,
+          error: error ? { message: error.message, status: error.status } : null,
+        });
+
         if (error) {
-          console.error(' [Auth Callback Page] Error getting session:', error);
+          console.error('[Auth Callback] getSession() error:', error);
           router.push('/login?error=session_error');
           return;
         }
 
         if (!data.session) {
-          console.log(' [Auth Callback Page] No session found - waiting for OAuth to complete');
-          // Wait a moment for session to be established
+          console.warn('[Auth Callback] No session on first attempt — waiting 1s then retrying...');
           await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          // Try again
+
+          console.log('[Auth Callback] Retrying supabase.auth.getSession()...');
           const retryData = await supabase.auth.getSession();
+          console.log('[Auth Callback] Retry getSession() result:', {
+            hasSession: !!retryData.data.session,
+            sessionUserId: retryData.data.session?.user?.id,
+            retryError: retryData.error ? { message: retryData.error.message } : null,
+          });
+
           if (!retryData.data.session) {
-            console.error(' [Auth Callback Page] Still no session after retry');
+            console.error('[Auth Callback] Still no session after retry.');
+            console.error('[Auth Callback] This usually means:');
+            console.error('[Auth Callback]   1. The auth code was not exchanged server-side (check /api/auth/callback logs)');
+            console.error('[Auth Callback]   2. The Supabase session cookies were not set (check for cookie domain/SameSite issues)');
+            console.error('[Auth Callback]   3. The redirect URL did not go through /api/auth/callback first');
+            console.error('[Auth Callback] Current cookies at retry:', document.cookie || '(empty)');
             router.push('/login?error=no_session');
             return;
           }
@@ -49,7 +81,7 @@ export default function AuthCallback() {
         }
 
         const user = data.session.user;
-        console.log(' [Auth Callback Page] User authenticated:', user.id);
+        console.log('[Auth Callback] Session established. User:', { id: user.id, email: user.email });
 
         // Get vanilla tRPC client for direct mutations
         const trpc = getVanillaClient();
@@ -58,13 +90,18 @@ export default function AuthCallback() {
         const pendingAdminData = localStorage.getItem('pendingAdminData');
         localStorage.removeItem('pendingAdminData'); // Clean up
 
+        console.log('[Auth Callback] Checking for pending registration data...');
+        console.log('[Auth Callback] pendingAdminData present:', !!pendingAdminData);
+
         if (pendingAdminData) {
-          console.log('Admin data found:', pendingAdminData);
+          console.log('[Auth Callback] Found pendingAdminData:', pendingAdminData);
           
           try {
             const adminData = JSON.parse(pendingAdminData);
-            
+            console.log('[Auth Callback] Parsed adminData:', adminData);
+
             // Call tRPC to create admin record
+            console.log('[Auth Callback] Calling trpc.auth.registerAdmin.mutate...');
             await trpc.auth.registerAdmin.mutate({
               userId: user.id,
               email: user.email || '',
@@ -87,18 +124,21 @@ export default function AuthCallback() {
           const studentCode = localStorage.getItem('pendingStudentCode');
           localStorage.removeItem('pendingStudentCode'); // Clean up
 
+          console.log('[Auth Callback] pendingStudentCode present:', !!studentCode, '| value:', studentCode);
+
           if (studentCode) {
-            console.log('Student code found:', studentCode);
-            
+            console.log('[Auth Callback] Registering student with code:', studentCode);
+
             try {
               // Call tRPC to create student record
+              console.log('[Auth Callback] Calling trpc.auth.registerStudent.mutate with:', { userId: user.id, studentCode, email: user.email });
               const result = await trpc.auth.registerStudent.mutate({
                 userId: user.id,
                 studentCode,
                 email: user.email,
               });
 
-              console.log('Student account created/updated successfully');
+              console.log('[Auth Callback] registerStudent result:', result);
               
               // Send welcome email
               if (result.email) {

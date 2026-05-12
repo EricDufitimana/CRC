@@ -80,8 +80,8 @@ export default function Home() {
     <main>
       <ScrollUp />
       <HeaderLayout image="/images/banners/leadership.svg" />
-      <div className=" flex justify-center pb-12">
-        <div className="content border border-gray-700 rounded-md p-8 w-[1100px] space-y-8">
+      <div className="py-24 md:py-32 lg:py-40 max-w-[1100px] mx-auto space-y-8 px-4 sm:px-6">
+        <div className="content border border-gray-700 rounded-md p-6 md:p-8 space-y-8">
 
           {data.map((item) => (
             <Fragment key={item.id}>

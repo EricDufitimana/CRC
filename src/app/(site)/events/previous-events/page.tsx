@@ -8,7 +8,6 @@ import { EventCard, EventDetailsModal } from "@/components/Events";
 import { useState } from "react";
 import EventsNotificationBanner from "@/components/Banner/EventsNotificationBanner";
 import MultipleAnnouncementsBanner from "@/components/Banner/MultipleAnnouncementsBanner";
-import SectionTitle from "@/components/Common/SectionTitle";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTRPC } from "@/trpc/client";
 import {useSuspenseQuery} from "@tanstack/react-query";
@@ -121,12 +120,13 @@ export default function PreviousEventsPage() {
           <Card className="mx-4 p-8 bg-white/90 backdrop-blur-sm shadow-none border border-gray-200">
 
               {/* Section Header */}
-              <div className="mb-16">
-                <SectionTitle
-                  title="Featured Past Events"
-                  paragraph="A look back at our most inspiring gatherings—revisit highlights that made our community buzz."
-                  center={true}
-                />
+              <div className="mb-12 text-center">
+                <h1 className="mb-4 text-xl font-bold text-dark sm:text-4xl md:text-[40px] md:leading-[1.2]">
+                  Featured Past Events
+                </h1>
+                <p className="mx-auto max-w-[700px] text-base text-gray-500 md:text-lg">
+                  A look back at our most inspiring gatherings—revisit highlights that made our community buzz.
+                </p>
               </div>
             
               <MultipleAnnouncementsBanner page="previous_events" theme="blue" maxAnnouncements={3} />

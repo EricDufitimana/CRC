@@ -224,7 +224,7 @@ const Header = () => {
               : "-mx-14 justify-between bg-white"
           }`}>
             <div ref={logoRef} className={`max-w-full transition-all duration-200 ease-linear ${
-              sticky && !isMobile ? "w-auto px-1" : "w-60 px-4"
+              sticky && !isMobile ? "w-auto px-1" : "w-52 xl:w-60 px-3 xl:px-4"
             }`}>
               <Link
                 href="/"
@@ -237,8 +237,8 @@ const Header = () => {
                     <Image
                       src={"/images/hero/navImage.png"}
                       alt="logo"
-                      width={sticky && !isMobile ? 80 : 120}
-                      height={sticky && !isMobile ? 20 : 30}
+                      width={sticky && !isMobile ? 70 : 95}
+                      height={sticky && !isMobile ? 18 : 24}
                       className="header-logo object-contain dark:hidden"
                     />
                   </>
@@ -247,8 +247,8 @@ const Header = () => {
                     <Image
                       src={"/images/hero/navImage.png"}
                       alt="logo"
-                      width={sticky && !isMobile ? 70 : 100}
-                      height={sticky && !isMobile ? 18 : 30}
+                      width={sticky && !isMobile ? 60 : 85}
+                      height={sticky && !isMobile ? 16 : 22}
                       className="header-logo  dark:hidden object-contain"
                     />
                   </>
@@ -257,15 +257,15 @@ const Header = () => {
             </div>
             
             <div ref={navItemsRef} className={`flex items-center transition-all duration-200 ease-linear ${
-              sticky && !isMobile ? "gap-6" : "w-full px-4 justify-between"
+              sticky && !isMobile ? "gap-4 xl:gap-6" : "w-full px-2 xl:px-4 justify-between"
             }`}>
               {/* Desktop Navigation */}
               <div className="hidden lg:block">
                 <nav>
                   <ul className={`flex ${
                     sticky && !isMobile
-                      ? "ml-3 gap-x-4 xl:ml-4 xl:gap-x-5" 
-                      : "ml-8 gap-x-8 xl:ml-14 xl:gap-x-12"
+                      ? "ml-2 gap-x-3 xl:ml-4 xl:gap-x-5" 
+                      : "ml-4 gap-x-4 xl:ml-14 xl:gap-x-12"
                   }`}>
                     {menuData.map((menuItem, index) =>
                       menuItem.path ? (
@@ -275,8 +275,8 @@ const Header = () => {
                               scroll={false}
                               href={menuItem.path}
                               className={`ud-menu-scroll flex py-2 ${
-                                sticky && !isMobile ? "text-base" : "text-lg"
-                              } text-dark group-hover:text-primary dark:text-white dark:group-hover:text-primary lg:inline-flex lg:px-0 lg:py-6 ${
+                                sticky && !isMobile ? "text-[15px] xl:text-base" : "text-base xl:text-lg"
+                              } text-dark group-hover:text-primary dark:text-white dark:group-hover:text-primary lg:inline-flex lg:px-0 lg:py-4 xl:py-6 ${
                                 isMenuItemActive(menuItem) && "text-primary"
                               }`}
                             >
@@ -287,8 +287,8 @@ const Header = () => {
                               scroll={false}
                               href={menuItem.path}
                               className={`ud-menu-scroll flex py-2 ${
-                                sticky && !isMobile ? "text-base" : "text-lg"
-                              } lg:inline-flex lg:px-0 lg:py-6 text-black dark:text-white lg:text-white ${
+                                sticky && !isMobile ? "text-[15px] xl:text-base" : "text-base xl:text-lg"
+                              } lg:inline-flex lg:px-0 lg:py-4 xl:py-6 text-black dark:text-white lg:text-white ${
                                 isMenuItemActive(menuItem) ? "!text-primary" : ""
                               }`}
                             >
@@ -301,8 +301,8 @@ const Header = () => {
                           {pathUrl !== "/" ? (
                             <button
                               className={`ud-menu-scroll flex items-center justify-between py-2 ${
-                                sticky && !isMobile ? "text-base" : "text-lg"
-                              } text-dark group-hover:text-primary dark:text-white dark:group-hover:text-primary lg:inline-flex lg:px-0 lg:py-6 ${
+                                sticky && !isMobile ? "text-[15px] xl:text-base" : "text-base xl:text-lg"
+                              } text-dark group-hover:text-primary dark:text-white dark:group-hover:text-primary lg:inline-flex lg:px-0 lg:py-4 xl:py-6 ${
                                 isMenuItemActive(menuItem) ? "text-primary" : ""
                               }`}
                             >
@@ -310,8 +310,8 @@ const Header = () => {
                               <span className="pl-1">
                                 <svg
                                   className={`duration-300 ease-linear lg:group-hover:rotate-180`}
-                                  width="16"
-                                  height="17"
+                                  width="15"
+                                  height="16"
                                   viewBox="0 0 16 17"
                                   fill="none"
                                   xmlns="http://www.w3.org/2000/svg"
@@ -326,8 +326,8 @@ const Header = () => {
                           ) : (
                             <button
                               className={`ud-menu-scroll flex items-center justify-between py-2 ${
-                                sticky && !isMobile ? "text-base" : "text-lg"
-                              } lg:inline-flex lg:px-0 lg:py-6 text-dark group-hover:text-primary dark:text-white dark:group-hover:text-primary ${
+                                sticky && !isMobile ? "text-[15px] xl:text-base" : "text-base xl:text-lg"
+                              } lg:inline-flex lg:px-0 lg:py-4 xl:py-6 text-dark group-hover:text-primary dark:text-white dark:group-hover:text-primary ${
                                 isMenuItemActive(menuItem) ? "text-primary" : ""
                               }`}
                             >
@@ -335,8 +335,8 @@ const Header = () => {
                               <span className="pl-1">
                                 <svg
                                   className={`duration-300 ease-linear lg:group-hover:rotate-180`}
-                                  width="16"
-                                  height="17"
+                                  width="15"
+                                  height="16"
                                   viewBox="0 0 16 17"
                                   fill="black"
                                   xmlns="http://www.w3.org/2000/svg"
@@ -641,7 +641,7 @@ const Header = () => {
                             <SheetClose asChild>
                               <Link
                                 href="/register"
-                                className="block w-full px-4 py-3 text-dark font-medium border border-dark rounded-md text-center bg-white"
+                                className="block w-full px-4 py-3 text-dark font-medium border border-gray-400 rounded-md text-center bg-white"
                               >
                                 Register
                               </Link>
@@ -656,7 +656,7 @@ const Header = () => {
                 
               {/* Desktop Buttons - Hidden on mobile */}
               <div ref={buttonsRef} className={`hidden lg:flex transition-all duration-200 ease-linear ${
-                sticky && !isMobile ? "gap-3" : "gap-4"
+                sticky && !isMobile ? "gap-2 xl:gap-3" : "gap-2 xl:gap-4"
               }`}>
                 {userId ? (
                   // User is logged in - show dashboard button and avatar
@@ -664,7 +664,7 @@ const Header = () => {
                     <Link
                       href={adminId ? "/dashboard/admin" : "/dashboard/student"}
                       className={`text-white font-medium hover:opacity-70 bg-dark rounded-md text-center whitespace-nowrap shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition-all duration-200 ease-linear focus:outline-none focus-visible:outline-none focus:ring-2 focus:ring-gray-500/40 hover:ring-2 hover:ring-gray-500/10 focus:border-gray-500/60 ${
-                        sticky && !isMobile ? "px-5 py-3 text-sm" : "px-7 py-3"
+                        sticky && !isMobile ? "px-5 py-2.5 text-[15px] xl:px-5 xl:py-3 xl:text-sm" : "px-6 py-3 text-[15px] xl:px-7 xl:py-3 xl:text-sm"
                       }`}
                     >
                       Go to Dashboard
@@ -675,10 +675,10 @@ const Header = () => {
                       <button
                         onClick={() => setUserMenuOpen(!userMenuOpen)}
                         className={`flex items-center justify-center rounded-full bg-gray-100 text-gray-400 font-medium transition-all duration-200 ease-linear focus:outline-none focus-visible:outline-none focus:ring-2 focus:ring-gray-500/40 hover:ring-2 hover:ring-gray-500/10 focus:border-gray-500/60 ${
-                          sticky && !isMobile ? "w-10 h-10 text-sm" : "w-12 h-12"
+                          sticky && !isMobile ? "w-10 h-10 xl:w-10 xl:h-10 text-sm" : "w-11 h-11 xl:w-12 xl:h-12"
                         }`}
                       >
-                        <User size={sticky && !isMobile ? 18 : 20} />
+                        <User size={sticky && !isMobile ? 17 : 19} className="xl:[&]:w-5 xl:[&]:h-5" />
                       </button>
                       
                       {/* Dropdown Menu */}
@@ -714,15 +714,15 @@ const Header = () => {
                     <Link
                       href="/login"
                       className={`text-white font-medium hover:opacity-70 bg-dark rounded-md text-center whitespace-nowrap shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition-all duration-200 ease-linear focus:outline-none focus-visible:outline-none focus:ring-2 focus:ring-gray-500/40 hover:ring-2 hover:ring-gray-500/10 focus:border-gray-500/60 ${
-                        sticky && !isMobile ? "px-5 py-3 text-sm" : "px-7 py-3"
+                        sticky && !isMobile ? "px-5 py-2.5 text-[15px] xl:px-5 xl:py-3 xl:text-sm" : "px-6 py-3 text-[15px] xl:px-7 xl:py-3 xl:text-sm"
                       }`}
                     >
                       Sign In
                     </Link>
                     <Link
                       href="/register"
-                      className={`rounded-md border border-dark text-dark font-medium bg-white text-center whitespace-nowrap transition-all duration-200 ease-linear focus:outline-none focus-visible:outline-none focus:ring-2 focus:ring-gray-500/40 hover:ring-2 hover:ring-gray-500/10 focus:border-gray-500/60 ${
-                        sticky && !isMobile ? "px-5 py-3 text-sm" : "px-6 py-3"
+                      className={`rounded-md border border-dark/40 text-dark font-medium bg-white text-center whitespace-nowrap transition-all duration-200 ease-linear focus:outline-none focus-visible:outline-none focus:ring-2 focus:ring-gray-500/40 hover:ring-2 hover:ring-gray-500/10 focus:border-gray-500/60 ${
+                        sticky && !isMobile ? "px-5 py-2.5 text-[15px] xl:px-5 xl:py-3 xl:text-sm" : "px-6 py-3 text-[15px] xl:px-6 xl:py-3 xl:text-sm"
                       }`}
                     >
                       Register
