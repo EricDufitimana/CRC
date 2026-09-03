@@ -83,6 +83,29 @@ export function AdminSidebar({ adminName, adminEmail }: AdminSidebarProps) {
           <span className="text-sm font-medium">Students</span>
         </Button>
 
+        {/* CRP */}
+        <Button
+          variant="ghost"
+          onClick={() => router.push('/dashboard/admin/crp')}
+          onMouseEnter={() => {
+            void queryClient.prefetchQuery({
+              ...trpc.crpAdmin.getCohortOverview.queryOptions(undefined),
+              staleTime: STALE_TIME,
+            });
+            void queryClient.prefetchQuery({
+              ...trpc.crpAdmin.getReviewQueue.queryOptions(undefined),
+              staleTime: STALE_TIME,
+            });
+          }}
+          className={`w-full h-12 px-4 justify-start text-left transition-all duration-300 rounded-xl group relative ${
+            pathname === '/dashboard/admin/crp' || pathname?.startsWith('/dashboard/admin/crp')
+              ? 'bg-gradient-to-r from-orange-400 to-orange-500 text-white shadow-lg shadow-orange-500/25 font-medium hover:text-white'
+              : 'hover:bg-gray-100/80 text-gray-700 hover:text-gray-900'
+          }`}
+        >
+          <span className="text-sm font-medium">CRP</span>
+        </Button>
+
         {/* Assignments */}
         <Button
           variant="ghost"

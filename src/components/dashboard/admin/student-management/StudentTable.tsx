@@ -1,6 +1,6 @@
 "use client";
 
-import { User, Eye, FileText, Loader2 } from "lucide-react";
+import { User, Eye, FileText, Loader2, GraduationCap, Check } from "lucide-react";
 import { Button } from "@/zenith/components/ui/button";
 import { Badge } from "@/zenith/components/ui/badge";
 import { Checkbox } from "@/zenith/components/ui/checkbox";
@@ -28,6 +28,9 @@ interface StudentTableProps {
   onViewResume: (studentId: string, studentName: string) => void;
   getGradeColor: (grade: string) => string;
   getGPAColor: (gpa: number) => string;
+  crpStudentIds?: Set<string>;
+  togglingCrpId?: string | null;
+  onToggleCrp?: (studentId: string, studentName: string) => void;
 }
 
 export function StudentTable({
@@ -41,7 +44,11 @@ export function StudentTable({
   onViewResume,
   getGradeColor,
   getGPAColor,
+  crpStudentIds,
+  togglingCrpId,
+  onToggleCrp,
 }: StudentTableProps) {
+  const crpIds = crpStudentIds ?? new Set<string>();
   const allSelected = students.length > 0 && 
     students.every(s => selectedStudents.some(sel => sel.id === s.id));
 
@@ -147,15 +154,40 @@ export function StudentTable({
                       )}
                       Report
                     </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      variant="outline"
+                      size="sm"
                       className="gap-1 h-9 px-3 text-xs dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
                       onClick={() => onViewResume(student.id, student.full_name)}
                     >
                       <Eye className="h-2.5 w-2.5" />
                       Resume
                     </Button>
+                    {onToggleCrp && (() => {
+                      const inCrp = crpIds.has(student.id);
+                      const isToggling = togglingCrpId === student.id;
+                      return (
+                        <Button
+                          variant={inCrp ? "default" : "outline"}
+                          size="sm"
+                          className={`gap-1 h-9 px-3 text-xs ${inCrp
+                            ? "bg-emerald-800 hover:bg-emerald-900 text-white"
+                            : "dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"}`}
+                          onClick={() => onToggleCrp(student.id, student.full_name)}
+                          disabled={isToggling}
+                          title={inCrp ? "Remove from College Readiness Program" : "Appoint to College Readiness Program"}
+                        >
+                          {isToggling ? (
+                            <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                          ) : inCrp ? (
+                            <Check className="h-2.5 w-2.5" />
+                          ) : (
+                            <GraduationCap className="h-2.5 w-2.5" />
+                          )}
+                          {inCrp ? "In CRP" : "Appoint"}
+                        </Button>
+                      );
+                    })()}
                   </div>
                 </TableCell>
               </TableRow>

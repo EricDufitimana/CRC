@@ -2,10 +2,6 @@
 
 import React, { useEffect, useRef } from "react";
 
-// ============================================================================
-// TYPES
-// ============================================================================
-
 export interface GrainientProps {
   timeSpeed?: number;
   colorBalance?: number;
@@ -41,10 +37,6 @@ export interface GrainientProps {
   className?: string;
 }
 
-// ============================================================================
-// HELPERS
-// ============================================================================
-
 const colorToRgb = (color: string): [number, number, number] => {
   if (color.startsWith("#")) {
     const r = parseInt(color.slice(1, 3), 16) / 255;
@@ -56,39 +48,17 @@ const colorToRgb = (color: string): [number, number, number] => {
   if (rgbMatch) {
     return [parseInt(rgbMatch[1]) / 255, parseInt(rgbMatch[2]) / 255, parseInt(rgbMatch[3]) / 255];
   }
-  const hslMatch = color.match(/hsla?\((\d+),\s*(\d+)%,\s*(\d+)%/);
-  if (hslMatch) {
-    const h = parseInt(hslMatch[1]) / 360;
-    const s = parseInt(hslMatch[2]) / 100;
-    const l = parseInt(hslMatch[3]) / 100;
-    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-    const p = 2 * l - q;
-    const hue2rgb = (p: number, q: number, t: number) => {
-      if (t < 0) t += 1;
-      if (t > 1) t -= 1;
-      if (t < 1 / 6) return p + (q - p) * 6 * t;
-      if (t < 1 / 2) return q;
-      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
-      return p;
-    };
-    return [hue2rgb(p, q, h + 1 / 3), hue2rgb(p, q, h), hue2rgb(p, q, h - 1 / 3)];
-  }
   return [1, 1, 1];
 };
 
-// ============================================================================
-// SHADERS
-// ============================================================================
-
-const vertex = /* glsl */ `#version 300 es
+const vertex = `#version 300 es
 in vec2 position;
 void main() {
   gl_Position = vec4(position, 0.0, 1.0);
 }`;
 
-const fragment = /* glsl */ `#version 300 es
+const fragment = `#version 300 es
 precision highp float;
-
 uniform vec2 iResolution;
 uniform float iTime;
 uniform float uTimeSpeed;
@@ -113,76 +83,60 @@ uniform float uZoom;
 uniform vec3 uColor1;
 uniform vec3 uColor2;
 uniform vec3 uColor3;
-
 out vec4 fragColor;
-
 #define S(a,b,t) smoothstep(a,b,t)
-
 mat2 Rot(float a){ float s=sin(a),c=cos(a); return mat2(c,-s,s,c); }
-
 vec2 hash(vec2 p){
   p=vec2(dot(p,vec2(2127.1,81.17)),dot(p,vec2(1269.5,283.37)));
   return fract(sin(p)*43758.5453);
 }
-
 float noise(vec2 p){
   vec2 i=floor(p),f=fract(p),u=f*f*(3.0-2.0*f);
   float n=mix(mix(dot(-1.0+2.0*hash(i+vec2(0.0,0.0)),f-vec2(0.0,0.0)),dot(-1.0+2.0*hash(i+vec2(1.0,0.0)),f-vec2(1.0,0.0)),u.x),mix(dot(-1.0+2.0*hash(i+vec2(0.0,1.0)),f-vec2(0.0,1.0)),dot(-1.0+2.0*hash(i+vec2(1.0,1.0)),f-vec2(1.0,1.0)),u.x),u.y);
   return 0.5+0.5*n;
 }
-
 vec3 blendMode(vec3 base, vec3 blend, int mode){
   if(mode==1) return base * blend;
   if(mode==2) return 1.0 - (1.0-base)*(1.0-blend);
   if(mode==3){ vec3 lt=2.0*base*blend; vec3 gt=1.0-2.0*(1.0-base)*(1.0-blend); return mix(lt,gt,step(0.5,base)); }
   return blend;
 }
-
 void mainImage(out vec4 o, vec2 C){
   float t = iTime * uTimeSpeed;
   vec2 uv = C / iResolution.xy;
   float ratio = iResolution.x / iResolution.y;
-
   vec2 tuv = uv - 0.5 + uCenterOffset;
   tuv /= max(uZoom, 0.001);
-
   float degree = noise(vec2(t * 0.1, tuv.x * tuv.y) * uNoiseScale);
   tuv.y *= 1.0 / ratio;
   tuv *= Rot(radians((degree - 0.5) * uRotationAmount + 180.0));
   tuv.y *= ratio;
-
   float frequency = uWarpFrequency;
   float ws = max(uWarpStrength, 0.001);
   float amplitude = uWarpAmplitude / ws;
   float warpTime = t * uWarpSpeed;
   tuv.x += sin(tuv.y * frequency + warpTime) / amplitude;
   tuv.y += sin(tuv.x * (frequency * 1.5) + warpTime) / (amplitude * 0.5);
-
   vec3 col1 = uColor1;
   vec3 col2 = uColor2;
   vec3 col3 = uColor3;
   float bal = uColorBalance;
   float soft = max(uBlendSoftness, 0.0);
-
   mat2 blendRot = Rot(radians(uBlendAngle));
   float blendCoord = (tuv * blendRot).x;
-
   float edge0 = -0.3 - bal - soft;
   float edge1 = 0.2 - bal + soft;
   float v0 = 0.5 - bal + soft;
   float v1 = -0.3 - bal - soft;
-
   vec3 layer1 = mix(col3, col2, S(edge0, edge1, blendCoord));
   vec3 layer2 = mix(col2, col1, S(edge0, edge1, blendCoord));
   float blendWeight = S(v0, v1, tuv.y);
   vec3 finalCol = blendMode(layer1, layer2, uBlendMode);
   finalCol = mix(layer1, finalCol, blendWeight);
-
   vec2 grainUv = uv * max(uGrainScale, 0.001);
   if(uGrainAnimated > 0.5) { grainUv += vec2(iTime * 0.05); }
   float grainNoise = fract(sin(dot(grainUv, vec2(12.9898, 78.233))) * 43758.5453);
   finalCol += (grainNoise - 0.5) * uGrainAmount;
-
   finalCol = (finalCol - 0.5) * uContrast + 0.5;
   float luma = dot(finalCol, vec3(0.2126, 0.7152, 0.0722));
   finalCol = mix(vec3(luma), finalCol, uSaturation);
@@ -190,16 +144,13 @@ void mainImage(out vec4 o, vec2 C){
   finalCol = clamp(finalCol, 0.0, 1.0);
   o = vec4(finalCol, 1.0);
 }
-
 void main(){
   vec4 o = vec4(0.0);
   mainImage(o, gl_FragCoord.xy);
   fragColor = o;
 }`;
 
-// ============================================================================
-// COMPONENT
-// ============================================================================
+type UniformLocations = Record<string, WebGLUniformLocation | null>;
 
 export default function Grainient({
   timeSpeed = 0.25,
@@ -237,16 +188,39 @@ export default function Grainient({
 }: GrainientProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
+  // Stable refs — hold WebGL state across renders without triggering re-renders
+  const glRef      = useRef<WebGL2RenderingContext | null>(null);
+  const programRef = useRef<WebGLProgram | null>(null);
+  const uRef       = useRef<UniformLocations>({});
+
+  // Prop refs — always current value without needing them in effect deps
+  const propsRef = useRef({
+    timeSpeed, colorBalance, blendMode, responsive, breakpoints,
+    warpStrength, warpFrequency, warpSpeed, warpAmplitude,
+    blendAngle, blendSoftness, rotationAmount, noiseScale,
+    grainAmount, grainScale, grainAnimated,
+    contrast, gamma, saturation, centerX, centerY, zoom,
+    color1, color2, color3,
+  });
+
+  // Keep propsRef current on every render — no effect needed
+  propsRef.current = {
+    timeSpeed, colorBalance, blendMode, responsive, breakpoints,
+    warpStrength, warpFrequency, warpSpeed, warpAmplitude,
+    blendAngle, blendSoftness, rotationAmount, noiseScale,
+    grainAmount, grainScale, grainAnimated,
+    contrast, gamma, saturation, centerX, centerY, zoom,
+    color1, color2, color3,
+  };
+
+  // Effect 1: WebGL setup — runs ONCE on mount only
   useEffect(() => {
     if (typeof window === "undefined") return;
     const container = containerRef.current;
     if (!container) return;
 
     const canvas = document.createElement("canvas");
-    canvas.style.width = "100%";
-    canvas.style.height = "100%";
-    canvas.style.display = "block";
-    canvas.style.pointerEvents = "none";
+    canvas.style.cssText = "width:100%;height:100%;display:block;pointer-events:none;";
     container.appendChild(canvas);
 
     const gl = canvas.getContext("webgl2", {
@@ -258,7 +232,8 @@ export default function Grainient({
 
     if (!gl) {
       canvas.remove();
-      container.style.background = `radial-gradient(120% 120% at 50% 50%, ${color1} 0%, ${color2} 55%, ${color3} 100%)`;
+      const p = propsRef.current;
+      container.style.background = `radial-gradient(120% 120% at 50% 50%, ${p.color1} 0%, ${p.color2} 55%, ${p.color3} 100%)`;
       return;
     }
 
@@ -267,24 +242,9 @@ export default function Grainient({
       gl.shaderSource(shader, source);
       gl.compileShader(shader);
       if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-        const info = gl.getShaderInfoLog(shader);
-        gl.deleteShader(shader);
-        throw new Error(info || "Shader compile failed");
+        throw new Error(gl.getShaderInfoLog(shader) || "Shader compile failed");
       }
       return shader;
-    };
-
-    const link = (vs: WebGLShader, fs: WebGLShader) => {
-      const prog = gl.createProgram()!;
-      gl.attachShader(prog, vs);
-      gl.attachShader(prog, fs);
-      gl.linkProgram(prog);
-      if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
-        const info = gl.getProgramInfoLog(prog);
-        gl.deleteProgram(prog);
-        throw new Error(info || "Program link failed");
-      }
-      return prog;
     };
 
     let program: WebGLProgram | null = null;
@@ -294,9 +254,15 @@ export default function Grainient({
     try {
       const vs = compile(gl.VERTEX_SHADER, vertex);
       const fs = compile(gl.FRAGMENT_SHADER, fragment);
-      program = link(vs, fs);
+      program = gl.createProgram()!;
+      gl.attachShader(program, vs);
+      gl.attachShader(program, fs);
+      gl.linkProgram(program);
       gl.deleteShader(vs);
       gl.deleteShader(fs);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        throw new Error(gl.getProgramInfoLog(program) || "Program link failed");
+      }
 
       vao = gl.createVertexArray();
       gl.bindVertexArray(vao);
@@ -310,79 +276,63 @@ export default function Grainient({
       gl.bindBuffer(gl.ARRAY_BUFFER, null);
     } catch (e) {
       console.error("Grainient shader error:", e);
-      if (program) gl.deleteProgram(program);
-      if (vao) gl.deleteVertexArray(vao);
-      if (buffer) gl.deleteBuffer(buffer);
       canvas.remove();
-      container.style.background = `radial-gradient(120% 120% at 50% 50%, ${color1} 0%, ${color2} 55%, ${color3} 100%)`;
       return;
     }
 
-    const u = {
-      iTime:          gl.getUniformLocation(program!, "iTime"),
-      iResolution:    gl.getUniformLocation(program!, "iResolution"),
-      uTimeSpeed:     gl.getUniformLocation(program!, "uTimeSpeed"),
-      uColorBalance:  gl.getUniformLocation(program!, "uColorBalance"),
-      uWarpStrength:  gl.getUniformLocation(program!, "uWarpStrength"),
-      uWarpFrequency: gl.getUniformLocation(program!, "uWarpFrequency"),
-      uWarpSpeed:     gl.getUniformLocation(program!, "uWarpSpeed"),
-      uWarpAmplitude: gl.getUniformLocation(program!, "uWarpAmplitude"),
-      uBlendAngle:    gl.getUniformLocation(program!, "uBlendAngle"),
-      uBlendSoftness: gl.getUniformLocation(program!, "uBlendSoftness"),
-      uBlendMode:     gl.getUniformLocation(program!, "uBlendMode"),
-      uRotationAmount:gl.getUniformLocation(program!, "uRotationAmount"),
-      uNoiseScale:    gl.getUniformLocation(program!, "uNoiseScale"),
-      uGrainAmount:   gl.getUniformLocation(program!, "uGrainAmount"),
-      uGrainScale:    gl.getUniformLocation(program!, "uGrainScale"),
-      uGrainAnimated: gl.getUniformLocation(program!, "uGrainAnimated"),
-      uContrast:      gl.getUniformLocation(program!, "uContrast"),
-      uGamma:         gl.getUniformLocation(program!, "uGamma"),
-      uSaturation:    gl.getUniformLocation(program!, "uSaturation"),
-      uCenterOffset:  gl.getUniformLocation(program!, "uCenterOffset"),
-      uZoom:          gl.getUniformLocation(program!, "uZoom"),
-      uColor1:        gl.getUniformLocation(program!, "uColor1"),
-      uColor2:        gl.getUniformLocation(program!, "uColor2"),
-      uColor3:        gl.getUniformLocation(program!, "uColor3"),
-    };
+    // Cache uniform locations
+    const u: UniformLocations = {};
+    for (const name of [
+      "iTime","iResolution","uTimeSpeed","uColorBalance","uWarpStrength",
+      "uWarpFrequency","uWarpSpeed","uWarpAmplitude","uBlendAngle","uBlendSoftness",
+      "uBlendMode","uRotationAmount","uNoiseScale","uGrainAmount","uGrainScale",
+      "uGrainAnimated","uContrast","uGamma","uSaturation","uCenterOffset",
+      "uZoom","uColor1","uColor2","uColor3",
+    ]) {
+      u[name] = gl.getUniformLocation(program, name);
+    }
 
-    const getResponsiveValues = (w: number, h: number) => {
-      if (!responsive) return { zoom, warpStrength, grainAmount };
-      const isPortrait = h > w;
-      const bp =
-        w <= breakpoints.small.maxWidth  ? breakpoints.small  :
-        w <= breakpoints.medium.maxWidth ? breakpoints.medium : breakpoints.large;
-      return {
-        zoom: bp.zoom * (isPortrait ? breakpoints.portraitZoomMultiplier : 1),
-        warpStrength: bp.warpStrength,
-        grainAmount: bp.grainAmount,
-      };
-    };
+    glRef.current      = gl;
+    programRef.current = program;
+    uRef.current       = u;
 
-    const setUniforms = (w = 1000, h = 600) => {
-      if (!program) return;
+    // Helper: push all prop-driven uniforms from propsRef (always current)
+    const pushUniforms = (w = 1000, h = 600) => {
+      const p = propsRef.current;
       gl.useProgram(program);
-      const resp = getResponsiveValues(w, h);
-      gl.uniform1f(u.uTimeSpeed,      timeSpeed);
-      gl.uniform1f(u.uColorBalance,   colorBalance);
-      gl.uniform1f(u.uWarpStrength,   resp.warpStrength);
-      gl.uniform1f(u.uWarpFrequency,  warpFrequency);
-      gl.uniform1f(u.uWarpSpeed,      warpSpeed);
-      gl.uniform1f(u.uWarpAmplitude,  warpAmplitude);
-      gl.uniform1f(u.uBlendAngle,     blendAngle);
-      gl.uniform1f(u.uBlendSoftness,  blendSoftness);
+
+      const isPortrait = h > w;
+      let rZoom = p.zoom, rWarp = p.warpStrength, rGrain = p.grainAmount;
+      if (p.responsive) {
+        const bp =
+          w <= p.breakpoints.small.maxWidth  ? p.breakpoints.small  :
+          w <= p.breakpoints.medium.maxWidth ? p.breakpoints.medium : p.breakpoints.large;
+        rZoom  = bp.zoom * (isPortrait ? p.breakpoints.portraitZoomMultiplier : 1);
+        rWarp  = bp.warpStrength;
+        rGrain = bp.grainAmount;
+      }
+
+      gl.uniform1f(u.uTimeSpeed,      p.timeSpeed);
+      gl.uniform1f(u.uColorBalance,   p.colorBalance);
+      gl.uniform1f(u.uWarpStrength,   rWarp);
+      gl.uniform1f(u.uWarpFrequency,  p.warpFrequency);
+      gl.uniform1f(u.uWarpSpeed,      p.warpSpeed);
+      gl.uniform1f(u.uWarpAmplitude,  p.warpAmplitude);
+      gl.uniform1f(u.uBlendAngle,     p.blendAngle);
+      gl.uniform1f(u.uBlendSoftness,  p.blendSoftness);
       gl.uniform1i(u.uBlendMode,
-        blendMode === "multiply" ? 1 : blendMode === "screen" ? 2 : blendMode === "overlay" ? 3 : 0);
-      gl.uniform1f(u.uRotationAmount, rotationAmount);
-      gl.uniform1f(u.uNoiseScale,     noiseScale);
-      gl.uniform1f(u.uGrainAmount,    resp.grainAmount);
-      gl.uniform1f(u.uGrainScale,     grainScale);
-      gl.uniform1f(u.uGrainAnimated,  grainAnimated ? 1.0 : 0.0);
-      gl.uniform1f(u.uContrast,       contrast);
-      gl.uniform1f(u.uGamma,          gamma);
-      gl.uniform1f(u.uSaturation,     saturation);
-      gl.uniform2f(u.uCenterOffset,   centerX, centerY);
-      gl.uniform1f(u.uZoom,           resp.zoom);
-      const c1 = colorToRgb(color1), c2 = colorToRgb(color2), c3 = colorToRgb(color3);
+        p.blendMode === "multiply" ? 1 : p.blendMode === "screen" ? 2 : p.blendMode === "overlay" ? 3 : 0);
+      gl.uniform1f(u.uRotationAmount, p.rotationAmount);
+      gl.uniform1f(u.uNoiseScale,     p.noiseScale);
+      gl.uniform1f(u.uGrainAmount,    rGrain);
+      gl.uniform1f(u.uGrainScale,     p.grainScale);
+      gl.uniform1f(u.uGrainAnimated,  p.grainAnimated ? 1.0 : 0.0);
+      gl.uniform1f(u.uContrast,       p.contrast);
+      gl.uniform1f(u.uGamma,          p.gamma);
+      gl.uniform1f(u.uSaturation,     p.saturation);
+      gl.uniform2f(u.uCenterOffset,   p.centerX, p.centerY);
+      gl.uniform1f(u.uZoom,           rZoom);
+      const c1 = colorToRgb(p.color1), c2 = colorToRgb(p.color2), c3 = colorToRgb(p.color3);
       gl.uniform3f(u.uColor1, c1[0], c1[1], c1[2]);
       gl.uniform3f(u.uColor2, c2[0], c2[1], c2[2]);
       gl.uniform3f(u.uColor3, c3[0], c3[1], c3[2]);
@@ -390,24 +340,15 @@ export default function Grainient({
 
     const updateSize = () => {
       const rect = container.getBoundingClientRect();
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const w = Math.max(1, Math.floor(rect.width));
-      const h = Math.max(1, Math.floor(rect.height));
+      const dpr  = Math.min(window.devicePixelRatio || 1, 2);
+      const w    = Math.max(1, Math.floor(rect.width));
+      const h    = Math.max(1, Math.floor(rect.height));
       canvas.width  = Math.floor(w * dpr);
       canvas.height = Math.floor(h * dpr);
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.useProgram(program);
       gl.uniform2f(u.iResolution, canvas.width, canvas.height);
-      setUniforms(w, h);
-    };
-
-    const renderFrame = (timeSec: number) => {
-      if (!program) return;
-      gl.useProgram(program);
-      gl.uniform1f(u.iTime, timeSec);
-      gl.bindVertexArray(vao);
-      gl.drawArrays(gl.TRIANGLES, 0, 3);
-      gl.bindVertexArray(null);
+      pushUniforms(w, h);
     };
 
     const ro = new ResizeObserver(() => updateSize());
@@ -417,7 +358,11 @@ export default function Grainient({
     let rafId = 0;
     const startTime = performance.now();
     const loop = (now: number) => {
-      renderFrame((now - startTime) * 0.001);
+      gl.useProgram(program);
+      gl.uniform1f(u.iTime, (now - startTime) * 0.001);
+      gl.bindVertexArray(vao);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      gl.bindVertexArray(null);
       rafId = requestAnimationFrame(loop);
     };
     rafId = requestAnimationFrame(loop);
@@ -429,15 +374,11 @@ export default function Grainient({
       if (program) gl.deleteProgram(program);
       if (vao)     gl.deleteVertexArray(vao);
       if (buffer)  gl.deleteBuffer(buffer);
+      glRef.current      = null;
+      programRef.current = null;
+      uRef.current       = {};
     };
-  }, [
-    timeSpeed, colorBalance, blendMode, responsive, breakpoints,
-    warpStrength, warpFrequency, warpSpeed, warpAmplitude,
-    blendAngle, blendSoftness, rotationAmount, noiseScale,
-    grainAmount, grainScale, grainAnimated,
-    contrast, gamma, saturation, centerX, centerY, zoom,
-    color1, color2, color3,
-  ]);
+  }, []); // ← empty: setup runs once, never tears down due to prop changes
 
   return (
     <div

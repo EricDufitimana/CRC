@@ -8,12 +8,12 @@ import { Button } from "../../../../zenith/src/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../../../../zenith/src/components/ui/dialog";
 import { FileUpload as FileUploadBase, getFileIconType, getReadableFileSize } from "@/components/application/file-upload/file-upload-base";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { House, ClipboardText, Briefcase, Folder, SignOut, CaretLeft, Pencil, Camera, Spinner, HouseSimple } from "@phosphor-icons/react";
+import { House, ClipboardText, Briefcase, Folder, SignOut, CaretLeft, Pencil, Camera, Spinner, HouseSimple, GraduationCap } from "@phosphor-icons/react";
 import { useAuth } from "@/hooks/useAuth";
 import React from "react";
 import { useTRPC } from "@/trpc/client";
 import { useUserData } from "@/hooks/useUserData";
-import { useSuspenseQuery, useMutation, useQueryClient, QueryClientContext } from "@tanstack/react-query";
+import { useSuspenseQuery, useMutation, useQuery, useQueryClient, QueryClientContext } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 
 
@@ -133,6 +133,11 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
   const { userId, studentId } = useUserData();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
+
+  // Only CRP-appointed students see the workspace entry.
+  const { data: isCrpParticipant = false } = useQuery(
+    trpc.crpStudent.isParticipant.queryOptions(undefined)
+  );
 
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const [isAvatar, setIsAvatar] = useState<boolean>(false);
@@ -435,6 +440,17 @@ export default function StudentSidebar({ className = "" }: StudentSidebarProps) 
                 Documents
               </Link>
             </li>
+            {isCrpParticipant && (
+              <li>
+                <Link
+                  href="/crp"
+                  className="flex items-center justify-start text-left gap-3 rounded-xl px-3 py-2 text-base bg-emerald-900 text-white hover:bg-emerald-950"
+                >
+                  <GraduationCap className="h-5 w-5 text-lime-300" />
+                  CRP Workspace
+                </Link>
+              </li>
+            )}
           </ul>
         </nav>
 

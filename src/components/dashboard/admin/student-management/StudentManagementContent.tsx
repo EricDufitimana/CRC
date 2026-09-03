@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
+import { useSuspenseQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
 import { StudentManagementHeader } from "./StudentManagementHeader";
 import { StudentSearchBar } from "./StudentSearchBar";
@@ -9,6 +9,7 @@ import { StudentFilters } from "./StudentFilters";
 import { StudentTable } from "./StudentTable";
 import { StudentPagination } from "./StudentPagination";
 import { showToastError } from "@/components/toasts/ToastError";
+import { showToastSuccess } from "@/components/toasts/ToastSuccess";
 
 export function StudentManagementContent({ adminEmail }: { adminEmail?: string | null }) {
   const trpc = useTRPC();
@@ -21,6 +22,45 @@ export function StudentManagementContent({ adminEmail }: { adminEmail?: string |
   const { data: crcClasses = [] } = useSuspenseQuery(
     trpc.studentManagement.getCrcClasses.queryOptions(undefined)
   );
+  const { data: crpParticipantIds = [] } = useSuspenseQuery(
+    trpc.crpAdmin.getParticipantIds.queryOptions(undefined)
+  );
+  const crpStudentIds = useMemo(() => new Set(crpParticipantIds), [crpParticipantIds]);
+
+  // Appoint / remove a student from the CRP cohort
+  const [togglingCrpId, setTogglingCrpId] = useState<string | null>(null);
+  const appointMutation = useMutation(trpc.crpAdmin.appointStudent.mutationOptions());
+  const removeMutation = useMutation(trpc.crpAdmin.removeParticipant.mutationOptions());
+
+  const handleToggleCrp = (studentId: string, studentName: string) => {
+    const isIn = crpStudentIds.has(studentId);
+    const mutation = isIn ? removeMutation : appointMutation;
+    setTogglingCrpId(studentId);
+    mutation.mutate(
+      { studentId },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: [["crpAdmin", "getParticipantIds"]] });
+          queryClient.invalidateQueries({ queryKey: [["crpAdmin", "listParticipants"]] });
+          showToastSuccess({
+            headerText: isIn ? "Removed from CRP" : "Appointed to CRP",
+            paragraphText: isIn
+              ? `${studentName} no longer has CRP access.`
+              : `${studentName} can now open the CRP Workspace.`,
+          });
+        },
+        onError: () => {
+          showToastError({
+            headerText: "Something went wrong",
+            paragraphText: isIn
+              ? `Couldn't remove ${studentName} from CRP. Try again.`
+              : `Couldn't appoint ${studentName} to CRP. Try again.`,
+          });
+        },
+        onSettled: () => setTogglingCrpId(null),
+      }
+    );
+  };
 
   // State management
   const [searchTerm, setSearchTerm] = useState("");
@@ -358,6 +398,9 @@ export function StudentManagementContent({ adminEmail }: { adminEmail?: string |
           onViewResume={handleViewResume}
           getGradeColor={getGradeColor}
           getGPAColor={getGPAColor}
+          crpStudentIds={crpStudentIds}
+          togglingCrpId={togglingCrpId}
+          onToggleCrp={handleToggleCrp}
         />
         
         {/* Pagination Controls */}

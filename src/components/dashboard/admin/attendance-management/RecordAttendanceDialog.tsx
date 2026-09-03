@@ -25,7 +25,17 @@ import {
   DropdownMenuTrigger,
 } from "@/zenith/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/zenith/components/ui/avatar";
-import { Users, Clock, UserX, AlertCircle, UserCheck, ChevronDown, Loader2 } from "lucide-react";
+import {
+  Users,
+  Clock,
+  UserX,
+  AlertCircle,
+  UserCheck,
+  ChevronDown,
+  Loader2,
+  CheckCheck,
+  X,
+} from "lucide-react";
 import { format } from "date-fns";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
@@ -58,6 +68,48 @@ interface RecordAttendanceDialogProps {
   groupedClasses: Array<{ groupName: string; classes: CRCClass[] }>;
 }
 
+type AttendanceStatus = "present" | "absent" | "late" | "excused";
+
+const STATUS_CONFIG: Record<
+  AttendanceStatus,
+  {
+    label: string;
+    icon: React.ElementType;
+    rowClass: string;
+    badgeClass: string;
+    dotClass: string;
+  }
+> = {
+  present: {
+    label: "Present",
+    icon: UserCheck,
+    rowClass: "bg-green-50 border-green-200 text-green-700",
+    badgeClass: "text-green-700",
+    dotClass: "bg-green-500",
+  },
+  late: {
+    label: "Late",
+    icon: Clock,
+    rowClass: "bg-orange-50 border-orange-200 text-orange-700",
+    badgeClass: "text-orange-700",
+    dotClass: "bg-orange-500",
+  },
+  absent: {
+    label: "Absent",
+    icon: UserX,
+    rowClass: "bg-red-50 border-red-200 text-red-700",
+    badgeClass: "text-red-700",
+    dotClass: "bg-red-500",
+  },
+  excused: {
+    label: "Excused",
+    icon: AlertCircle,
+    rowClass: "bg-blue-50 border-blue-200 text-blue-700",
+    badgeClass: "text-blue-700",
+    dotClass: "bg-blue-500",
+  },
+};
+
 export function RecordAttendanceDialog({
   open,
   onOpenChange,
@@ -69,26 +121,25 @@ export function RecordAttendanceDialog({
   const [selectedClass, setSelectedClass] = useState<string>("all");
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [selectedWorkshop, setSelectedWorkshop] = useState<string>("");
-  const [selectedStudents, setSelectedStudents] = useState<{[key: string]: 'present' | 'absent' | 'late' | 'excused'}>({});
+  const [selectedStudents, setSelectedStudents] = useState<
+    Record<string, AttendanceStatus>
+  >({});
 
-  // Fetch all workshops
   const { data: allWorkshops = [], isLoading: loadingWorkshops } = useQuery({
     ...trpc.assignmentsManagement.getWorkshops.queryOptions(undefined),
     enabled: open,
   });
 
-  // Filter workshops by selected class
   const workshops = useMemo(() => {
     if (!selectedClassId) return [];
-    return allWorkshops.filter(workshop => 
-      workshop.crc_classes.some(cc => cc.id === selectedClassId)
+    return allWorkshops.filter((workshop) =>
+      workshop.crc_classes.some((cc) => cc.id === selectedClassId)
     );
   }, [allWorkshops, selectedClassId]);
 
-  // Fetch students for selected class
   const { data: classData, isLoading: loadingStudents } = useQuery({
     ...trpc.crcClassManagement.getCrcClassStudents.queryOptions({
-      classId: selectedClassId || '',
+      classId: selectedClassId || "",
     }),
     enabled: !!selectedClassId && open,
   });
@@ -98,14 +149,20 @@ export function RecordAttendanceDialog({
   const recordAttendanceMutation = useMutation({
     ...trpc.attendanceManagement.recordAttendance.mutationOptions(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [['attendanceManagement', 'getAttendanceRecords']] });
+      queryClient.invalidateQueries({
+        queryKey: [["attendanceManagement", "getAttendanceRecords"]],
+      });
       onOpenChange(false);
-      setSelectedClass("all");
-      setSelectedClassId(null);
-      setSelectedWorkshop("");
-      setSelectedStudents({});
+      resetState();
     },
   });
+
+  const resetState = () => {
+    setSelectedClass("all");
+    setSelectedClassId(null);
+    setSelectedWorkshop("");
+    setSelectedStudents({});
+  };
 
   const handleClassChange = (value: string) => {
     setSelectedClass(value);
@@ -121,12 +178,9 @@ export function RecordAttendanceDialog({
   const handleRecordAttendance = () => {
     if (!selectedWorkshop || !selectedClassId) return;
 
-    const attendanceRecords = Object.entries(selectedStudents)
-      .filter(([_, status]) => status)
-      .map(([studentId, status]) => ({
-        studentId,
-        status
-      }));
+    const attendanceRecords = Object.entries(selectedStudents).map(
+      ([studentId, status]) => ({ studentId, status })
+    );
 
     if (attendanceRecords.length === 0) return;
 
@@ -138,64 +192,95 @@ export function RecordAttendanceDialog({
 
     showToastPromise({
       promise,
-      loadingText: 'Recording attendance...',
-      successText: 'This record will appear in your history.',
-      successHeaderText: 'Attendance Recorded Successfully',
-      errorText: 'Please try again.',
-      errorHeaderText: 'Failed to record attendance',
-      direction: 'right'
+      loadingText: "Recording attendance...",
+      successText: "This record will appear in your history.",
+      successHeaderText: "Attendance Recorded Successfully",
+      errorText: "Please try again.",
+      errorHeaderText: "Failed to record attendance",
+      direction: "right",
     });
   };
 
-  // Reset when dialog closes
+  const setStudentStatus = (
+    studentId: string,
+    status: AttendanceStatus | null
+  ) => {
+    setSelectedStudents((prev) => {
+      const next = { ...prev };
+      if (status === null || prev[studentId] === status) {
+        delete next[studentId];
+      } else {
+        next[studentId] = status;
+      }
+      return next;
+    });
+  };
+
   useEffect(() => {
-    if (!open) {
-      setSelectedClass("all");
-      setSelectedClassId(null);
-      setSelectedWorkshop("");
-      setSelectedStudents({});
-    }
+    if (!open) resetState();
   }, [open]);
 
-  // Group students by major
-  const groupedStudents = students.reduce((groups, student) => {
-    const major = student.major_short || 'Other';
-    if (!groups[major]) {
-      groups[major] = [];
-    }
-    groups[major].push(student);
-    return groups;
-  }, {} as Record<string, typeof students>);
+  const groupedStudents = useMemo(
+    () =>
+      students.reduce(
+        (groups, student) => {
+          const major = student.major_short || "Other";
+          if (!groups[major]) groups[major] = [];
+          groups[major].push(student);
+          return groups;
+        },
+        {} as Record<string, typeof students>
+      ),
+    [students]
+  );
 
   const sortedMajors = Object.keys(groupedStudents).sort();
 
+  // Footer stats
+  const markedCount = Object.keys(selectedStudents).length;
+  const statusCounts = Object.values(selectedStudents).reduce(
+    (acc, s) => ({ ...acc, [s]: (acc[s] || 0) + 1 }),
+    {} as Record<AttendanceStatus, number>
+  );
+
+  const showStudentList =
+    selectedWorkshop && selectedClass !== "all";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-bold">Record Student Attendance</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col gap-0 p-0">
+        {/* Header */}
+        <DialogHeader className="px-6 pt-6 pb-4 ">
+          <DialogTitle className="text-xl font-semibold tracking-tight">
+            Record Student Attendance
+          </DialogTitle>
+          <DialogDescription className="text-sm text-gray-500 mt-0.5">
             Select a workshop and class, then mark attendance for each student.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden flex flex-col">
-          {/* Selection Controls */}
-          <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
-            <div>
-              <Label htmlFor="class" className="text-sm font-medium">Class</Label>
+        <div className="flex-1 overflow-hidden flex flex-col px-6">
+          {/* Class + Workshop selectors */}
+          <div className="grid grid-cols-2 gap-4 py-5 border-b border-gray-100">
+            <div className="bg-gray-50 rounded-xl p-4 space-y-1.5">
+              <Label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Class
+              </Label>
               <Select value={selectedClass} onValueChange={handleClassChange}>
-                <SelectTrigger className="mt-1 rounded-xl">
+                <SelectTrigger className="rounded-xl h-10">
                   <SelectValue placeholder="Select class" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-xl">
                   {groupedClasses.length === 0 ? (
-                    <div className="p-4 text-center text-gray-500">No classes available</div>
+                    <div className="p-4 text-center text-sm text-gray-400">
+                      No classes available
+                    </div>
                   ) : (
                     groupedClasses.map(({ groupName, classes: groupClasses }) => (
                       <div key={groupName}>
-                        <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                          {groupName}</div>
+                        <div className="px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-widest">
+                          {groupName}
+                        </div>
                         {groupClasses.map((cls) => (
                           <SelectItem key={cls.id} value={cls.id.toString()}>
                             {cls.name}
@@ -208,31 +293,50 @@ export function RecordAttendanceDialog({
               </Select>
             </div>
 
-            <div>
-              <Label htmlFor="workshop" className="text-sm font-medium">Workshop</Label>
-              <Select value={selectedWorkshop} onValueChange={setSelectedWorkshop} disabled={selectedClass === "all" || loadingWorkshops}>
-                <SelectTrigger className="mt-1 rounded-xl">
-                  <SelectValue placeholder={loadingWorkshops ? "Loading workshops..." : "Select workshop"}>
-                    {selectedWorkshop && workshops.find(w => w.id.toString() === selectedWorkshop)?.title || "Select workshop"}
-                  </SelectValue>
+            <div className="bg-gray-50 rounded-xl p-4 space-y-1.5">
+              <Label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Workshop
+              </Label>
+              <Select
+                value={selectedWorkshop}
+                onValueChange={setSelectedWorkshop}
+                disabled={selectedClass === "all" || loadingWorkshops}
+              >
+                <SelectTrigger className="rounded-xl h-10">
+                  <SelectValue
+                    placeholder={
+                      loadingWorkshops
+                        ? "Loading workshops..."
+                        : "Select workshop"
+                    }
+                  />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-xl">
                   {loadingWorkshops ? (
-                    <div className="flex items-center justify-center p-4">
-                      <div className="animate-spin h-5 w-5 border-2 border-orange-600 border-t-transparent rounded-full"></div>
-                      <span className="ml-2 text-sm text-gray-500">Loading workshops...</span>
+                    <div className="flex items-center justify-center p-4 gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-orange-500" />
+                      <span className="text-sm text-gray-400">
+                        Loading workshops...
+                      </span>
                     </div>
                   ) : selectedClass === "all" ? (
-                    <div className="p-4 text-center text-gray-500">Select a class first</div>
+                    <div className="p-4 text-center text-sm text-gray-400">
+                      Select a class first
+                    </div>
                   ) : workshops.length === 0 ? (
-                    <div className="p-4 text-center text-gray-500">No available workshops for this class</div>
+                    <div className="p-4 text-center text-sm text-gray-400">
+                      No workshops for this class
+                    </div>
                   ) : (
                     workshops.map((workshop) => (
-                      <SelectItem key={workshop.id} value={workshop.id.toString()}>
+                      <SelectItem
+                        key={workshop.id}
+                        value={workshop.id.toString()}
+                      >
                         <div className="flex flex-col">
                           <span className="font-medium">{workshop.title}</span>
                           {workshop.date && (
-                            <span className="text-xs text-gray-500">
+                            <span className="text-xs text-gray-400">
                               {format(new Date(workshop.date), "MMM dd, yyyy")}
                             </span>
                           )}
@@ -245,168 +349,180 @@ export function RecordAttendanceDialog({
             </div>
           </div>
 
-          {/* Student List */}
-          {selectedWorkshop && selectedClass !== "all" && (
-            <div className="flex-1 overflow-hidden flex flex-col">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-lg">Student Attendance</h3>
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                  <span>Quick Actions:</span>
-                  <Button
-                    variant="outline"
-                    size="sm"
+          {/* Student list */}
+          {showStudentList && (
+            <div className="flex-1 overflow-hidden flex flex-col pt-4">
+              {/* Section header + quick actions */}
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-sm text-gray-800">
+                  Student Attendance
+                </h3>
+
+                {/* ✨ THE IMPROVED QUICK ACTIONS */}
+                <div className="flex items-center gap-1.5">
+                  <button
                     onClick={() => {
-                      const allPresent = students.reduce((acc, student) => {
-                        acc[student.id] = 'present';
-                        return acc;
-                      }, {} as typeof selectedStudents);
+                      const allPresent = students.reduce(
+                        (acc, s) => ({ ...acc, [s.id]: "present" as const }),
+                        {} as Record<string, AttendanceStatus>
+                      );
                       setSelectedStudents(allPresent);
                     }}
                     disabled={loadingStudents || students.length === 0}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
+                               bg-green-50 text-green-700 border border-green-200
+                               hover:bg-green-100 hover:border-green-300
+                               disabled:opacity-40 disabled:cursor-not-allowed
+                               transition-all duration-150"
                   >
+                    <CheckCheck className="h-3.5 w-3.5" />
                     Mark All Present
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
+                  </button>
+
+                  <button
                     onClick={() => setSelectedStudents({})}
-                    disabled={loadingStudents}
+                    disabled={loadingStudents || markedCount === 0}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
+                               text-gray-500 border border-gray-200
+                               hover:bg-gray-50 hover:text-gray-700 hover:border-gray-300
+                               disabled:opacity-40 disabled:cursor-not-allowed
+                               transition-all duration-150"
                   >
-                    Clear All
-                  </Button>
+                    <X className="h-3.5 w-3.5" />
+                    Clear
+                  </button>
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto border rounded-lg">
+              {/* Scrollable student list */}
+              <div className="flex-1 overflow-y-auto border border-gray-100 rounded-xl">
                 {loadingStudents ? (
-                  <div className="flex items-center justify-center p-8">
-                    <div className="text-center">
-                      <div className="animate-spin h-8 w-8 border-2 border-orange-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-                      <p className="text-gray-500">Loading students...</p>
-                    </div>
+                  <div className="flex flex-col items-center justify-center p-12 gap-3">
+                    <Loader2 className="h-7 w-7 animate-spin text-orange-500" />
+                    <p className="text-sm text-gray-400">Loading students...</p>
                   </div>
                 ) : students.length === 0 ? (
-                  <div className="flex items-center justify-center p-8">
+                  <div className="flex flex-col items-center justify-center p-12 gap-3">
+                    <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center">
+                      <Users className="h-5 w-5 text-gray-300" />
+                    </div>
                     <div className="text-center">
-                      <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                      <p className="text-gray-500 mb-2">No students found</p>
-                      <p className="text-sm text-gray-400">There are no students enrolled in this class</p>
+                      <p className="text-sm font-medium text-gray-500">
+                        No students found
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        No students are enrolled in this class
+                      </p>
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-4 p-4">
+                  <div className="divide-y divide-gray-50">
                     {sortedMajors.map((major) => (
-                      <div key={major} className="space-y-2">
-                        <div className="flex items-center space-x-2 py-2 border-gray-200">
-                          <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                          <h4 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">
-                            {major} ({groupedStudents[major].length} students)
-                          </h4>
+                      <div key={major}>
+                        {/* Major group header */}
+                        <div className="flex items-center gap-2 px-4 py-2.5 bg-gray-50/70 sticky top-0">
+                          <div className="w-1.5 h-1.5 rounded-full bg-orange-400" />
+                          <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest">
+                            {major}
+                          </span>
+                          <span className="text-[10px] text-gray-400">
+                            · {groupedStudents[major].length} students
+                          </span>
                         </div>
-                        <div className="space-y-2 ml-4">
+
+                        {/* Students */}
+                        <div className="px-3 py-1.5 space-y-1.5">
                           {groupedStudents[major]
-                            .sort((a, b) => a.first_name.localeCompare(b.first_name))
-                            .map((student) => (
-                              <div key={student.id} className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                                <div className="flex items-center space-x-3">
-                                  <Avatar className="h-8 w-8">
-                                    <AvatarFallback>
-                                      {student.first_name[0]}{student.last_name[0]}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <div>
-                                    <div className="font-medium text-sm">{student.first_name} {student.last_name}</div>
-                                    <div className="text-xs text-gray-500">{student.grade} • {student.major_short}</div>
-                                  </div>
-                                </div>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className={`w-32 justify-between px-3 ${
-                                        selectedStudents[student.id] === 'present' ? 'bg-green-50 border-green-300 text-green-700' :
-                                        selectedStudents[student.id] === 'late' ? 'bg-orange-50 border-orange-300 text-orange-700' :
-                                        selectedStudents[student.id] === 'absent' ? 'bg-red-50 border-red-300 text-red-700' :
-                                        selectedStudents[student.id] === 'excused' ? 'bg-blue-50 border-blue-300 text-blue-700' :
-                                        'border-gray-300'
-                                      }`}
-                                    >
-                                      <div className="flex items-center">
-                                        {selectedStudents[student.id] === 'present' && <UserCheck className="h-4 w-4 mr-2" />}
-                                        {selectedStudents[student.id] === 'late' && <Clock className="h-4 w-4 mr-2" />}
-                                        {selectedStudents[student.id] === 'absent' && <UserX className="h-4 w-4 mr-2" />}
-                                        {selectedStudents[student.id] === 'excused' && <AlertCircle className="h-4 w-4 mr-2" />}
-                                        <span className="truncate">{selectedStudents[student.id] || 'Select Status'}</span>
+                            .sort((a, b) =>
+                              a.first_name.localeCompare(b.first_name)
+                            )
+                            .map((student) => {
+                              const status = selectedStudents[student.id];
+                              const cfg = status
+                                ? STATUS_CONFIG[status]
+                                : null;
+                              const StatusIcon = cfg?.icon;
+
+                              return (
+                                <div
+                                  key={student.id}
+                                  className={`flex items-center justify-between px-3 py-2.5 rounded-lg border transition-all duration-150 bg-white border-gray-100 hover:border-gray-200 hover:bg-gray-50/50`}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <Avatar className="h-8 w-8 shrink-0">
+                                      <AvatarFallback
+                                        className={`text-xs font-medium ${
+                                          cfg
+                                            ? cfg.badgeClass
+                                            : "text-gray-600 bg-gray-100"
+                                        }`}
+                                      >
+                                        {student.first_name[0]}
+                                        {student.last_name[0]}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                      <div className="text-sm font-medium leading-tight">
+                                        {student.first_name} {student.last_name}
                                       </div>
-                                      <ChevronDown className="h-4 w-4 mr-2 flex-shrink-0" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="w-32">
-                                    <DropdownMenuItem
-                                      onClick={() => setSelectedStudents(prev => {
-                                        const newState = { ...prev };
-                                        if (selectedStudents[student.id] === 'present') {
-                                          delete newState[student.id];
-                                        } else {
-                                          newState[student.id] = 'present';
-                                        }
-                                        return newState;
-                                      })}
-                                      className="flex items-center"
+                                      <div className="text-xs mt-0.5 text-gray-400">
+                                        {student.grade} · {student.major_short}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <button
+                                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all duration-150 min-w-[120px] justify-between ${
+                                          cfg
+                                            ? `${cfg.rowClass} hover:opacity-80`
+                                            : "bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50"
+                                        }`}
+                                      >
+                                        <span className="flex items-center gap-1.5">
+                                          {StatusIcon && (
+                                            <StatusIcon className="h-3.5 w-3.5" />
+                                          )}
+                                          {cfg ? cfg.label : "Set status"}
+                                        </span>
+                                        <ChevronDown className="h-3.5 w-3.5 opacity-60 shrink-0" />
+                                      </button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent
+                                      align="end"
+                                      className="w-36 p-1"
                                     >
-                                      <UserCheck className="h-4 w-4 mr-2 text-green-600" />
-                                      Present
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={() => setSelectedStudents(prev => {
-                                        const newState = { ...prev };
-                                        if (selectedStudents[student.id] === 'late') {
-                                          delete newState[student.id];
-                                        } else {
-                                          newState[student.id] = 'late';
-                                        }
-                                        return newState;
+                                      {(
+                                        Object.entries(
+                                          STATUS_CONFIG
+                                        ) as Array<
+                                          [AttendanceStatus, (typeof STATUS_CONFIG)[AttendanceStatus]]
+                                        >
+                                      ).map(([s, config]) => {
+                                        const Icon = config.icon;
+                                        return (
+                                          <DropdownMenuItem
+                                            key={s}
+                                            onClick={() =>
+                                              setStudentStatus(student.id, s)
+                                            }
+                                            className={`flex items-center gap-2 rounded-md text-xs px-2 py-1.5 cursor-pointer ${
+                                              status === s
+                                                ? `${config.rowClass} font-medium`
+                                                : ""
+                                            }`}
+                                          >
+                                            <Icon className={`h-3.5 w-3.5 ${config.badgeClass}`} />
+                                            {config.label}
+                                          </DropdownMenuItem>
+                                        );
                                       })}
-                                      className="flex items-center"
-                                    >
-                                      <Clock className="h-4 w-4 mr-2 text-orange-600" />
-                                      Late
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={() => setSelectedStudents(prev => {
-                                        const newState = { ...prev };
-                                        if (selectedStudents[student.id] === 'absent') {
-                                          delete newState[student.id];
-                                        } else {
-                                          newState[student.id] = 'absent';
-                                        }
-                                        return newState;
-                                      })}
-                                      className="flex items-center"
-                                    >
-                                      <UserX className="h-4 w-4 mr-2 text-red-600" />
-                                      Absent
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={() => setSelectedStudents(prev => {
-                                        const newState = { ...prev };
-                                        if (selectedStudents[student.id] === 'excused') {
-                                          delete newState[student.id];
-                                        } else {
-                                          newState[student.id] = 'excused';
-                                        }
-                                        return newState;
-                                      })}
-                                      className="flex items-center"
-                                    >
-                                      <AlertCircle className="h-4 w-4 mr-2 text-blue-600" />
-                                      Excused
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </div>
-                            ))}
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
+                              );
+                            })}
                         </div>
                       </div>
                     ))}
@@ -417,30 +533,63 @@ export function RecordAttendanceDialog({
           )}
         </div>
 
-        <DialogFooter className="flex-shrink-0">
+        {/* Footer */}
+        <DialogFooter className="px-6 py-4 border-t border-gray-100 flex-shrink-0">
           <div className="flex items-center justify-between w-full">
-            <div className="text-sm text-gray-600">
-              {Object.values(selectedStudents).filter(status => status).length === 0 ? (
-                <span>No students marked</span>
+            {/* Status summary */}
+            <div className="flex items-center gap-3">
+              {markedCount === 0 ? (
+                <span className="text-xs text-gray-400">No students marked</span>
               ) : (
-                <span>
-                  {loadingStudents ? "Loading..." : `${Object.values(selectedStudents).filter(status => status).length} students marked`}
-                </span>
+                <>
+                  <span className="text-xs text-gray-500 font-medium">
+                    {markedCount} marked
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {(
+                      Object.entries(statusCounts) as Array<
+                        [AttendanceStatus, number]
+                      >
+                    ).map(([s, count]) => (
+                      <span
+                        key={s}
+                        className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border ${STATUS_CONFIG[s].rowClass}`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${STATUS_CONFIG[s].dotClass}`}
+                        />
+                        {count} {STATUS_CONFIG[s].label}
+                      </span>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
-            <div className="flex space-x-2">
-              <Button variant="outline" className="rounded-xl" onClick={() => onOpenChange(false)}>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                className="rounded-xl text-gray-500 hover:text-gray-800 h-9 px-4"
+                onClick={() => onOpenChange(false)}
+              >
                 Cancel
               </Button>
               <Button
                 onClick={handleRecordAttendance}
-                disabled={!selectedWorkshop || selectedClass === "all" || loadingStudents || students.length === 0 || Object.values(selectedStudents).filter(status => status).length === 0 || recordAttendanceMutation.isPending}
-                className="rounded-xl bg-orange-500 hover:bg-orange-600 text-white shadow-[inset_-2px_2px_0_rgba(255,255,255,0.1),0_1px_6px_rgba(0,0,0,0.2)] transition duration-200"
+                disabled={
+                  !selectedWorkshop ||
+                  selectedClass === "all" ||
+                  loadingStudents ||
+                  students.length === 0 ||
+                  markedCount === 0 ||
+                  recordAttendanceMutation.isPending
+                }
+                className="rounded-xl h-9 px-5 bg-orange-500 hover:bg-orange-600 text-white
+                           shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_1px_4px_rgba(234,88,12,0.3)]
+                           disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150"
               >
                 {recordAttendanceMutation.isPending ? (
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  </div>
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   "Record Attendance"
                 )}
@@ -452,4 +601,3 @@ export function RecordAttendanceDialog({
     </Dialog>
   );
 }
-

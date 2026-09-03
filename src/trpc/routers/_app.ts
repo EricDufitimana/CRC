@@ -25,6 +25,8 @@ import { essayEmailRouter } from './essay-email';
 import { documentsRouter } from './documents';
 import { adminSettingsRouter } from './admin-settings';
 import { adminInvitesRouter } from './admin-invites';
+import { crpAdminRouter } from './crp-admin';
+import { crpStudentRouter } from './crp-student';
 
 export const appRouter = createTRPCRouter({
   resources: resourcesRouter,
@@ -53,6 +55,8 @@ export const appRouter = createTRPCRouter({
   documents: documentsRouter,
   adminSettings: adminSettingsRouter,
   adminInvites: adminInvitesRouter,
+  crpAdmin: crpAdminRouter,
+  crpStudent: crpStudentRouter,
 });
 // export type definition of API
 export type AppRouter = typeof appRouter;

@@ -33,6 +33,7 @@ model admin {
   opportunities                  opportunities[]
   sent_opportunity_referrals     opportunity_referrals[] @relation("from_admin_opp")
   received_opportunity_referrals opportunity_referrals[] @relation("to_admin_opp")
+  crp_appointments               crp_participants[]
 
   @@schema("public")
 }
@@ -172,6 +173,11 @@ model students {
   crc_class            crc_class?           @relation(fields: [crc_class_id], references: [id], onDelete: Cascade)
   users                users?               @relation(fields: [user_id], references: [id], onDelete: Cascade)
   submissions          submissions[]
+  crp_participation    crp_participants?
+  crp_applications     crp_applications[]
+  crp_essays           crp_essays[]
+  crp_recommendations  crp_recommendations[]
+  crp_tasks            crp_tasks[]
 
   @@schema("public")
 }
@@ -818,6 +824,140 @@ enum resource_status {
   active
   inactive
 
+  @@schema("public")
+}
+
+// ─────────────────────────────────────────────────────────────
+// CRP — College Readiness Program
+// ─────────────────────────────────────────────────────────────
+
+enum crp_round {
+  SCEA
+  ED
+  ED2
+  EA
+  RD
+  ROLLING
+
+  @@schema("public")
+}
+
+enum crp_essay_scope {
+  shared
+  school
+
+  @@schema("public")
+}
+
+enum crp_essay_status {
+  not_started
+  drafting
+  revising
+  reviewer_sent
+  final
+  submitted
+
+  @@schema("public")
+}
+
+model crp_participants {
+  id           BigInt   @id @default(autoincrement())
+  student_id   BigInt   @unique
+  appointed_by BigInt
+  appointed_at DateTime @default(now()) @db.Timestamptz(6)
+  active       Boolean  @default(true)
+  students     students @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  admin        admin    @relation(fields: [appointed_by], references: [id], onDelete: Cascade)
+
+  @@index([active])
+  @@schema("public")
+}
+
+model crp_colleges {
+  id           BigInt             @id @default(autoincrement())
+  scorecard_id String?            @unique
+  name         String
+  city         String?
+  state        String?
+  domain       String?
+  logo_url     String?
+  created_at   DateTime           @default(now()) @db.Timestamptz(6)
+  applications crp_applications[]
+
+  @@schema("public")
+}
+
+model crp_applications {
+  id            BigInt       @id @default(autoincrement())
+  student_id    BigInt
+  college_id    BigInt
+  round         crp_round?
+  deadline      DateTime?    @db.Date
+  submitted     Boolean      @default(false)
+  finaid_status String?
+  scores_status String?
+  notes         String?
+  created_at    DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime     @default(now()) @db.Timestamptz(6)
+  students      students     @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  college       crp_colleges @relation(fields: [college_id], references: [id], onDelete: Cascade)
+  essays        crp_essays[]
+
+  @@index([student_id])
+  @@schema("public")
+}
+
+model crp_essays {
+  id             BigInt            @id @default(autoincrement())
+  student_id     BigInt
+  application_id BigInt?
+  scope          crp_essay_scope   @default(school)
+  type           String
+  prompt         String?
+  words          String?
+  status         crp_essay_status  @default(not_started)
+  draft_link     String?
+  due            DateTime?         @db.Date
+  created_at     DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime          @default(now()) @db.Timestamptz(6)
+  students       students          @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  application    crp_applications? @relation(fields: [application_id], references: [id], onDelete: Cascade)
+
+  @@index([student_id])
+  @@index([status])
+  @@schema("public")
+}
+
+model crp_recommendations {
+  id          BigInt   @id @default(autoincrement())
+  student_id  BigInt
+  recommender String
+  role        String?
+  for_schools String?
+  requested   Boolean  @default(false)
+  brag_sheet  Boolean  @default(false)
+  submitted   Boolean  @default(false)
+  notes       String?
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  students    students @relation(fields: [student_id], references: [id], onDelete: Cascade)
+
+  @@index([student_id])
+  @@schema("public")
+}
+
+model crp_tasks {
+  id         BigInt    @id @default(autoincrement())
+  student_id BigInt
+  task       String
+  area       String?
+  priority   priority?
+  due        DateTime? @db.Date
+  done       Boolean   @default(false)
+  notes      String?
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  students   students  @relation(fields: [student_id], references: [id], onDelete: Cascade)
+
+  @@index([student_id])
   @@schema("public")
 }
 
